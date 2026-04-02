@@ -1,0 +1,197 @@
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Link } from "@tanstack/react-router";
+import { Heart, Menu, Phone, Users, X } from "lucide-react";
+import { useState } from "react";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+
+export function Header() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { login, clear, loginStatus, identity } = useInternetIdentity();
+  const isLoggedIn = loginStatus === "success" && !!identity;
+
+  const navLinks = [
+    { to: "/", label: "Home" },
+    { to: "/mission", label: "Mission" },
+    { to: "/blog", label: "Blog" },
+    { to: "/about", label: "About" },
+    { to: "/sitemap", label: "Sitemap" },
+  ];
+
+  return (
+    <header
+      className="sticky top-0 z-40 bg-navy border-b border-border"
+      data-ocid="nav.panel"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Brand */}
+          <Link
+            to="/"
+            className="flex items-center gap-2.5 shrink-0"
+            data-ocid="nav.link"
+          >
+            <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
+              <Heart className="w-4 h-4 text-white" fill="white" />
+            </div>
+            <span className="font-bold text-base leading-tight">
+              <span className="text-teal-light">Live Now</span>{" "}
+              <span className="text-foreground">Recovery</span>
+            </span>
+          </Link>
+
+          {/* Desktop nav */}
+          <nav
+            className="hidden md:flex items-center gap-1"
+            aria-label="Main navigation"
+          >
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center px-3 rounded-md text-on-dark hover:text-white hover:bg-white/5"
+                activeProps={{ className: "text-teal-light font-semibold" }}
+                data-ocid="nav.link"
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              to="/helper"
+              className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center gap-1.5 px-3 rounded-md text-teal-light hover:text-white hover:bg-white/5"
+              data-ocid="nav.link"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Be a Helper
+            </Link>
+          </nav>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-2">
+            {/* Emergency phone */}
+            <a
+              href="tel:833-234-6343"
+              className="hidden md:inline-flex items-center gap-1.5 bg-destructive text-destructive-foreground px-3 py-2 rounded-lg text-xs font-bold min-h-[44px] transition-opacity hover:opacity-90"
+              data-ocid="nav.button"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              833-234-6343
+            </a>
+
+            {isLoggedIn ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="min-h-[44px] bg-primary text-primary-foreground hover:bg-primary/90"
+                    data-ocid="nav.button"
+                  >
+                    My Account
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="bg-card border-border text-foreground"
+                >
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">Admin Panel</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => clear()}
+                    className="text-destructive"
+                  >
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                className="hidden md:inline-flex min-h-[44px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => login()}
+                data-ocid="nav.button"
+              >
+                Sign In
+              </Button>
+            )}
+
+            {/* Mobile menu toggle */}
+            <button
+              type="button"
+              className="md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors text-on-dark hover:text-white"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Toggle menu"
+              data-ocid="nav.toggle"
+            >
+              {menuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile menu — landscape-safe with 2-col grid */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-border bg-navy max-h-[calc(100dvh-4rem)] overflow-y-auto">
+          <div className="px-4 py-3 grid grid-cols-1 landscape:grid-cols-2 gap-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="py-2.5 px-2 text-sm font-medium transition-colors min-h-[44px] flex items-center rounded-md text-on-dark hover:text-white hover:bg-white/5"
+                activeProps={{ className: "text-teal-light font-semibold" }}
+                onClick={() => setMenuOpen(false)}
+                data-ocid="nav.link"
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              to="/helper"
+              className="py-2.5 px-2 text-sm font-medium min-h-[44px] flex items-center gap-1.5 rounded-md text-teal-light hover:bg-white/5"
+              onClick={() => setMenuOpen(false)}
+              data-ocid="nav.link"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Be a Helper
+            </Link>
+          </div>
+          <div className="px-4 pb-3 flex flex-col landscape:flex-row gap-2">
+            <a
+              href="tel:833-234-6343"
+              className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-3 rounded-lg text-sm font-bold min-h-[44px] landscape:flex-1"
+              onClick={() => setMenuOpen(false)}
+              data-ocid="nav.button"
+            >
+              <Phone className="w-4 h-4" />
+              Call 833-234-6343 (MAR NOW)
+            </a>
+            {!isLoggedIn && (
+              <Button
+                size="sm"
+                className="min-h-[44px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 landscape:flex-1"
+                onClick={() => {
+                  login();
+                  setMenuOpen(false);
+                }}
+                data-ocid="nav.button"
+              >
+                Sign In
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}

@@ -1,0 +1,128 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+    --background: 0.14 0.008 240;
+    --foreground: 0.96 0 0;
+    --card: 0.18 0.008 240;
+    --card-foreground: 0.96 0 0;
+    --popover: 0.18 0.008 240;
+    --popover-foreground: 0.96 0 0;
+    --primary: 0.62 0.12 218;
+    --primary-foreground: 0.99 0 0;
+    --secondary: 0.22 0.008 240;
+    --secondary-foreground: 0.96 0 0;
+    --muted: 0.22 0.008 240;
+    --muted-foreground: 0.65 0.01 220;
+    --accent: 0.68 0.1 218;
+    --accent-foreground: 0.99 0 0;
+    /* CRITICAL: --destructive stays red — emergency banner hard rule, NEVER change */
+    --destructive: 0.52 0.19 27;
+    --destructive-foreground: 0.99 0 0;
+    --border: 0.26 0.012 240;
+    --input: 0.22 0.008 240;
+    --ring: 0.62 0.12 218;
+    --live: 0.62 0.17 155;
+    --amber: 0.75 0.14 55;
+    --chart-1: 0.646 0.222 41.116;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+    --sidebar: 0.16 0.008 240;
+    --sidebar-foreground: 0.85 0.01 220;
+    --sidebar-primary: 0.62 0.12 218;
+    --sidebar-primary-foreground: 0.99 0 0;
+    --sidebar-accent: 0.24 0.008 240;
+    --sidebar-accent-foreground: 0.96 0 0;
+    --sidebar-border: 0.26 0.012 240;
+    --sidebar-ring: 0.62 0.12 218;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    background-color: oklch(var(--background));
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    color: oklch(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Global focus ring for all interactive elements */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px oklch(0.62 0.12 218 / 0.8);
+    border-color: oklch(0.62 0.12 218);
+  }
+
+  .leaflet-container {
+    @apply rounded-xl;
+    z-index: 0;
+    background: oklch(0.14 0.008 240) !important;
+  }
+  .leaflet-popup-content-wrapper {
+    background: oklch(var(--card)) !important;
+    color: oklch(var(--card-foreground)) !important;
+    border: 1px solid oklch(var(--border)) !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+    border-radius: 12px !important;
+  }
+  .leaflet-popup-tip {
+    background: oklch(var(--card)) !important;
+  }
+  .leaflet-popup-close-button {
+    color: oklch(var(--muted-foreground)) !important;
+  }
+}
+
+@layer utilities {
+  .shadow-pulse-calm {
+    animation: shadowPulse 4s ease-in-out infinite;
+  }
+  .shadow-pulse-rush {
+    animation: shadowPulse 0.8s ease-in-out infinite;
+  }
+  .pulse-slow {
+    animation: pulse-slow 2s ease-in-out infinite;
+  }
+  .hover-lift {
+    @apply transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md;
+  }
+}
+
+@keyframes shadowPulse {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
