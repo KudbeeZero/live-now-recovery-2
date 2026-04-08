@@ -34,6 +34,9 @@ export const ProviderWithStatus = IDL.Record({
   'name' : IDL.Text,
   'isLive' : IDL.Bool,
   'lastVerified' : IDL.Int,
+  'providerType' : IDL.Text,
+  'isVerified' : IDL.Bool,
+  'reputationScore' : IDL.Float64,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const CanisterStateSummary = IDL.Record({
@@ -70,6 +73,7 @@ export const idlService = IDL.Service({
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
       ['query'],
     ),
+  'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
   'getTotalHandoffs' : IDL.Func([], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -81,13 +85,14 @@ export const idlService = IDL.Service({
   'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
   'registerHelper' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
   'registerProvider' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64],
+      [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64, IDL.Text],
       [],
       [],
     ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
   'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
+  'verifyProvider' : IDL.Func([IDL.Text], [], []),
 });
 
 export const idlInitArgs = [];
@@ -119,6 +124,9 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'isLive' : IDL.Bool,
     'lastVerified' : IDL.Int,
+    'providerType' : IDL.Text,
+    'isVerified' : IDL.Bool,
+    'reputationScore' : IDL.Float64,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const CanisterStateSummary = IDL.Record({
@@ -139,7 +147,7 @@ export const idlFactory = ({ IDL }) => {
     'Expired' : IDL.Null,
     'AlreadyUsed' : IDL.Null,
   });
-  
+
   return IDL.Service({
     '_initializeAccessControl' : IDL.Func([], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -159,6 +167,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
         ['query'],
       ),
+    'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
     'getTotalHandoffs' : IDL.Func([], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
@@ -174,13 +183,14 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'registerProvider' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64],
+        [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64, IDL.Text],
         [],
         [],
       ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
     'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
+    'verifyProvider' : IDL.Func([IDL.Text], [], []),
   });
 };
 

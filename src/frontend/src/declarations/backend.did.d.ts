@@ -34,6 +34,9 @@ export interface ProviderWithStatus {
   'name' : string,
   'isLive' : boolean,
   'lastVerified' : bigint,
+  'providerType' : string,
+  'isVerified' : boolean,
+  'reputationScore' : number,
 }
 export interface RiskPacket {
   'status' : boolean,
@@ -61,6 +64,7 @@ export interface _SERVICE {
   'getCanisterState' : ActorMethod<[], CanisterStateSummary>,
   'getEmergencyActive' : ActorMethod<[], Array<ProviderWithStatus>>,
   'getHandoffCountsByZip' : ActorMethod<[], Array<[string, bigint]>>,
+  'getMarketplaceGeoJSON' : ActorMethod<[], string>,
   'getTotalHandoffs' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'heartbeat' : ActorMethod<[], Array<string>>,
@@ -71,6 +75,7 @@ export interface _SERVICE {
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'toggleLive' : ActorMethod<[string, boolean], undefined>,
   'verifyHandoff' : ActorMethod<[string], VerifyResult>,
+  'verifyProvider' : ActorMethod<[string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
