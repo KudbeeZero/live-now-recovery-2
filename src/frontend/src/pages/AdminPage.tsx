@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -10,12 +11,12 @@ import {
   Loader2,
   Lock,
   Plus,
+  Settings,
   ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useActor } from "../hooks/useActor";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { createActor } from "../backend";
 import {
   useAllProviders,
   useCanisterState,
@@ -207,7 +208,7 @@ export function AdminPage() {
   const registerProvider = useRegisterProvider();
   const toggleLive = useToggleLive();
   const verifyProvider = useVerifyProvider();
-  const { actor } = useActor();
+  const { actor } = useActor(createActor);
 
   const [form, setForm] = useState({ id: "", name: "", lat: "", lng: "" });
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
@@ -218,7 +219,9 @@ export function AdminPage() {
     errors: string[];
   }>({ running: false, done: 0, total: 18, errors: [] });
 
-  const pendingProviders = providers.filter((p) => !(p as any).is_verified);
+  // Option 4 workaround: is_verified not on backend yet; use !isLive as proxy
+  // Only show newly registered providers (not yet toggled live by admin)
+  const pendingProviders = providers.filter((p) => !p.isLive);
 
   const handleApprove = async (id: string) => {
     setApprovingIds((prev) => new Set(prev).add(id));
@@ -274,15 +277,11 @@ export function AdminPage() {
 
     for (const p of SEED_PROVIDERS) {
       try {
-        await (actor as any).registerProvider(
-          p.id,
-          p.name,
-          p.lat,
-          p.lng,
-          p.providerType,
-        );
-        await (actor as any).verifyProvider(p.id);
-        await (actor as any).updateInventory(p.id, p.inventory);
+        // Option 4: use 4-arg registerProvider (current backend schema)
+        // verifyProvider and updateInventory not yet on canister
+        await (actor as any).registerProvider(p.id, p.name, p.lat, p.lng);
+        // After registering, toggle live so provider appears on map
+        await (actor as any).toggleLive(p.id, true);
         done++;
         setSeedProgress((prev) => ({ ...prev, done }));
       } catch (err) {
@@ -354,10 +353,26 @@ export function AdminPage() {
   );
 
   return (
-    <main className="min-h-screen py-10 px-4" data-ocid="admin.page">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold text-navy mb-8">Admin Panel</h1>
+    <main className="min-h-screen" data-ocid="admin.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center gap-2 mb-3">
+            <Settings className="w-5 h-5 text-live-green" />
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+              Admin
+            </p>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            Admin <span className="text-live-green">Panel</span>
+          </h1>
+          <p className="text-on-dark">
+            Provider verification, seeding, and system controls.
+          </p>
+        </div>
+      </section>
 
+      <div className="max-w-5xl mx-auto px-4 py-10">
         {/* High-Risk Window */}
         {canisterState?.high_risk_window_active && (
           <div
@@ -379,7 +394,7 @@ export function AdminPage() {
         {/* Pending Verification */}
         <div className="bg-white rounded-2xl shadow-card border border-border p-6 mb-8">
           <div className="flex items-center gap-2 mb-5">
-            <ShieldCheck className="w-5 h-5 text-cplus-teal" />
+            <ShieldCheck className="w-5 h-5 text-live-green" />
             <h2 className="font-bold text-navy">Pending Verification</h2>
             {pendingProviders.length > 0 && (
               <Badge className="ml-auto bg-amber-100 text-amber-800 border-amber-200">
@@ -431,7 +446,7 @@ export function AdminPage() {
                       size="sm"
                       disabled={isApproving}
                       onClick={() => handleApprove(p.id)}
-                      className="min-h-[36px] bg-cplus-teal hover:bg-cplus-teal/90 text-white self-start sm:self-auto"
+                      className="min-h-[36px] bg-live-green hover:bg-live-green/90 text-navy font-semibold self-start sm:self-auto"
                       data-ocid={`admin.confirm_button.${i + 1}`}
                     >
                       {isApproving ? (
@@ -453,7 +468,7 @@ export function AdminPage() {
         {/* Seed Demo Providers */}
         <div className="bg-white rounded-2xl shadow-card border border-border p-6 mb-8">
           <div className="flex items-center gap-2 mb-4">
-            <Database className="w-5 h-5 text-cplus-teal" />
+            <Database className="w-5 h-5 text-live-green" />
             <h2 className="font-bold text-navy">Seed Demo Providers</h2>
           </div>
           <p className="text-sm text-muted-foreground mb-5">
@@ -476,7 +491,7 @@ export function AdminPage() {
               <Button
                 onClick={handleSeedDemoData}
                 disabled={seedProgress.running || !actor}
-                className="min-h-[44px] bg-cplus-teal hover:bg-cplus-teal/90 text-white"
+                className="min-h-[44px] bg-live-green hover:bg-live-green/90 text-navy font-semibold"
                 data-ocid="admin.primary_button"
               >
                 {seedProgress.running ? (
@@ -499,7 +514,7 @@ export function AdminPage() {
                   </div>
                   <div className="bg-muted rounded-full h-2 w-full overflow-hidden">
                     <div
-                      className="bg-cplus-teal h-2 rounded-full transition-all duration-300"
+                      className="bg-live-green h-2 rounded-full transition-all duration-300"
                       style={{ width: `${seedPercent}%` }}
                     />
                   </div>
@@ -527,7 +542,7 @@ export function AdminPage() {
           {/* Register provider — NO PHI, NO ZIP */}
           <div className="bg-white rounded-2xl shadow-card border border-border p-6">
             <div className="flex items-center gap-2 mb-5">
-              <Plus className="w-5 h-5 text-cplus-teal" />
+              <Plus className="w-5 h-5 text-live-green" />
               <h2 className="font-bold text-navy">Register Provider</h2>
             </div>
             <form onSubmit={handleRegister} className="space-y-4">
@@ -599,7 +614,7 @@ export function AdminPage() {
               <Button
                 type="submit"
                 disabled={registerProvider.isPending}
-                className="w-full min-h-[44px] bg-cplus-teal hover:bg-cplus-teal/90 text-white"
+                className="w-full min-h-[44px] bg-live-green hover:bg-live-green/90 text-navy font-semibold"
                 data-ocid="admin.submit_button"
               >
                 {registerProvider.isPending

@@ -1,0 +1,102 @@
+// Version: 1.0.0
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type HandoffToken__969534999 =
+  {createdAt : Int; token : Text; used : Bool; zipCode : Text};
+type Handoff__23152836 = {timestamp : Int; tokenId : Text; zipCode : Text};
+type Helper__207691655 =
+  {
+    createdAt : Int;
+    firstName : Text;
+    id : Text;
+    note : Text;
+    phone : Text;
+    zip : Text
+  };
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type Provider__999103737 =
+  {
+    id : Text;
+    isLive : Bool;
+    lastVerified : Int;
+    lat : Float;
+    lng : Float;
+    name : Text
+  };
+type RiskPacketHistory__898629859 =
+  {
+    current_status : Bool;
+    latest_risk_score : Nat;
+    latest_update_time : Nat;
+    packets : [RiskPacket__983375089]
+  };
+type RiskPacket__983375089 =
+  {
+    data_source : Text;
+    last_update_time : Nat;
+    provider_id : Text;
+    risk_score : Nat;
+    status : Bool
+  };
+type UserProfile__491224006 = {name : Text};
+type UserRole__1054455867 = {#admin; #guest; #user};
+actor {
+  stable DECAY_NS : Nat;
+  stable HIGH_RISK_THRESHOLD : Nat;
+  stable TOKEN_EXPIRY_NS : Nat;
+  stable accessControlState :
+    {
+      var adminAssigned : Bool;
+      userRoles : Map__605269027<Principal, UserRole__1054455867>
+    };
+  stable var adminPrincipals : [Principal];
+  stable var handoffEntries : [(Text, Handoff__23152836)];
+  stable handoffs :
+    {
+      var root : Node__46230540<Text, Handoff__23152836>;
+      var size : Nat__490723111
+    };
+  stable var helperEntries : [(Text, Helper__207691655)];
+  stable helpers :
+    {
+      var root : Node__46230540<Text, Helper__207691655>;
+      var size : Nat__490723111
+    };
+  stable var providerEntries : [(Text, Provider__999103737)];
+  stable providers :
+    {
+      var root : Node__46230540<Text, Provider__999103737>;
+      var size : Nat__490723111
+    };
+  stable var riskPacketEntries : [(Text, RiskPacketHistory__898629859)];
+  stable riskPackets :
+    {
+      var root : Node__46230540<Text, RiskPacketHistory__898629859>;
+      var size : Nat__490723111
+    };
+  stable var tokenEntries : [(Text, HandoffToken__969534999)];
+  stable var tokenNonce : Nat;
+  stable tokens :
+    {
+      var root : Node__46230540<Text, HandoffToken__969534999>;
+      var size : Nat__490723111
+    };
+  stable userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    };
+  stable var zipCountEntries : [(Text, Nat)];
+  stable zipCounts :
+    {var root : Node__46230540<Text, Nat>; var size : Nat__490723111}
+};

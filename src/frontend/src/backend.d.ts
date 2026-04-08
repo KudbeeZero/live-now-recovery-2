@@ -32,6 +32,14 @@ export interface CanisterStateSummary {
     total_active_providers: bigint;
     high_risk_window_active: boolean;
 }
+export interface Helper {
+    id: string;
+    zip: string;
+    note: string;
+    createdAt: bigint;
+    phone: string;
+    firstName: string;
+}
 export interface ProviderWithStatus {
     id: string;
     lat: number;
@@ -40,11 +48,6 @@ export interface ProviderWithStatus {
     name: string;
     isLive: boolean;
     lastVerified: bigint;
-    providerType: string;
-    is_verified: boolean;
-    is_active: boolean;
-    inventory: string;
-    reputationScore: bigint;
 }
 export interface UserProfile {
     name: string;
@@ -62,6 +65,7 @@ export enum UserRole {
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     generateHandoffToken(zipCode: string): Promise<string>;
+    getAllHelpers(): Promise<Array<Helper>>;
     getAllProviders(): Promise<Array<ProviderWithStatus>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -73,12 +77,9 @@ export interface backendInterface {
     heartbeat(): Promise<Array<string>>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
-    registerProvider(id: string, name: string, lat: number, lng: number, providerType?: string): Promise<void>;
+    registerHelper(firstName: string, zip: string, phone: string, note: string): Promise<void>;
+    registerProvider(id: string, name: string, lat: number, lng: number): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     toggleLive(id: string, status: boolean): Promise<void>;
     verifyHandoff(token: string): Promise<VerifyResult>;
-    verifyProvider(id: string): Promise<void>;
-    setProviderActiveStatus(id: string, status: boolean): Promise<void>;
-    updateInventory(id: string, inventory: string): Promise<void>;
-    getMarketplaceGeoJSON(): Promise<string>;
 }

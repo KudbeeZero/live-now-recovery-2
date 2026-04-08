@@ -45,7 +45,6 @@ export function Footer() {
             <ul className="space-y-2">
               {[
                 { to: "/", label: "Live Map" },
-                { to: "/dashboard", label: "Dashboard" },
                 { to: "/verify", label: "Verify Handoff" },
                 { to: "/helper", label: "Helper Guide" },
                 { to: "/admin", label: "Admin" },
@@ -134,14 +133,14 @@ export function Footer() {
           </p>
           <div className="flex items-center gap-4">
             {[
-              { href: "https://x.com", icon: SiX, label: "X (Twitter)" },
+              { href: "#", icon: SiX, label: "X (Twitter)" },
               {
-                href: "https://facebook.com",
+                href: "#",
                 icon: SiFacebook,
                 label: "Facebook",
               },
               {
-                href: "https://instagram.com",
+                href: "#",
                 icon: SiInstagram,
                 label: "Instagram",
               },
@@ -149,8 +148,6 @@ export function Footer() {
               <a
                 key={href}
                 href={href}
-                target="_blank"
-                rel="noreferrer"
                 aria-label={label}
                 className="transition-colors hover:text-foreground text-muted-foreground"
               >

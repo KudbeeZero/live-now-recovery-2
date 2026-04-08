@@ -13,6 +13,14 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const Helper = IDL.Record({
+  'id' : IDL.Text,
+  'zip' : IDL.Text,
+  'note' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'phone' : IDL.Text,
+  'firstName' : IDL.Text,
+});
 export const ProviderStatus = IDL.Variant({
   'Live' : IDL.Null,
   'Offline' : IDL.Null,
@@ -51,9 +59,10 @@ export const VerifyResult = IDL.Variant({
 });
 
 export const idlService = IDL.Service({
-  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  '_initializeAccessControl' : IDL.Func([], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
+  'getAllHelpers' : IDL.Func([], [IDL.Vec(Helper)], ['query']),
   'getAllProviders' : IDL.Func([], [IDL.Vec(ProviderWithStatus)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -74,6 +83,7 @@ export const idlService = IDL.Service({
   'heartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
+  'registerHelper' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
   'registerProvider' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64, IDL.Text],
       [],
@@ -92,6 +102,14 @@ export const idlFactory = ({ IDL }) => {
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const Helper = IDL.Record({
+    'id' : IDL.Text,
+    'zip' : IDL.Text,
+    'note' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'phone' : IDL.Text,
+    'firstName' : IDL.Text,
   });
   const ProviderStatus = IDL.Variant({
     'Live' : IDL.Null,
@@ -131,9 +149,10 @@ export const idlFactory = ({ IDL }) => {
   });
 
   return IDL.Service({
-    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    '_initializeAccessControl' : IDL.Func([], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
+    'getAllHelpers' : IDL.Func([], [IDL.Vec(Helper)], ['query']),
     'getAllProviders' : IDL.Func([], [IDL.Vec(ProviderWithStatus)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -158,6 +177,11 @@ export const idlFactory = ({ IDL }) => {
     'heartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
+    'registerHelper' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
     'registerProvider' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64, IDL.Text],
         [],

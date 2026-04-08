@@ -9,8 +9,8 @@ import Nat "mo:core/Nat";
 import Order "mo:core/Order";
 import List "mo:core/List";
 import Iter "mo:core/Iter";
-import AccessControl "authorization/access-control";
-import MixinAuthorization "authorization/MixinAuthorization";
+import AccessControl "mo:caffeineai-authorization/access-control";
+import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
 
 actor {
   let DECAY_NS = 14_400_000_000_000;
@@ -25,6 +25,16 @@ actor {
 
   public type UserProfile = {
     name : Text;
+  };
+
+  // Helper Volunteer Type
+  public type Helper = {
+    id : Text;
+    firstName : Text;
+    zip : Text;
+    phone : Text;
+    note : Text;
+    createdAt : Int;
   };
 
   type Provider = {
@@ -108,6 +118,7 @@ actor {
   var tokenEntries : [(Text, HandoffToken)] = [];
   var zipCountEntries : [(Text, Nat)] = [];
   var riskPacketEntries : [(Text, RiskPacketHistory)] = [];
+  var helperEntries : [(Text, Helper)] = [];
   var tokenNonce : Nat = 0;
   var adminPrincipals : [Principal] = [];
 
@@ -119,6 +130,7 @@ actor {
   let zipCounts = Map.empty<Text, Nat>();
   let riskPackets = Map.empty<Text, RiskPacketHistory>();
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let helpers = Map.empty<Text, Helper>();
 
   // ─── Upgrade Hooks ───────────────────────────────────────────────────────────
 
@@ -128,6 +140,7 @@ actor {
     tokenEntries := tokens.entries().toArray();
     zipCountEntries := zipCounts.entries().toArray();
     riskPacketEntries := riskPackets.entries().toArray();
+    helperEntries := helpers.entries().toArray();
   };
 
   system func postupgrade() {
@@ -145,6 +158,9 @@ actor {
     };
     for ((k, v) in riskPacketEntries.vals()) {
       riskPackets.add(k, v);
+    };
+    for ((k, v) in helperEntries.vals()) {
+      helpers.add(k, v);
     };
   };
 
@@ -232,7 +248,34 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // ─── Provider Management ─────────────────────────────────────────────────────
+  // Helper Volunteer Functions
+  public shared ({ caller }) func registerHelper(firstName : Text, zip : Text, phone : Text, note : Text) : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    let id = caller.toText();
+    let helper : Helper = {
+      id;
+      firstName;
+      zip;
+      phone;
+      note;
+      createdAt = Time.now();
+    };
+    helpers.add(id, helper);
+  };
+
+  public query ({ caller }) func getAllHelpers() : async [Helper] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view helpers");
+    };
+    helpers.values().toArray();
+  };
+
+  // Helper function to check if caller is admin (legacy adminPrincipals list)
+  func isAdminLegacy(caller : Principal) : Bool {
+    adminPrincipals.find<Principal>(func(p) { Principal.equal(p, caller) }) != null;
+  };
 
   public query func getAllProviders() : async [ProviderWithStatus] {
     providers.values().toArray().map(withStatus);

@@ -71,18 +71,27 @@ const FAQS = [
 
 export function FAQPage() {
   return (
-    <main className="min-h-screen py-16 px-4" data-ocid="faq.page">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center gap-3 mb-4">
-          <HelpCircle className="w-7 h-7 text-primary" />
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-            Frequently Asked Questions
+    <main className="min-h-screen" data-ocid="faq.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 mb-3">
+            <HelpCircle className="w-5 h-5 text-live-green" />
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+              Answers
+            </p>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            Frequently Asked <span className="text-live-green">Questions</span>
           </h1>
+          <p className="text-on-dark text-lg">
+            How Live Now Recovery works, what MAT is, and how your privacy is
+            protected.
+          </p>
         </div>
-        <p className="text-muted-foreground text-lg mb-10">
-          How Live Now Recovery works, what MAT is, and how your privacy is
-          protected.
-        </p>
+      </section>
+
+      <div className="max-w-3xl mx-auto px-4 py-12">
         <Accordion type="single" collapsible className="space-y-3">
           {FAQS.map((item, i) => (
             <AccordionItem

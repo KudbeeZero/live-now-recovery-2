@@ -1,10 +1,9 @@
+import { useActor } from "@caffeineai/core-infrastructure";
 import type { FeatureCollection, Point } from "geojson";
-import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
 import { MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ProviderStatus } from "../backend";
-import { useActor } from "../hooks/useActor";
+import { createActor } from "../backend";
 import { useAllProviders, useHandoffCountsByZip } from "../hooks/useQueries";
 import {
   handoffCountsToHeatmapGeoJSON,
@@ -14,16 +13,16 @@ import { isProviderStale } from "../utils/providerUtils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface LayerVisibility {
-  hotspots: boolean;
-  matProviders: boolean;
-  buildings3d: boolean;
-}
-
 interface Props {
   height?: string;
   currentProviderId?: string;
   onToggleLive?: (id: string, current: boolean) => void;
+  // Docked filter bar props (owned by parent)
+  activeFilter?: string;
+  setActiveFilter?: (f: string) => void;
+  show3dBuildings?: boolean;
+  showHeatmap?: boolean;
+  showWeather?: boolean;
 }
 
 // Provider type label map (backend sends lowercase strings)
@@ -61,23 +60,21 @@ export function EnhancedRecoveryMap({
   height = "500px",
   currentProviderId,
   onToggleLive,
+  activeFilter,
+  setActiveFilter: _setActiveFilter,
+  show3dBuildings,
+  showHeatmap,
+  showWeather,
 }: Props) {
-  // ── Existing refs / state (unchanged) ────────────────────────────────────
+  // ── Refs / state ────────────────────────────────────────────────────────
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [layers, setLayers] = useState<LayerVisibility>({
-    hotspots: true,
-    matProviders: true,
-    buildings3d: true,
-  });
 
   // ── Marketplace additions ─────────────────────────────────────────────────
-  const { actor } = useActor();
-  const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [providerTypes, setProviderTypes] = useState<string[]>([]);
+  const { actor } = useActor(createActor);
   // Holds latest full dataset so filter changes don't require a network call
   const marketplaceDataRef = useRef<FeatureCollection | null>(null);
   // Mirror activeFilter for use inside stable map event callbacks
@@ -86,6 +83,91 @@ export function EnhancedRecoveryMap({
   // ── Existing queries (unchanged) ─────────────────────────────────────────
   const { data: providers = [] } = useAllProviders();
   const { data: handoffCounts = [] } = useHandoffCountsByZip();
+  // ── Weather widget state ─────────────────────────────────────────────────
+  const [weatherData, setWeatherData] = useState<{
+    temp: number;
+    desc: string;
+    icon: string;
+    city: string;
+  } | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const weatherTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Map WMO weather codes to emoji + label
+  function describeWMO(code: number): { icon: string; desc: string } {
+    if (code === 0) return { icon: "☀️", desc: "Clear Sky" };
+    if (code <= 2) return { icon: "⛅", desc: "Partly Cloudy" };
+    if (code === 3) return { icon: "☁️", desc: "Overcast" };
+    if (code <= 49) return { icon: "🌫️", desc: "Fog / Haze" };
+    if (code <= 59) return { icon: "🌦️", desc: "Drizzle" };
+    if (code <= 69) return { icon: "🌧️", desc: "Rain" };
+    if (code <= 79) return { icon: "❄️", desc: "Snow" };
+    if (code <= 84) return { icon: "🌦️", desc: "Rain Showers" };
+    if (code <= 94) return { icon: "⛈️", desc: "Thunderstorm" };
+    return { icon: "🌩️", desc: "Severe Storm" };
+  }
+
+  async function fetchWeather(lat: number, lng: number) {
+    setWeatherLoading(true);
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current_weather=true&temperature_unit=fahrenheit`;
+      const res = await fetch(url);
+      const json = await res.json();
+      const cw = json.current_weather;
+      const { icon, desc } = describeWMO(cw.weathercode);
+      // Reverse-geocode city name using Nominatim
+      let city = "NE Ohio";
+      try {
+        const geo = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat.toFixed(4)}&lon=${lng.toFixed(4)}&zoom=10`,
+          { headers: { "Accept-Language": "en" } },
+        );
+        const geoJson = await geo.json();
+        city =
+          geoJson.address?.city ||
+          geoJson.address?.town ||
+          geoJson.address?.county ||
+          "NE Ohio";
+      } catch {
+        /* ignore geocode failure */
+      }
+      setWeatherData({
+        temp: Math.round(cw.temperature),
+        desc,
+        icon,
+        city,
+      });
+    } catch {
+      /* silently ignore weather failures */
+    } finally {
+      setWeatherLoading(false);
+    }
+  }
+
+  // Fetch weather on mount, then whenever map center changes (debounced 2s)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchWeather is stable, intentional
+  useEffect(() => {
+    if (!showWeather) return;
+    // Initial fetch at map center (Cleveland area)
+    fetchWeather(41.4, -81.6);
+
+    function onMoveEnd() {
+      if (!mapInstanceRef.current) return;
+      const c = mapInstanceRef.current.getCenter();
+      if (weatherTimerRef.current) clearTimeout(weatherTimerRef.current);
+      weatherTimerRef.current = setTimeout(() => {
+        fetchWeather(c.lat, c.lng);
+      }, 2000);
+    }
+
+    const map = mapInstanceRef.current;
+    if (map) map.on("moveend", onMoveEnd);
+
+    return () => {
+      if (map) map.off("moveend", onMoveEnd);
+      if (weatherTimerRef.current) clearTimeout(weatherTimerRef.current);
+    };
+  }, [showWeather, mapReady]);
 
   const liveCount = providers.filter(
     (p) => p.status === ProviderStatus.Live && !isProviderStale(p.lastVerified),
@@ -339,6 +421,7 @@ export function EnhancedRecoveryMap({
     source?.setData(handoffCountsToHeatmapGeoJSON(handoffCounts));
   }, [handoffCounts, mapReady]);
 
+  // ── Layer visibility — driven by props ──────────────────────────────────
   useEffect(() => {
     if (!mapInstanceRef.current || !mapReady) return;
     const map = mapInstanceRef.current;
@@ -350,11 +433,16 @@ export function EnhancedRecoveryMap({
         /* layer may not exist */
       }
     };
-    setVis("hotspot-heat", layers.hotspots);
-    setVis("mat-providers-live", layers.matProviders);
-    setVis("mat-providers-offline", layers.matProviders);
-    setVis("buildings-3d", layers.buildings3d);
-  }, [layers, mapReady]);
+    setVis("hotspot-heat", showHeatmap ?? true);
+    setVis("mat-providers-live", true);
+    setVis("mat-providers-offline", true);
+    setVis("buildings-3d", show3dBuildings ?? true);
+  }, [showHeatmap, show3dBuildings, mapReady]);
+
+  // ── activeFilter ref sync (prop-driven) ──────────────────────────────────
+  useEffect(() => {
+    activeFilterRef.current = activeFilter ?? "all";
+  }, [activeFilter]);
 
   // ── Marketplace: clustered GeoJSON layer + polling ───────────────────────
   //
@@ -369,9 +457,48 @@ export function EnhancedRecoveryMap({
     const map = mapInstanceRef.current;
 
     // ── helpers ──────────────────────────────────────────────────────────
-    async function loadMarketplaceData(): Promise<FeatureCollection> {
-      const raw = await actor!.getMarketplaceGeoJSON();
-      return JSON.parse(raw) as FeatureCollection;
+    function loadMarketplaceData(): FeatureCollection {
+      // Option 4: use getAllProviders (existing endpoint) + convert to GeoJSON
+      // getMarketplaceGeoJSON does not exist on the current canister
+      const geoJson = providersToGeoJSON(
+        providers,
+      ) as unknown as FeatureCollection;
+      // Enrich properties with providerType derived from name for filter compatibility
+      return {
+        ...geoJson,
+        features: geoJson.features.map((f) => {
+          const name = (f.properties?.name as string) ?? "";
+          const nameLower = name.toLowerCase();
+          let providerType = "MAT";
+          if (
+            nameLower.includes("narcan") ||
+            nameLower.includes("naloxone") ||
+            nameLower.includes("harm reduction") ||
+            nameLower.includes("health dept") ||
+            nameLower.includes("aids") ||
+            nameLower.includes("taskforce") ||
+            nameLower.includes("community health center")
+          ) {
+            providerType = "Narcan";
+          } else if (
+            nameLower.includes(" er") ||
+            nameLower.includes("emergency") ||
+            nameLower.includes("hospital") ||
+            nameLower.includes("medical center")
+          ) {
+            providerType = "ER";
+          }
+          return {
+            ...f,
+            properties: {
+              ...f.properties,
+              providerType,
+              is_verified: (f.properties as any)?.isLive ?? false,
+              reputationScore: 0,
+            },
+          };
+        }),
+      };
     }
 
     function filteredData(full: FeatureCollection): FeatureCollection {
@@ -381,20 +508,8 @@ export function EnhancedRecoveryMap({
     // ── main init ────────────────────────────────────────────────────────
     async function initMarketplaceLayer() {
       try {
-        const data = await loadMarketplaceData();
+        const data = loadMarketplaceData();
         marketplaceDataRef.current = data;
-
-        // Collect unique, non-trivial provider types for the filter UI
-        const types: string[] = (
-          Array.from(
-            new Set(
-              data.features
-                .map((f) => f.properties?.providerType as string)
-                .filter((t): t is string => !!t && t !== "unknown"),
-            ),
-          ) as string[]
-        ).sort();
-        setProviderTypes(types);
 
         // Guard: if source already exists (actor refresh), just update data
         if (map.getSource("marketplace-providers")) {
@@ -584,7 +699,7 @@ export function EnhancedRecoveryMap({
     // ── 15-second live refresh (smooth setData, no layer rebuild) ─────────
     const intervalId = setInterval(async () => {
       try {
-        const data = await loadMarketplaceData();
+        const data = loadMarketplaceData();
         marketplaceDataRef.current = data;
         const source = map.getSource("marketplace-providers") as
           | maplibregl.GeoJSONSource
@@ -596,11 +711,11 @@ export function EnhancedRecoveryMap({
     }, 15_000);
 
     return () => clearInterval(intervalId);
-  }, [mapReady, actor]);
+  }, [mapReady, actor, providers]);
 
   // ── Filter effect: instant update, no map reinit ─────────────────────────
   useEffect(() => {
-    activeFilterRef.current = activeFilter;
+    activeFilterRef.current = activeFilter ?? "all";
     if (!mapReady || !mapInstanceRef.current || !marketplaceDataRef.current)
       return;
     const source = mapInstanceRef.current.getSource("marketplace-providers") as
@@ -608,14 +723,32 @@ export function EnhancedRecoveryMap({
       | undefined;
     if (!source) return;
     source.setData(
-      applyProviderTypeFilter(marketplaceDataRef.current, activeFilter),
+      applyProviderTypeFilter(
+        marketplaceDataRef.current,
+        activeFilter ?? "all",
+      ),
     );
   }, [activeFilter, mapReady]);
 
-  // ── Layer toggle helper ───────────────────────────────────────────────────
-  function toggleLayer(key: keyof LayerVisibility) {
-    setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
+  // ── Locate-me handler ─────────────────────────────────────────────────────
+  const handleLocateMe = () => {
+    if (!mapInstanceRef.current) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        mapInstanceRef.current!.flyTo({
+          center: [longitude, latitude],
+          zoom: 13,
+          speed: 1.4,
+          curve: 1.2,
+        });
+      },
+      () => {
+        // geolocation denied or unavailable — silently ignore
+      },
+      { timeout: 8000, enableHighAccuracy: true },
+    );
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -628,6 +761,38 @@ export function EnhancedRecoveryMap({
     >
       {/* Map canvas */}
       <div ref={mapContainerRef} className="absolute inset-0" />
+
+      {/* Locate-me button */}
+      <button
+        type="button"
+        aria-label="Locate me"
+        onClick={handleLocateMe}
+        className="absolute z-10 flex items-center justify-center rounded-full shadow-lg transition-all duration-150 hover:scale-105 active:scale-95"
+        style={{
+          bottom: "90px",
+          right: "10px",
+          width: "36px",
+          height: "36px",
+          background: "#1a73e8",
+          border: "2px solid rgba(255,255,255,0.9)",
+        }}
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="white"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <title>Locate me</title>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+          <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
+        </svg>
+      </button>
 
       {/* Empty state overlay */}
       {mapReady && providers.length === 0 && (
@@ -709,209 +874,46 @@ export function EnhancedRecoveryMap({
         </div>
       )}
 
-      {/* ── Control panel ──────────────────────────────────────────────── */}
-      {mapReady && (
+      {/* Weather widget — upper-left, Apple Maps style */}
+      {showWeather && mapReady && (
         <div
-          className="absolute bottom-6 right-4 z-10 rounded-2xl p-4 shadow-2xl"
+          className="absolute z-10 flex items-center gap-2.5 px-3 py-2 rounded-xl"
           style={{
-            background: "#0f1923",
-            border: "1px solid rgba(255,255,255,0.08)",
-            width: "13rem",
+            top: "52px",
+            left: "10px",
+            background: "rgba(15,25,35,0.92)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            backdropFilter: "blur(8px)",
+            minWidth: "130px",
           }}
-          data-ocid="map.panel"
+          data-ocid="map.weather_widget"
         >
-          {/* Panel header */}
-          <div className="flex items-center gap-2 mb-3">
-            <span
-              className="w-2 h-2 rounded-full bg-[#00ff88] shrink-0"
-              style={{ boxShadow: "0 0 8px rgba(0,255,136,0.9)" }}
-            />
-            <span
-              className="text-xs font-bold tracking-wide uppercase"
-              style={{ color: "#6ee7d0" }}
-            >
-              Layer Controls
-            </span>
-          </div>
-
-          {/* Layer toggles */}
-          <div className="space-y-2.5 mb-3">
-            <ToggleRow
-              label="Overdose Hotspots"
-              active={layers.hotspots}
-              dotColor="rgba(0,200,180,0.9)"
-              glowColor="rgba(0,200,180,0.4)"
-              onToggle={() => toggleLayer("hotspots")}
-            />
-            <ToggleRow
-              label="MAT Providers"
-              active={layers.matProviders}
-              dotColor="#00ff88"
-              glowColor="rgba(0,255,136,0.4)"
-              onToggle={() => toggleLayer("matProviders")}
-            />
-            <ToggleRow
-              label="3D Buildings"
-              active={layers.buildings3d}
-              dotColor="#6b7280"
-              glowColor="transparent"
-              onToggle={() => toggleLayer("buildings3d")}
-            />
-          </div>
-
-          {/* ── Provider type filter ───────────────────────────────────── */}
-          {providerTypes.length > 0 && (
-            <div
-              className="pt-3 mb-3"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-            >
-              <p
-                className="text-[10px] font-bold uppercase tracking-wide mb-2"
-                style={{ color: "#4a6070" }}
-              >
-                Filter by type
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {/* All reset chip */}
-                <FilterChip
-                  label="All"
-                  active={activeFilter === "all"}
-                  onClick={() => setActiveFilter("all")}
-                />
-                {providerTypes.map((t) => (
-                  <FilterChip
-                    key={t}
-                    label={labelForType(t)}
-                    active={activeFilter === t}
-                    onClick={() =>
-                      setActiveFilter((prev) => (prev === t ? "all" : t))
-                    }
-                  />
-                ))}
+          {weatherLoading && !weatherData ? (
+            <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white/70 animate-spin" />
+          ) : weatherData ? (
+            <>
+              <span className="text-xl leading-none">{weatherData.icon}</span>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-white leading-tight">
+                  {weatherData.temp}°F
+                </span>
+                <span
+                  className="text-[10px] font-medium leading-tight"
+                  style={{ color: "rgba(110,231,208,0.85)" }}
+                >
+                  {weatherData.desc}
+                </span>
+                <span
+                  className="text-[9px] leading-tight"
+                  style={{ color: "rgba(255,255,255,0.45)" }}
+                >
+                  {weatherData.city}
+                </span>
               </div>
-            </div>
-          )}
-
-          {/* Legend */}
-          <div
-            className="pt-3 space-y-1.5"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-          >
-            <LegendDot color="#22c55e" label="Verified" glow />
-            <LegendDot color="#f97316" label="Unverified" />
-            <LegendDot color="#00ff88" label="Live now" glow />
-            <LegendDot color="#4a5568" label="Offline" />
-            <LegendDot color="#0d9488" label="Cluster" teal />
-            <LegendDot
-              color="rgba(0,200,180,0.8)"
-              label="Hotspot density"
-              teal
-            />
-          </div>
+            </>
+          ) : null}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function FilterChip({
-  label,
-  active,
-  onClick,
-}: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all duration-150"
-      style={{
-        background: active ? "rgba(13,148,136,0.35)" : "rgba(255,255,255,0.06)",
-        color: active ? "#6ee7d0" : "#718096",
-        border: active
-          ? "1px solid rgba(13,148,136,0.6)"
-          : "1px solid rgba(255,255,255,0.08)",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-function ToggleRow({
-  label,
-  active,
-  dotColor,
-  glowColor,
-  onToggle,
-}: {
-  label: string;
-  active: boolean;
-  dotColor: string;
-  glowColor: string;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex items-center justify-between w-full"
-    >
-      <div className="flex items-center gap-2">
-        <span
-          className="w-2.5 h-2.5 rounded-full shrink-0"
-          style={{
-            background: active ? dotColor : "#2d3748",
-            boxShadow: active ? `0 0 6px ${glowColor}` : "none",
-            transition: "all 0.2s",
-          }}
-        />
-        <span
-          className="text-xs"
-          style={{
-            color: active ? "#e2e8f0" : "#4a5568",
-            transition: "color 0.2s",
-          }}
-        >
-          {label}
-        </span>
-      </div>
-      <div
-        className="relative w-8 h-4 rounded-full transition-colors duration-200 shrink-0"
-        style={{ background: active ? "#0d9488" : "#2d3748" }}
-      >
-        <div
-          className="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all duration-200"
-          style={{ left: active ? "calc(100% - 14px)" : "2px" }}
-        />
-      </div>
-    </button>
-  );
-}
-
-function LegendDot({
-  color,
-  label,
-  glow,
-  teal,
-}: { color: string; label: string; glow?: boolean; teal?: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className="w-2 h-2 rounded-full shrink-0"
-        style={{
-          background: color,
-          boxShadow: glow
-            ? `0 0 5px ${color}`
-            : teal
-              ? "0 0 5px rgba(0,200,180,0.5)"
-              : "none",
-        }}
-      />
-      <span className="text-[10px]" style={{ color: "#718096" }}>
-        {label}
-      </span>
     </div>
   );
 }

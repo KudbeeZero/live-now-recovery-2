@@ -30,6 +30,7 @@ declare module "maplibre-gl" {
     setPaintProperty(layer: string, name: string, value: any): this;
     setLayoutProperty(layer: string, name: string, value: any): this;
     queryRenderedFeatures(point: any, options?: any): any[];
+    getCenter(): { lat: number; lng: number };
   }
 
   export class Popup {
@@ -94,6 +95,7 @@ declare namespace maplibregl {
     setPaintProperty(layer: string, name: string, value: any): this;
     setLayoutProperty(layer: string, name: string, value: any): this;
     queryRenderedFeatures(point: any, options?: any): any[];
+    getCenter(): { lat: number; lng: number };
   }
   class Popup {
     constructor(options?: any);

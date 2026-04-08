@@ -15,6 +15,14 @@ export interface CanisterStateSummary {
   'total_active_providers' : bigint,
   'high_risk_window_active' : boolean,
 }
+export interface Helper {
+  'id' : string,
+  'zip' : string,
+  'note' : string,
+  'createdAt' : bigint,
+  'phone' : string,
+  'firstName' : string,
+}
 export type ProviderStatus = { 'Live' : null } |
   { 'Offline' : null } |
   { 'Unknown' : null };
@@ -46,9 +54,10 @@ export type VerifyResult = { 'Ok' : string } |
   { 'Expired' : null } |
   { 'AlreadyUsed' : null };
 export interface _SERVICE {
-  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  '_initializeAccessControl' : ActorMethod<[], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'generateHandoffToken' : ActorMethod<[string], string>,
+  'getAllHelpers' : ActorMethod<[], Array<Helper>>,
   'getAllProviders' : ActorMethod<[], Array<ProviderWithStatus>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
@@ -61,7 +70,8 @@ export interface _SERVICE {
   'heartbeat' : ActorMethod<[], Array<string>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'receiveRiskPacket' : ActorMethod<[RiskPacket], undefined>,
-  'registerProvider' : ActorMethod<[string, string, number, number, string], undefined>,
+  'registerHelper' : ActorMethod<[string, string, string, string], undefined>,
+  'registerProvider' : ActorMethod<[string, string, number, number], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'toggleLive' : ActorMethod<[string, boolean], undefined>,
   'verifyHandoff' : ActorMethod<[string], VerifyResult>,

@@ -1,0 +1,82 @@
+type VerifyResult = 
+ variant {
+   AlreadyUsed;
+   Expired;
+   NotFound;
+   Ok: text;
+ };
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfile = record {name: text;};
+type RiskPacket = 
+ record {
+   data_source: text;
+   last_update_time: nat;
+   provider_id: text;
+   risk_score: nat;
+   status: bool;
+ };
+type ProviderWithStatus = 
+ record {
+   id: text;
+   isLive: bool;
+   lastVerified: int;
+   lat: float64;
+   lng: float64;
+   name: text;
+   status: ProviderStatus;
+ };
+type ProviderStatus = 
+ variant {
+   Live;
+   Offline;
+   Unknown;
+ };
+type Helper = 
+ record {
+   createdAt: int;
+   firstName: text;
+   id: text;
+   note: text;
+   phone: text;
+   zip: text;
+ };
+type CanisterStateSummary = 
+ record {
+   active_providers: vec record {
+                           text;
+                           nat;
+                           bool;
+                         };
+   high_risk_window_active: bool;
+   total_active_providers: nat;
+ };
+service : {
+  _initializeAccessControl: () -> ();
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  generateHandoffToken: (zipCode: text) -> (text);
+  getAllHelpers: () -> (vec Helper) query;
+  getAllProviders: () -> (vec ProviderWithStatus) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getCanisterState: () -> (CanisterStateSummary) query;
+  getEmergencyActive: () -> (vec ProviderWithStatus) query;
+  getHandoffCountsByZip: () -> (vec record {
+                                      text;
+                                      nat;
+                                    }) query;
+  getTotalHandoffs: () -> (nat) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  heartbeat: () -> (vec text);
+  isCallerAdmin: () -> (bool) query;
+  receiveRiskPacket: (packet: RiskPacket) -> ();
+  registerHelper: (firstName: text, zip: text, phone: text, note: text) -> ();
+  registerProvider: (id: text, name: text, lat: float64, lng: float64) -> ();
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  toggleLive: (id: text, status: bool) -> ();
+  verifyHandoff: (token: text) -> (VerifyResult);
+}

@@ -1,3 +1,4 @@
+import { useActor } from "@caffeineai/core-infrastructure";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CanisterStateSummary,
@@ -5,10 +6,10 @@ import type {
   RiskPacket,
   VerifyResult,
 } from "../backend";
-import { useActor } from "./useActor";
+import { createActor } from "../backend";
 
 export function useAllProviders() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useActor(createActor);
   return useQuery<ProviderWithStatus[]>({
     queryKey: ["allProviders"],
     queryFn: async () => {
@@ -21,7 +22,7 @@ export function useAllProviders() {
 }
 
 export function useEmergencyProviders() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useActor(createActor);
   return useQuery<ProviderWithStatus[]>({
     queryKey: ["emergencyProviders"],
     queryFn: async () => {
@@ -34,7 +35,7 @@ export function useEmergencyProviders() {
 }
 
 export function useTotalHandoffs() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useActor(createActor);
   return useQuery<bigint>({
     queryKey: ["totalHandoffs"],
     queryFn: async () => {
@@ -47,7 +48,7 @@ export function useTotalHandoffs() {
 }
 
 export function useHandoffCountsByZip() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useActor(createActor);
   return useQuery<[string, bigint][]>({
     queryKey: ["handoffCounts"],
     queryFn: async () => {
@@ -60,7 +61,7 @@ export function useHandoffCountsByZip() {
 }
 
 export function useCanisterState() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useActor(createActor);
   return useQuery<CanisterStateSummary>({
     queryKey: ["canisterState"],
     queryFn: async () => {
@@ -78,7 +79,7 @@ export function useCanisterState() {
 }
 
 export function useIsAdmin() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useActor(createActor);
   return useQuery<boolean>({
     queryKey: ["isAdmin"],
     queryFn: async () => {
@@ -90,7 +91,7 @@ export function useIsAdmin() {
 }
 
 export function useToggleLive() {
-  const { actor } = useActor();
+  const { actor } = useActor(createActor);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: boolean }) => {
@@ -105,7 +106,7 @@ export function useToggleLive() {
 }
 
 export function useRegisterProvider() {
-  const { actor } = useActor();
+  const { actor } = useActor(createActor);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -131,7 +132,7 @@ export function useRegisterProvider() {
 }
 
 export function useVerifyProvider() {
-  const { actor } = useActor();
+  const { actor } = useActor(createActor);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
@@ -145,7 +146,7 @@ export function useVerifyProvider() {
 }
 
 export function useGenerateHandoffToken() {
-  const { actor } = useActor();
+  const { actor } = useActor(createActor);
   return useMutation({
     mutationFn: async (zipCode: string): Promise<string> => {
       if (!actor) throw new Error("Not connected");
@@ -155,7 +156,7 @@ export function useGenerateHandoffToken() {
 }
 
 export function useVerifyHandoff() {
-  const { actor } = useActor();
+  const { actor } = useActor(createActor);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (token: string): Promise<VerifyResult> => {
@@ -170,11 +171,31 @@ export function useVerifyHandoff() {
 }
 
 export function useReceiveRiskPacket() {
-  const { actor } = useActor();
+  const { actor } = useActor(createActor);
   return useMutation({
     mutationFn: async (packet: RiskPacket): Promise<void> => {
       if (!actor) throw new Error("Not connected");
       return actor.receiveRiskPacket(packet);
+    },
+  });
+}
+
+export function useRegisterHelper() {
+  const { actor } = useActor(createActor);
+  return useMutation({
+    mutationFn: async ({
+      firstName,
+      zip,
+      phone,
+      note,
+    }: {
+      firstName: string;
+      zip: string;
+      phone: string;
+      note: string;
+    }): Promise<void> => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).registerHelper(firstName, zip, phone, note);
     },
   });
 }

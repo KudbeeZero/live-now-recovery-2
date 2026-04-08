@@ -40,29 +40,26 @@ const timeline = [
 
 export function FounderPage() {
   return (
-    <main
-      className="min-h-screen flex flex-col items-center justify-center py-20 px-4 bg-background"
-      data-ocid="founder.page"
-    >
-      <div className="max-w-2xl mx-auto w-full text-center">
-        <div className="w-16 h-16 rounded-full bg-live/10 flex items-center justify-center mx-auto mb-8 border border-live/20">
-          <Heart className="w-8 h-8 text-live" fill="currentColor" />
+    <main className="min-h-screen" data-ocid="founder.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16 text-center">
+        <div className="max-w-2xl mx-auto">
+          <div className="w-14 h-14 rounded-full bg-live-green/20 flex items-center justify-center mx-auto mb-6 border border-live-green/30">
+            <Heart className="w-7 h-7 text-live-green" fill="currentColor" />
+          </div>
+          <p className="text-xs font-bold uppercase tracking-widest text-live-green mb-3">
+            The Founder
+          </p>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            Built by a peer.
+          </h1>
+          <p className="text-on-dark text-lg">
+            10 years clean. Your data is never stored. You are not alone.
+          </p>
         </div>
+      </section>
 
-        <blockquote className="space-y-4 mb-12">
-          <p className="text-4xl font-bold text-foreground leading-tight">
-            Built by a peer
-            <br />
-            10 years clean.
-          </p>
-          <p className="text-2xl font-medium text-live">
-            Your data is never stored.
-          </p>
-          <p className="text-2xl font-medium text-primary">
-            You are not alone.
-          </p>
-        </blockquote>
-
+      <div className="max-w-2xl mx-auto px-4 py-12 text-center">
         <div className="bg-card rounded-xl shadow-card border border-border p-8 text-left space-y-5 mb-16">
           <p className="text-muted-foreground leading-relaxed">
             I started building Live Now Recovery in early sobriety, when I kept
@@ -100,7 +97,7 @@ export function FounderPage() {
           data-ocid="founder.section"
         >
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-1 h-8 rounded-full bg-amber" />
+            <div className="w-1 h-8 rounded-full bg-live-green" />
             <h2 className="text-2xl font-bold text-foreground">
               A Recovery Timeline
             </h2>
@@ -108,7 +105,7 @@ export function FounderPage() {
 
           <div className="relative">
             {/* Spine line */}
-            <div className="absolute left-[18px] top-3 bottom-3 w-0.5 bg-amber/30" />
+            <div className="absolute left-[18px] top-3 bottom-3 w-0.5 bg-live-green/30" />
 
             <ol className="space-y-8">
               {timeline.map((item, index) => (
@@ -121,12 +118,12 @@ export function FounderPage() {
                   <div
                     className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center shrink-0 border-2 ${
                       item.isLast
-                        ? "bg-live border-live/60"
-                        : "bg-card border-amber/50"
+                        ? "bg-live-green border-live-green/60"
+                        : "bg-card border-live-green/30"
                     }`}
                   >
                     <div
-                      className={`w-2.5 h-2.5 rounded-full ${item.isLast ? "bg-background" : "bg-amber"}`}
+                      className={`w-2.5 h-2.5 rounded-full ${item.isLast ? "bg-background" : "bg-live-green"}`}
                     />
                   </div>
 
@@ -136,7 +133,7 @@ export function FounderPage() {
                       <span className="bg-card border border-border text-muted-foreground text-xs font-mono px-2.5 py-1 rounded-md">
                         {item.year}
                       </span>
-                      <span className="text-primary font-semibold text-sm">
+                      <span className="text-live-green font-semibold text-sm">
                         {item.title}
                       </span>
                     </div>

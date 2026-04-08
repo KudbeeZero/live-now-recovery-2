@@ -81,18 +81,24 @@ const PROVIDER_STEPS = [
 
 export function HowItWorksPage() {
   return (
-    <main className="min-h-screen py-16 px-4" data-ocid="how_it_works.page">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-14">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
-            How It Works
+    <main className="min-h-screen" data-ocid="how_it_works.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-bold uppercase tracking-widest text-live-green mb-3">
+            The Platform
+          </p>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            How It <span className="text-live-green">Works</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl">
+          <p className="text-on-dark text-lg max-w-2xl">
             Six steps from crisis moment to provider contact — anonymous,
             real-time, no account needed.
           </p>
         </div>
+      </section>
 
+      <div className="max-w-5xl mx-auto px-4 py-12">
         <section className="mb-16">
           <h2 className="text-xl font-bold text-foreground mb-2">
             For Patients & Community
@@ -130,8 +136,8 @@ export function HowItWorksPage() {
           </div>
         </section>
 
-        <div className="rounded-xl border border-live/30 bg-live/5 p-6 mb-16">
-          <h3 className="font-bold text-live mb-2">
+        <div className="rounded-xl border border-live-green/30 bg-live-green/5 p-6 mb-16">
+          <h3 className="font-bold text-live-green mb-2">
             What is Proof of Presence (PoP)?
           </h3>
           <p className="text-muted-foreground text-sm leading-relaxed">

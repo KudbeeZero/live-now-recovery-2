@@ -71,22 +71,32 @@ const COUNTIES = [
 
 export function OhioStatsPage() {
   return (
-    <main className="min-h-screen py-16 px-4" data-ocid="ohio_stats.page">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-12">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
-            Ohio MAT Access: The Data
+    <main className="min-h-screen" data-ocid="ohio_stats.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="w-4 h-4 text-live-green" />
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+              The Data
+            </p>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            Ohio MAT Access:{" "}
+            <span className="text-live-green">The Numbers</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl">
+          <p className="text-on-dark text-lg max-w-2xl">
             The statistics behind the crisis — and why real-time availability
             infrastructure matters for Ohio Region 13.
           </p>
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs text-on-dark/60 mt-3">
             All figures are estimates sourced from CDC, ODHE, SAMHSA, and Ohio
             MHAR. Live Now Recovery does not collect or report patient data.
           </p>
         </div>
+      </section>
 
+      <div className="max-w-5xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-14">
           {STATS.map(({ icon: Icon, value, label, note, color, bg }) => (
             <div
@@ -129,8 +139,8 @@ export function OhioStatsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-live/30 bg-live/5 p-6 mb-14">
-          <h3 className="font-bold text-live text-lg mb-3">
+        <div className="rounded-xl border border-live-green/30 bg-live-green/5 p-6 mb-14">
+          <h3 className="font-bold text-live-green text-lg mb-3">
             Impact Projection
           </h3>
           <p className="text-muted-foreground leading-relaxed mb-4">

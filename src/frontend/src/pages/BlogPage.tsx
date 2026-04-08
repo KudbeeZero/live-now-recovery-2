@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Calendar, FileText } from "lucide-react";
+import { ArrowRight, Calendar, FileText, Rss } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export const BLOG_POSTS = [
@@ -120,13 +120,28 @@ export function BlogPage() {
   }, []);
 
   return (
-    <main className="min-h-screen py-16 px-4" data-ocid="blog.page">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Blog</h1>
-        <p className="text-muted-foreground mb-10">
-          Recovery, access, and technology in NE Ohio.
-        </p>
+    <main className="min-h-screen bg-background" data-ocid="blog.page">
+      {/* Dark hero header — explicit bg-navy on both wrapper and section to prevent bleed-through */}
+      <div className="bg-navy w-full">
+        <section className="bg-navy px-4 py-16">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <Rss className="w-4 h-4 text-live-green" />
+              <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+                Latest
+              </p>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3">
+              Recovery <span className="text-live-green">Blog</span>
+            </h1>
+            <p className="text-white/70 text-lg">
+              Recovery, access, and technology in NE Ohio.
+            </p>
+          </div>
+        </section>
+      </div>
 
+      <div className="max-w-3xl mx-auto px-4 py-12">
         {!loaded ? (
           <div className="space-y-5" data-ocid="blog.loading_state">
             {[1, 2, 3].map((i) => (

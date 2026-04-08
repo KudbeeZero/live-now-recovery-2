@@ -56,23 +56,26 @@ const sections = [
 
 export function SitemapPage() {
   return (
-    <main className="min-h-screen py-16 px-4" data-ocid="sitemap.page">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-12">
-          <div className="flex items-center gap-2 mb-2">
-            <ExternalLink className="w-5 h-5 text-primary" />
-            <span className="text-xs font-bold uppercase tracking-widest text-primary">
+    <main className="min-h-screen" data-ocid="sitemap.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-2 mb-3">
+            <ExternalLink className="w-4 h-4 text-live-green" />
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
               Navigation
-            </span>
+            </p>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
-            Site Map
+          <h1 className="text-4xl font-bold text-white mb-3">
+            Site <span className="text-live-green">Map</span>
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-on-dark text-lg">
             Every page in the Live Now Recovery platform.
           </p>
         </div>
+      </section>
 
+      <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="grid gap-10">
           {sections.map((section) => (
             <section key={section.title} data-ocid="sitemap.section">
