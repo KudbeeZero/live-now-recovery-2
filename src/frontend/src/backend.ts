@@ -122,6 +122,9 @@ export interface ProviderWithStatus {
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    providerType: string;
+    isVerified: boolean;
+    reputationScore: number;
 }
 export interface UserProfile {
     name: string;
@@ -146,16 +149,17 @@ export interface backendInterface {
     getCanisterState(): Promise<CanisterStateSummary>;
     getEmergencyActive(): Promise<Array<ProviderWithStatus>>;
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
+    getMarketplaceGeoJSON(): Promise<string>;
     getTotalHandoffs(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     heartbeat(): Promise<Array<string>>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
-    registerProvider(id: string, name: string, lat: number, lng: number): Promise<void>;
+    registerProvider(id: string, name: string, lat: number, lng: number, providerType: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    getMarketplaceGeoJSON(): Promise<string>;
     toggleLive(id: string, status: boolean): Promise<void>;
     verifyHandoff(token: string): Promise<VerifyResult>;
+    verifyProvider(id: string): Promise<void>;
 }
 import type { ProviderStatus as _ProviderStatus, ProviderWithStatus as _ProviderWithStatus, UserProfile as _UserProfile, UserRole as _UserRole, VerifyResult as _VerifyResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -286,6 +290,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getMarketplaceGeoJSON(): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMarketplaceGeoJSON();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMarketplaceGeoJSON();
+            return result;
+        }
+    }
     async getTotalHandoffs(): Promise<bigint> {
         if (this.processError) {
             try {
@@ -356,17 +374,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async registerProvider(arg0: string, arg1: string, arg2: number, arg3: number): Promise<void> {
+    async registerProvider(arg0: string, arg1: string, arg2: number, arg3: number, arg4: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3);
+                const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3, arg4);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3);
+            const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3, arg4);
             return result;
         }
     }
@@ -382,14 +400,6 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.saveCallerUserProfile(arg0);
             return result;
-        }
-    }
-    async getMarketplaceGeoJSON(): Promise<string> {
-        if (this.processError) {
-            try { return await (this.actor as any).getMarketplaceGeoJSON(); }
-            catch (e) { this.processError(e); throw new Error("unreachable"); }
-        } else {
-            return await (this.actor as any).getMarketplaceGeoJSON();
         }
     }
     async toggleLive(arg0: string, arg1: boolean): Promise<void> {
@@ -420,6 +430,20 @@ export class Backend implements backendInterface {
             return from_candid_VerifyResult_n11(this._uploadFile, this._downloadFile, result);
         }
     }
+    async verifyProvider(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.verifyProvider(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.verifyProvider(arg0);
+            return result;
+        }
+    }
 }
 function from_candid_ProviderStatus_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ProviderStatus): ProviderStatus {
     return from_candid_variant_n7(_uploadFile, _downloadFile, value);
@@ -444,6 +468,9 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    providerType: string;
+    isVerified: boolean;
+    reputationScore: number;
 }): {
     id: string;
     lat: number;
@@ -452,6 +479,9 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    providerType: string;
+    isVerified: boolean;
+    reputationScore: number;
 } {
     return {
         id: value.id,
@@ -460,7 +490,10 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
         status: from_candid_ProviderStatus_n6(_uploadFile, _downloadFile, value.status),
         name: value.name,
         isLive: value.isLive,
-        lastVerified: value.lastVerified
+        lastVerified: value.lastVerified,
+        providerType: value.providerType,
+        isVerified: value.isVerified,
+        reputationScore: value.reputationScore,
     };
 }
 function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

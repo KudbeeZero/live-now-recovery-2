@@ -122,7 +122,7 @@ export function useRegisterProvider() {
       providerType?: string;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).registerProvider(id, name, lat, lng, providerType);
+      return actor.registerProvider(id, name, lat, lng, providerType ?? "General");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allProviders"] });
@@ -136,7 +136,7 @@ export function useVerifyProvider() {
   return useMutation({
     mutationFn: async (id: string) => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).verifyProvider(id);
+      return actor.verifyProvider(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allProviders"] });
