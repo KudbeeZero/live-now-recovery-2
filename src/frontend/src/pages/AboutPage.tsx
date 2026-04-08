@@ -1,10 +1,23 @@
 export function AboutPage() {
   return (
-    <main className="min-h-screen py-16 px-4" data-ocid="about.page">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-4xl font-bold text-navy mb-2">About</h1>
-        <div className="h-1 w-16 bg-cplus-teal rounded-full mb-10" />
+    <main className="min-h-screen" data-ocid="about.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-xs font-bold uppercase tracking-widest text-live-green mb-3">
+            About
+          </p>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            Built for <span className="text-live-green">NE Ohio</span>
+          </h1>
+          <p className="text-on-dark text-lg">
+            Real-time MAT availability on the Internet Computer — privacy-first,
+            no PHI, no cloud.
+          </p>
+        </div>
+      </section>
 
+      <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="space-y-8">
           <div className="bg-white rounded-2xl shadow-card border border-border p-6">
             <h2 className="text-xl font-bold text-navy mb-3">

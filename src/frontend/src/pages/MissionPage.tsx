@@ -25,13 +25,21 @@ const pillars = [
 
 export function MissionPage() {
   return (
-    <main className="min-h-screen py-16 px-4" data-ocid="mission.page">
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-navy mb-4">Our Mission</h1>
-          <div className="h-1 w-16 bg-cplus-teal rounded-full mx-auto" />
+    <main className="min-h-screen" data-ocid="mission.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16 text-center">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-xs font-bold uppercase tracking-widest text-live-green mb-3">
+            Our Purpose
+          </p>
+          <h1 className="text-4xl font-bold text-white mb-4">
+            Our <span className="text-live-green">Mission</span>
+          </h1>
+          <div className="h-0.5 w-16 bg-live-green rounded-full mx-auto" />
         </div>
+      </section>
 
+      <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="bg-white rounded-2xl shadow-card border border-border p-8 mb-10">
           <p className="text-xl text-navy font-medium leading-relaxed mb-6">
             Live Now Recovery exists because people in crisis deserve real
@@ -63,8 +71,8 @@ export function MissionPage() {
               className="bg-white rounded-2xl shadow-card border border-border p-5"
               data-ocid="mission.card"
             >
-              <div className="w-10 h-10 rounded-xl bg-cplus-teal/10 flex items-center justify-center mb-3">
-                <p.icon className="w-5 h-5 text-cplus-teal" />
+              <div className="w-10 h-10 rounded-xl bg-live-green/10 flex items-center justify-center mb-3">
+                <p.icon className="w-5 h-5 text-live-green" />
               </div>
               <h3 className="font-bold text-navy mb-2">{p.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">

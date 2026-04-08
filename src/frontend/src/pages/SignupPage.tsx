@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRegisterHelper } from "../hooks/useQueries";
 
 type ActiveForm = "helper" | "provider" | null;
 
@@ -164,9 +165,12 @@ function HelperForm({ onBack }: { onBack: () => void }) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [reason, setReason] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  const registerHelper = useRegisterHelper();
 
   function validate() {
     const errs: Record<string, string> = {};
@@ -180,7 +184,7 @@ function HelperForm({ onBack }: { onBack: () => void }) {
     return errs;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) {
@@ -188,11 +192,18 @@ function HelperForm({ onBack }: { onBack: () => void }) {
       return;
     }
     setErrors({});
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    setSubmitError("");
+    try {
+      await registerHelper.mutateAsync({
+        firstName: firstName.trim(),
+        zip: zip.trim(),
+        phone: phone.trim(),
+        note: reason.trim(),
+      });
       setSubmitted(true);
-    }, 400);
+    } catch {
+      setSubmitError("Something went wrong. Please try again.");
+    }
   }
 
   if (submitted) {
@@ -329,10 +340,30 @@ function HelperForm({ onBack }: { onBack: () => void }) {
           onChange={setPassword}
           error={errors.password}
         />
+        <Field
+          label="Why do you want to volunteer? (optional)"
+          id="helper-reason"
+          placeholder="Tell us a little about yourself..."
+          value={reason}
+          onChange={setReason}
+        />
+        {submitError && (
+          <span
+            role="alert"
+            style={{
+              color: "#DC2626",
+              fontSize: 13,
+              fontFamily: "Inter, system-ui, sans-serif",
+              textAlign: "center",
+            }}
+          >
+            {submitError}
+          </span>
+        )}
         <button
           data-ocid="signup.helper.submit_button"
           type="submit"
-          disabled={submitting}
+          disabled={registerHelper.isPending}
           style={{
             background: CTA_COLOR,
             color: "#FFFFFF",
@@ -342,13 +373,13 @@ function HelperForm({ onBack }: { onBack: () => void }) {
             border: "none",
             borderRadius: 8,
             padding: "12px",
-            cursor: submitting ? "default" : "pointer",
+            cursor: registerHelper.isPending ? "default" : "pointer",
             marginTop: 8,
-            opacity: submitting ? 0.8 : 1,
+            opacity: registerHelper.isPending ? 0.8 : 1,
             transition: "opacity 0.15s",
           }}
         >
-          {submitting ? "Submitting..." : "Sign Up as Helper"}
+          {registerHelper.isPending ? "Signing up..." : "Sign Up as Helper"}
         </button>
       </form>
     </div>
@@ -770,7 +801,7 @@ export function SignupPage() {
             buttonLabel="Continue Anonymously"
             ocid="signup.anonymous.primary_button"
             onClick={() => {
-              window.location.href = "/map";
+              window.location.href = "/";
             }}
           />
           <RoleCard

@@ -114,6 +114,14 @@ export interface CanisterStateSummary {
     total_active_providers: bigint;
     high_risk_window_active: boolean;
 }
+export interface Helper {
+    id: string;
+    zip: string;
+    note: string;
+    createdAt: bigint;
+    phone: string;
+    firstName: string;
+}
 export interface ProviderWithStatus {
     id: string;
     lat: number;
@@ -137,9 +145,10 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
-    _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    _initializeAccessControl(): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     generateHandoffToken(zipCode: string): Promise<string>;
+    getAllHelpers(): Promise<Array<Helper>>;
     getAllProviders(): Promise<Array<ProviderWithStatus>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -151,26 +160,26 @@ export interface backendInterface {
     heartbeat(): Promise<Array<string>>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
+    registerHelper(firstName: string, zip: string, phone: string, note: string): Promise<void>;
     registerProvider(id: string, name: string, lat: number, lng: number): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    getMarketplaceGeoJSON(): Promise<string>;
     toggleLive(id: string, status: boolean): Promise<void>;
     verifyHandoff(token: string): Promise<VerifyResult>;
 }
 import type { ProviderStatus as _ProviderStatus, ProviderWithStatus as _ProviderWithStatus, UserProfile as _UserProfile, UserRole as _UserRole, VerifyResult as _VerifyResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
-    async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
+    async _initializeAccessControl(): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor._initializeAccessControlWithSecret(arg0);
+                const result = await this.actor._initializeAccessControl();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor._initializeAccessControlWithSecret(arg0);
+            const result = await this.actor._initializeAccessControl();
             return result;
         }
     }
@@ -199,6 +208,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.generateHandoffToken(arg0);
+            return result;
+        }
+    }
+    async getAllHelpers(): Promise<Array<Helper>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllHelpers();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllHelpers();
             return result;
         }
     }
@@ -356,6 +379,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async registerHelper(arg0: string, arg1: string, arg2: string, arg3: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
     async registerProvider(arg0: string, arg1: string, arg2: number, arg3: number): Promise<void> {
         if (this.processError) {
             try {
@@ -382,14 +419,6 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.saveCallerUserProfile(arg0);
             return result;
-        }
-    }
-    async getMarketplaceGeoJSON(): Promise<string> {
-        if (this.processError) {
-            try { return await (this.actor as any).getMarketplaceGeoJSON(); }
-            catch (e) { this.processError(e); throw new Error("unreachable"); }
-        } else {
-            return await (this.actor as any).getMarketplaceGeoJSON();
         }
     }
     async toggleLive(arg0: string, arg1: boolean): Promise<void> {

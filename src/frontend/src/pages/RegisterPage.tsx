@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   AlertCircle,
   CheckCircle,
+  ClipboardList,
   Info,
   Loader2,
   Lock,
@@ -11,7 +13,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useRegisterProvider } from "../hooks/useQueries";
 
 async function geocodeAddress(
@@ -182,20 +183,24 @@ export function RegisterPage() {
 
   // Main registration form
   return (
-    <main
-      className="min-h-screen py-16 px-4 bg-background"
-      data-ocid="register.page"
-    >
-      <div className="max-w-lg mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-1">
-            Provider Registration
+    <main className="min-h-screen" data-ocid="register.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardList className="w-5 h-5 text-live-green" />
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+              Provider Intake
+            </p>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            Provider <span className="text-live-green">Registration</span>
           </h1>
-          <p className="text-muted-foreground text-sm">
-            MAT clinic intake — Ohio Region 13
-          </p>
+          <p className="text-on-dark">MAT clinic intake — Ohio Region 13</p>
         </div>
+      </section>
 
+      <div className="max-w-lg mx-auto px-4 py-12">
         {/* Info box */}
         <div
           className="flex gap-3 bg-primary/10 border border-primary/20 rounded-xl p-4 mb-5"
@@ -402,7 +407,7 @@ export function RegisterPage() {
           <Button
             type="submit"
             disabled={isGeocoding || registerProvider.isPending}
-            className="w-full min-h-[44px] bg-live hover:bg-live/90 text-background font-semibold"
+            className="w-full min-h-[44px] bg-live-green hover:bg-live-green/90 text-navy font-semibold"
             data-ocid="register.submit_button"
           >
             {isGeocoding ? (

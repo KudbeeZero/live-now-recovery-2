@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Mail } from "lucide-react";
 import { useState } from "react";
 
 export function ContactPage() {
@@ -16,19 +16,32 @@ export function ContactPage() {
   };
 
   return (
-    <main className="min-h-screen py-16 px-4" data-ocid="contact.page">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-3xl font-bold text-navy mb-2">Contact</h1>
-        <p className="text-muted-foreground mb-8">
-          No PHI. Email, subject, and message only.
-        </p>
+    <main className="min-h-screen" data-ocid="contact.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-3 mb-3">
+            <Mail className="w-5 h-5 text-live-green" />
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+              Get in Touch
+            </p>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            Contact <span className="text-live-green">Us</span>
+          </h1>
+          <p className="text-on-dark">
+            No PHI. Email, subject, and message only.
+          </p>
+        </div>
+      </section>
 
+      <div className="max-w-lg mx-auto px-4 py-12">
         {submitted ? (
           <div
             className="flex flex-col items-center gap-4 py-12 text-center"
             data-ocid="contact.success_state"
           >
-            <CheckCircle className="w-12 h-12 text-cplus-teal" />
+            <CheckCircle className="w-12 h-12 text-live-green" />
             <h2 className="text-xl font-bold text-navy">Message Received</h2>
             <p className="text-muted-foreground text-sm">
               We'll be in touch. No data was stored.
@@ -95,7 +108,7 @@ export function ContactPage() {
             </div>
             <Button
               type="submit"
-              className="w-full min-h-[44px] bg-action-blue hover:bg-action-blue/90 text-white"
+              className="w-full min-h-[44px] bg-live-green hover:bg-live-green/90 text-navy font-semibold"
               data-ocid="contact.submit_button"
             >
               Send Message

@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,
@@ -8,7 +9,6 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
-  Filter,
   MapPin,
   Radio,
   Search,
@@ -23,12 +23,12 @@ import { ProviderStatus } from "../backend";
 import { EnhancedRecoveryMap } from "../components/EnhancedRecoveryMap";
 import { HandoffImpact } from "../components/HandoffImpact";
 import { PriceComparisonCard } from "../components/PriceComparisonCard";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAllProviders,
   useCanisterState,
   useIsAdmin,
   useToggleLive,
+  useTotalHandoffs,
 } from "../hooks/useQueries";
 import { isProviderStale, statusLabel } from "../utils/providerUtils";
 
@@ -45,12 +45,18 @@ export function HomePage() {
   const { data: providers = [], isLoading } = useAllProviders();
   const { data: canisterState } = useCanisterState();
   const { data: isAdmin } = useIsAdmin();
+  const { data: totalHandoffs, isLoading: handoffsLoading } =
+    useTotalHandoffs();
   const toggleLive = useToggleLive();
   const { loginStatus, identity } = useInternetIdentity();
   const isLoggedIn = loginStatus === "success" && !!identity;
 
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [show3dBuildings, setShow3dBuildings] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showWeather, setShowWeather] = useState(false);
+  const [showAllCities, setShowAllCities] = useState(false);
   const [adminDrawerOpen, setAdminDrawerOpen] = useState(false);
 
   const liveProviders = providers.filter(
@@ -235,49 +241,256 @@ export function HomePage() {
         </div>
       )}
 
-      {/* ── Results Section: Filters + Map + Provider List ── */}
+      {/* ── Community Momentum Stat Bar ── */}
+      <section
+        className="w-full px-4 py-5"
+        style={{
+          background:
+            "linear-gradient(180deg, oklch(0.18 0.038 225) 0%, oklch(0.20 0.038 225) 100%)",
+          borderBottom: "1px solid oklch(0.26 0.038 225 / 0.6)",
+        }}
+        data-ocid="home.section"
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-3 gap-3 sm:gap-5">
+            {/* Volunteers */}
+            <div
+              className="flex flex-col items-center justify-center px-2 py-3 sm:py-4 rounded-xl"
+              style={{
+                background: "oklch(0.23 0.045 225 / 0.8)",
+                border: "1px solid oklch(0.32 0.055 196 / 0.4)",
+              }}
+              data-ocid="home.stat_card"
+            >
+              <Users
+                className="w-4 h-4 mb-1 opacity-60"
+                style={{ color: "oklch(0.82 0.18 145)" }}
+              />
+              <span
+                className="text-xl sm:text-3xl font-bold tabular-nums leading-none"
+                style={{
+                  color: "oklch(0.82 0.18 145)",
+                  textShadow: "0 0 18px oklch(0.82 0.18 145 / 0.45)",
+                }}
+              >
+                47
+              </span>
+              <span
+                className="text-[10px] sm:text-xs font-medium mt-1 text-center leading-tight"
+                style={{ color: "oklch(0.58 0.04 220)" }}
+              >
+                Community Volunteers
+              </span>
+            </div>
+
+            {/* Total Handoffs */}
+            <div
+              className="flex flex-col items-center justify-center px-2 py-3 sm:py-4 rounded-xl"
+              style={{
+                background: "oklch(0.23 0.045 225 / 0.8)",
+                border: "1px solid oklch(0.32 0.055 196 / 0.4)",
+              }}
+              data-ocid="home.stat_card"
+            >
+              <Zap
+                className="w-4 h-4 mb-1 opacity-60"
+                style={{ color: "oklch(0.82 0.18 145)" }}
+              />
+              {handoffsLoading ? (
+                <div
+                  className="h-7 w-12 sm:h-9 sm:w-16 rounded animate-pulse"
+                  style={{ background: "oklch(0.30 0.04 220 / 0.6)" }}
+                />
+              ) : (
+                <span
+                  className="text-xl sm:text-3xl font-bold tabular-nums leading-none"
+                  style={{
+                    color: "oklch(0.82 0.18 145)",
+                    textShadow: "0 0 18px oklch(0.82 0.18 145 / 0.45)",
+                  }}
+                >
+                  {totalHandoffs !== undefined
+                    ? Number(totalHandoffs).toLocaleString()
+                    : "0"}
+                </span>
+              )}
+              <span
+                className="text-[10px] sm:text-xs font-medium mt-1 text-center leading-tight"
+                style={{ color: "oklch(0.58 0.04 220)" }}
+              >
+                Recovery Handoffs
+              </span>
+            </div>
+
+            {/* Active Providers */}
+            <div
+              className="flex flex-col items-center justify-center px-2 py-3 sm:py-4 rounded-xl"
+              style={{
+                background: "oklch(0.23 0.045 225 / 0.8)",
+                border: "1px solid oklch(0.36 0.12 145 / 0.45)",
+                boxShadow: "0 0 14px oklch(0.82 0.18 145 / 0.08)",
+              }}
+              data-ocid="home.stat_card"
+            >
+              <Activity
+                className="w-4 h-4 mb-1 opacity-60"
+                style={{ color: "oklch(0.82 0.18 145)" }}
+              />
+              {isLoading ? (
+                <div
+                  className="h-7 w-10 sm:h-9 sm:w-12 rounded animate-pulse"
+                  style={{ background: "oklch(0.30 0.04 220 / 0.6)" }}
+                />
+              ) : (
+                <span
+                  className="text-xl sm:text-3xl font-bold tabular-nums leading-none"
+                  style={{
+                    color: "oklch(0.82 0.18 145)",
+                    textShadow: "0 0 18px oklch(0.82 0.18 145 / 0.55)",
+                  }}
+                >
+                  {liveCount}
+                </span>
+              )}
+              <span
+                className="text-[10px] sm:text-xs font-medium mt-1 text-center leading-tight"
+                style={{ color: "oklch(0.58 0.04 220)" }}
+              >
+                Active Providers
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Results Section: Map + Provider List ── */}
       <section
         className="w-full bg-teal-mid py-8 px-4"
         data-ocid="home.section"
       >
-        <div className="max-w-7xl mx-auto space-y-4">
-          {/* Filter chips — always visible */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter
-              className="w-4 h-4 shrink-0"
-              style={{ color: "oklch(0.55 0.03 220)" }}
-            />
-            {filterLabels.map(({ key, label, color }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveFilter(key)}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all min-h-[36px] hover:scale-[1.03]"
-                style={{
-                  background:
-                    activeFilter === key
-                      ? `${color}20`
-                      : "oklch(0.13 0.03 240)",
-                  border: `1px solid ${
-                    activeFilter === key ? `${color}50` : "oklch(0.22 0.05 240)"
-                  }`,
-                  color: activeFilter === key ? color : "oklch(0.58 0.03 220)",
-                }}
-                data-ocid="home.tab"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
+        <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Map — 60% */}
             <div className="lg:col-span-3">
-              <div className="h-[340px] lg:h-[520px] rounded-xl overflow-hidden shadow-card">
-                <EnhancedRecoveryMap
-                  height="100%"
-                  onToggleLive={isLoggedIn ? handleToggle : undefined}
-                />
+              <div className="flex flex-col rounded-xl overflow-hidden shadow-card">
+                {/* Map */}
+                <div className="h-[340px] lg:h-[520px]">
+                  <EnhancedRecoveryMap
+                    height="100%"
+                    onToggleLive={isLoggedIn ? handleToggle : undefined}
+                    activeFilter={activeFilter}
+                    setActiveFilter={(f) => setActiveFilter(f as FilterType)}
+                    show3dBuildings={show3dBuildings}
+                    showHeatmap={showHeatmap}
+                    showWeather={showWeather}
+                  />
+                </div>
+
+                {/* Docked filter bar — flush below map */}
+                <div
+                  className="flex items-center gap-1.5 px-3 py-2 flex-wrap"
+                  style={{
+                    background: "#0d1f2d",
+                    borderTop: "1px solid rgba(255,255,255,0.07)",
+                  }}
+                >
+                  {/* Type filter chips */}
+                  {filterLabels.map(({ key, label, color }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveFilter(key)}
+                      className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 hover:scale-[1.03]"
+                      style={{
+                        background:
+                          activeFilter === key
+                            ? `${color}22`
+                            : "rgba(255,255,255,0.05)",
+                        border: `1px solid ${
+                          activeFilter === key
+                            ? `${color}55`
+                            : "rgba(255,255,255,0.1)"
+                        }`,
+                        color:
+                          activeFilter === key ? color : "oklch(0.55 0.03 220)",
+                      }}
+                      data-ocid="home.tab"
+                    >
+                      {label}
+                    </button>
+                  ))}
+
+                  {/* Divider */}
+                  <div
+                    className="w-px h-4 mx-1"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  />
+
+                  {/* Layer toggles */}
+                  <button
+                    type="button"
+                    onClick={() => setShow3dBuildings((v) => !v)}
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 hover:scale-[1.03]"
+                    style={{
+                      background: show3dBuildings
+                        ? "rgba(107,114,128,0.2)"
+                        : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${
+                        show3dBuildings
+                          ? "rgba(107,114,128,0.5)"
+                          : "rgba(255,255,255,0.1)"
+                      }`,
+                      color: show3dBuildings
+                        ? "#9ca3af"
+                        : "oklch(0.45 0.03 220)",
+                    }}
+                    data-ocid="home.toggle"
+                  >
+                    3D Buildings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowHeatmap((v) => !v)}
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 hover:scale-[1.03]"
+                    style={{
+                      background: showHeatmap
+                        ? "rgba(0,200,180,0.15)"
+                        : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${
+                        showHeatmap
+                          ? "rgba(0,200,180,0.4)"
+                          : "rgba(255,255,255,0.1)"
+                      }`,
+                      color: showHeatmap ? "#6ee7d0" : "oklch(0.45 0.03 220)",
+                    }}
+                    data-ocid="home.toggle"
+                  >
+                    Heatmap
+                  </button>
+                  <div
+                    className="w-px h-4 mx-1"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowWeather((v) => !v)}
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 hover:scale-[1.03]"
+                    style={{
+                      background: showWeather
+                        ? "rgba(147,197,253,0.15)"
+                        : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${
+                        showWeather
+                          ? "rgba(147,197,253,0.45)"
+                          : "rgba(255,255,255,0.1)"
+                      }`,
+                      color: showWeather ? "#93c5fd" : "oklch(0.45 0.03 220)",
+                    }}
+                    data-ocid="home.toggle"
+                  >
+                    🌤 Weather
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -898,34 +1111,66 @@ export function HomePage() {
       </section>
 
       {/* ── Cities ── */}
-      <section className="py-12 px-4 bg-secondary" data-ocid="home.section">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-xl font-bold mb-6 text-center text-foreground">
-            Find Providers by City
-          </h2>
-          <div className="flex flex-wrap gap-3 justify-center">
-            {(
-              [
-                ["Cleveland", "/cleveland"],
-                ["Lakewood", "/lakewood"],
-                ["Parma", "/parma"],
-                ["Lorain", "/lorain"],
-                ["Akron", "/akron"],
-              ] as [string, string][]
-            ).map(([city, path]) => (
-              <Button
-                key={path}
-                asChild
-                variant="outline"
-                className="min-h-[44px] transition-all border-primary/40 text-primary hover:bg-primary/10 hover:scale-105"
-                data-ocid="home.button"
-              >
-                <Link to={path}>{city}</Link>
-              </Button>
-            ))}
-          </div>
-        </div>
-      </section>
+      {(() => {
+        const CITIES: [string, string][] = [
+          ["Cleveland", "/cleveland"],
+          ["Lakewood", "/lakewood"],
+          ["Parma", "/parma"],
+          ["Lorain", "/lorain"],
+          ["Akron", "/akron"],
+          ["Youngstown", "/youngstown"],
+          ["Canton", "/canton"],
+          ["Elyria", "/elyria"],
+          ["Mentor", "/mentor"],
+          ["Strongsville", "/strongsville"],
+          ["Euclid", "/euclid"],
+          ["Sandusky", "/sandusky"],
+          ["Warren", "/warren"],
+          ["Toledo", "/toledo"],
+          ["Medina", "/medina"],
+        ];
+        const visibleCities = showAllCities ? CITIES : CITIES.slice(0, 5);
+        return (
+          <section className="py-12 px-4 bg-secondary" data-ocid="home.section">
+            <div className="max-w-7xl mx-auto">
+              <h2 className="text-xl font-bold mb-6 text-center text-foreground">
+                Find Providers by City
+              </h2>
+              <div className="flex flex-wrap gap-3 justify-center">
+                {visibleCities.map(([city, path]) => (
+                  <Button
+                    key={path}
+                    asChild
+                    variant="outline"
+                    className="min-h-[44px] transition-all border-primary/40 text-primary hover:bg-primary/10 hover:scale-105"
+                    data-ocid="home.button"
+                  >
+                    <Link to={path}>{city}</Link>
+                  </Button>
+                ))}
+              </div>
+              <div className="flex justify-center mt-5">
+                <Button
+                  variant="outline"
+                  className="min-h-[44px] transition-all border-primary/40 text-primary hover:bg-primary/10 gap-2"
+                  onClick={() => setShowAllCities((prev) => !prev)}
+                  data-ocid="home.cities-toggle"
+                >
+                  {showAllCities ? (
+                    <>
+                      Show Less <ChevronUp className="w-4 h-4" />
+                    </>
+                  ) : (
+                    <>
+                      View All 15 Cities <ChevronDown className="w-4 h-4" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
     </main>
   );
 }

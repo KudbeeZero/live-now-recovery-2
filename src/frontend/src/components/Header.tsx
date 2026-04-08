@@ -5,10 +5,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Link } from "@tanstack/react-router";
 import { Heart, Menu, Phone, Users, X } from "lucide-react";
 import { useState } from "react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -140,15 +140,16 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile menu — landscape-safe with 2-col grid */}
+      {/* Mobile menu — portrait stacks vertically; landscape uses 2-col grid + side-by-side CTAs */}
       {menuOpen && (
         <div className="md:hidden border-t border-border bg-navy max-h-[calc(100dvh-4rem)] overflow-y-auto">
-          <div className="px-4 py-3 grid grid-cols-1 landscape:grid-cols-2 gap-1">
+          {/* Nav links: 1 col portrait → 2 col landscape */}
+          <div className="px-4 py-3 landscape:py-1.5 grid grid-cols-1 landscape:grid-cols-2 gap-0.5 landscape:gap-1">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className="py-2.5 px-2 text-sm font-medium transition-colors min-h-[44px] flex items-center rounded-md text-on-dark hover:text-white hover:bg-white/5"
+                className="py-2.5 landscape:py-1.5 px-2 text-sm font-medium transition-colors min-h-[44px] landscape:min-h-[36px] flex items-center rounded-md text-on-dark hover:text-white hover:bg-white/5"
                 activeProps={{ className: "text-teal-light font-semibold" }}
                 onClick={() => setMenuOpen(false)}
                 data-ocid="nav.link"
@@ -158,7 +159,7 @@ export function Header() {
             ))}
             <Link
               to="/helper"
-              className="py-2.5 px-2 text-sm font-medium min-h-[44px] flex items-center gap-1.5 rounded-md text-teal-light hover:bg-white/5"
+              className="py-2.5 landscape:py-1.5 px-2 text-sm font-medium min-h-[44px] landscape:min-h-[36px] flex items-center gap-1.5 rounded-md text-teal-light hover:bg-white/5"
               onClick={() => setMenuOpen(false)}
               data-ocid="nav.link"
             >
@@ -166,20 +167,21 @@ export function Header() {
               Be a Helper
             </Link>
           </div>
-          <div className="px-4 pb-3 flex flex-col landscape:flex-row gap-2">
+          {/* CTA row: stacked portrait → side by side landscape */}
+          <div className="px-4 pb-4 landscape:pb-2 pt-1 flex flex-col landscape:flex-row gap-2">
             <a
               href="tel:833-234-6343"
-              className="flex items-center gap-2 bg-destructive text-destructive-foreground px-4 py-3 rounded-lg text-sm font-bold min-h-[44px] landscape:flex-1"
+              className="flex items-center justify-center gap-2 bg-destructive text-destructive-foreground px-4 py-3 landscape:py-2 rounded-lg text-sm font-bold min-h-[44px] landscape:min-h-[40px] landscape:flex-1 transition-opacity hover:opacity-90"
               onClick={() => setMenuOpen(false)}
               data-ocid="nav.button"
             >
-              <Phone className="w-4 h-4" />
-              Call 833-234-6343 (MAR NOW)
+              <Phone className="w-4 h-4 shrink-0" />
+              <span>Call 833-234-6343</span>
             </a>
             {!isLoggedIn && (
               <Button
                 size="sm"
-                className="min-h-[44px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 landscape:flex-1"
+                className="min-h-[44px] landscape:min-h-[40px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 landscape:flex-1"
                 onClick={() => {
                   login();
                   setMenuOpen(false);

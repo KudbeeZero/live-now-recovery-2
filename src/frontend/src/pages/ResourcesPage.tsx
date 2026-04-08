@@ -103,18 +103,27 @@ const OHIO_LINKS = [
 
 export function ResourcesPage() {
   return (
-    <main className="min-h-screen py-16 px-4" data-ocid="resources.page">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-12">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
-            Ohio Recovery Resources
+    <main className="min-h-screen" data-ocid="resources.page">
+      {/* Dark hero header */}
+      <section className="bg-navy px-4 py-16">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center gap-2 mb-3">
+            <Phone className="w-4 h-4 text-live-green" />
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+              Help Is Here
+            </p>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            Ohio Recovery <span className="text-live-green">Resources</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl">
+          <p className="text-on-dark text-lg max-w-2xl">
             Crisis support lines, naloxone access, and treatment explainers for
             people in Ohio Region 13.
           </p>
         </div>
+      </section>
 
+      <div className="max-w-5xl mx-auto px-4 py-12">
         <div className="rounded-xl border border-amber-recovery/60 bg-amber-recovery/10 p-5 mb-12 flex gap-4 items-start">
           <AlertTriangle className="w-5 h-5 text-amber-recovery mt-0.5 shrink-0" />
           <div>
