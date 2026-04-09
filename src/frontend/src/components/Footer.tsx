@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Heart } from "lucide-react";
-import { SiFacebook, SiInstagram, SiX } from "react-icons/si";
+import { FaLinkedin } from "react-icons/fa";
+import { SiFacebook, SiInstagram, SiX, SiYoutube } from "react-icons/si";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -14,9 +15,9 @@ export function Footer() {
       data-ocid="footer.panel"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-10">
           {/* Brand */}
-          <div>
+          <div className="md:col-span-2 xl:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
                 <Heart className="w-4 h-4 text-white" fill="white" />
@@ -113,6 +114,64 @@ export function Footer() {
               ))}
             </ul>
           </div>
+
+          {/* Legal */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-widest mb-4 text-primary">
+              Legal
+            </h3>
+            <ul className="space-y-2">
+              <li>
+                <Link
+                  to="/privacy"
+                  className="text-sm transition-colors hover:text-foreground text-muted-foreground"
+                  data-ocid="footer.link"
+                >
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/terms"
+                  className="text-sm transition-colors hover:text-foreground text-muted-foreground"
+                  data-ocid="footer.link"
+                >
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/cookies"
+                  className="text-sm transition-colors hover:text-foreground text-muted-foreground"
+                  data-ocid="footer.link"
+                >
+                  Cookie Policy
+                </Link>
+              </li>
+              <li>
+                <a
+                  href="https://costplusdrugs.com/hipaa/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm transition-colors hover:text-foreground text-muted-foreground"
+                  data-ocid="footer.link"
+                >
+                  HIPAA Notice ↗
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://costplusdrugs.com/privacy/california/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm transition-colors hover:text-foreground text-muted-foreground"
+                  data-ocid="footer.link"
+                >
+                  CA Privacy ↗
+                </a>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border">
@@ -137,15 +196,18 @@ export function Footer() {
               { icon: SiX, label: "X (Twitter)" },
               { icon: SiFacebook, label: "Facebook" },
               { icon: SiInstagram, label: "Instagram" },
+              { icon: FaLinkedin, label: "LinkedIn" },
+              { icon: SiYoutube, label: "YouTube" },
             ].map(({ icon: Icon, label }) => (
-              <span
+              <button
                 key={label}
-                title={`${label} — coming soon`}
-                aria-label={`${label} (coming soon)`}
-                className="transition-colors text-muted-foreground/40 cursor-default select-none"
+                type="button"
+                aria-label={label}
+                className="transition-colors text-muted-foreground hover:text-[oklch(0.62_0.17_155)] cursor-pointer bg-transparent border-0 p-0"
+                data-ocid="footer.social"
               >
                 <Icon className="w-4 h-4" />
-              </span>
+              </button>
             ))}
           </div>
         </div>

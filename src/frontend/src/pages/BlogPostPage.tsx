@@ -83,6 +83,84 @@ const FULL_CONTENT: Record<string, string[]> = {
     "In NE Ohio, peer specialists play a critical role in warm handoffs — the direct, real-time connections between people in crisis and MAT providers. A peer specialist stationed at an emergency department can initiate a buprenorphine conversation before a patient leaves, complete the connection to an outpatient prescriber while the patient is still in the room, and follow up by phone or text in the days after discharge to prevent the drop-off that makes early recovery so precarious. This workflow requires real-time information about provider availability — which is exactly the gap Live Now Recovery was built to close.",
     "Live Now Recovery was designed around the peer specialist workflow from the beginning. The system's core features — real-time provider status, anonymous search, one-tap calling, the Proof of Presence QR code system — were specified through conversations with peer recovery organizations in Cuyahoga and Lorain counties. The tool is useful to anyone searching for MAT access, but it is built to perform best in the hands of a trained peer specialist who knows how to use real-time availability data to complete a warm handoff at the exact moment someone is willing to accept help.",
   ],
+  "er-72-hour-bridge": [
+    "Federal law contains a provision that most emergency physicians don't know about and most patients in crisis have never been told: under the Drug Addiction Treatment Act and its subsequent regulatory amendments, a physician in an emergency setting can administer or prescribe buprenorphine to treat acute opioid withdrawal for up to 72 hours without a DEA registration specifically for opioid treatment. This is the 72-hour rule. It exists precisely because the moment someone appears in an emergency department in withdrawal or after an overdose is one of the highest-motivation windows in the entire treatment timeline — and it should not be wasted.",
+    "What the 72-hour rule means in practice is this: if you or someone you know walks into an Ohio emergency room in active opioid withdrawal tonight, the physician on duty has the legal authority to start a buprenorphine induction — administer the first dose in the ED and provide a bridge prescription for up to three days — without any special certification, without a prior established relationship, and without a referral. The purpose is to stabilize the patient and create enough of a bridge to connect them to an ongoing MAT provider before the prescription runs out. In the fentanyl era, where relapse after a period of abstinence is increasingly lethal, those 72 hours can be the difference between a patient who connects to long-term treatment and one who doesn't.",
+    "Northeast Ohio is ahead of the national curve on ER bridge protocols. The Ohio Addiction and Prescription Drug Action Committee (OAAP) has actively supported ER-initiated buprenorphine programs, and several major hospital systems in the region — including MetroHealth Medical Center in Cleveland, Summa Health in Akron, and UH Cleveland Medical Center — have implemented bridge protocols that include peer recovery specialist support during and after the ER visit. These programs are not universal, and access varies significantly by county and by shift. Live Now Recovery is building the visibility layer that tells someone at 11pm which ERs in their area are actively participating in bridge protocols tonight.",
+    "The 72-hour window is a starting point, not a solution. After the bridge prescription runs out, the patient needs a path to a regular MAT prescriber. This is where the warm handoff becomes critical. The best ER bridge programs include a peer specialist who starts the connection to an outpatient provider before the patient is discharged — not a list of phone numbers, but an actual appointment confirmation while the patient is still in the room. Live Now Recovery's volunteer network can fill the transportation gap: if a patient needs a ride from the ER to their first MAT appointment, the platform can connect them with a local volunteer who will show up.",
+    "If you work in an emergency department in Ohio and your facility has the capacity to participate in bridge protocols, register your ER on Live Now Recovery. When you toggle your status to active during a shift where bridge prescribing is available, you become visible to the peer specialists and family members searching right now for an ER that will actually help. The medication cost for a 72-hour bridge through Cost Plus Drugs is approximately $3 — buprenorphine through Mark Cuban's pharmacy costs $22 per month for a full 30-day supply, which means the three-day bridge costs less than $3. Cost is not the barrier. Visibility is.",
+  ],
+  "volunteer-warm-handoff": [
+    "A warm handoff is not a referral. A referral is paperwork — a phone number on a discharge sheet, a website URL, a list of providers printed from a database that may be months out of date. Research on opioid treatment uptake consistently shows that cold referrals result in treatment engagement rates of 10 to 20 percent. Most people never make the call. A warm handoff is something different: it is a human being staying present with another human being through the transition from crisis to care. Someone who walks into a clinic because a person they trust walked them through the door has a fundamentally different experience than someone who navigated the phone tree alone.",
+    "The research on peer-supported warm handoffs is among the clearest in the addiction treatment literature. Studies from emergency department peer intervention programs show treatment retention rates three to four times higher at 30 days when a peer specialist completes a direct handoff — defined as a confirmed appointment and direct contact between the patient and the receiving provider — compared to standard referral with educational materials. The mechanism is straightforward: the peer's presence reduces the activation energy required to take the next step. The moment of willingness is real, it is fragile, and it is brief. The warm handoff honors that moment by collapsing the time between willingness and action.",
+    "What Live Now Recovery volunteers actually do is simpler than most people expect. You show up. You sit with someone — in the ER waiting room, in a parking lot, at a kitchen table — while they are in that window of willingness. You have your phone open to the Live Now Recovery map so you know which providers are available right now, in real time. If there is transportation needed, you drive. If there is an intake form that is confusing, you help fill it out. You stay until intake is done, or until a staff member at the clinic has met the person and taken over. You don't need clinical training. You need reliability, empathy, and a phone with the app open.",
+    "The founder of Live Now Recovery knows this from the inside. There was a moment — a specific night, a specific window of a few hours — where the difference between continuing down a path toward a likely fatal outcome and beginning a different life was the presence of two or three people who showed up and stayed. The medication — buprenorphine, the 72-hour bridge that got through the first days without withdrawal — addressed the physical reality. The people addressed the everything else. The platform exists because that combination, at the right moment, works. And because the right moment is unpredictable, brief, and arrives without warning, the infrastructure needs to be available all the time.",
+    "Signing up as a Live Now Recovery volunteer takes five minutes. The platform tracks only what is necessary to coordinate: your general availability, your ZIP code, and the type of support you can offer. No patient data is ever stored — not the name of the person you helped, not where you drove them, not what was said. The system records an anonymous handoff count: one more person reached care. That number is what gets reported to counties, health systems, and policymakers as evidence that the model works. You remain anonymous. The person you helped remains anonymous. The outcome is real. If you are in recovery and you have the capacity to show up for someone else in that moment, this is how.",
+  ],
+};
+
+// Subheadings inserted before specified paragraph indices (0-based)
+const SUBHEADINGS: Record<string, Record<number, string>> = {
+  "mat-access-ohio": {
+    1: "The Access Gap in Numbers",
+    3: "What Region 13 Is Doing Differently",
+  },
+  "cost-plus-drugs-suboxone": {
+    1: "The Real Cost of Suboxone",
+    3: "How to Use Cost Plus Drugs",
+  },
+  "peer-recovery-proof-of-presence": {
+    1: "How the PoP System Works",
+    3: "Early Results from the Field",
+  },
+  "buprenorphine-vs-methadone": {
+    1: "Understanding Methadone",
+    3: "What the Evidence Actually Says",
+  },
+  "naloxone-access-ohio": {
+    1: "Where the Gaps Are",
+    3: "Why Carrying Naloxone Saves Lives",
+  },
+  "stigma-killing-people": {
+    1: "How Stigma Gets Institutionalized",
+    3: "What Actually Changes the Narrative",
+  },
+  "fentanyl-third-wave": {
+    1: "The Second Wave: From Pills to Heroin",
+    3: "What Fentanyl Changes About MAT",
+  },
+  "warm-handoff-saves-lives": {
+    1: "Why Phone Referrals Fail",
+    3: "How Live Now Recovery Supports the Handoff",
+  },
+  "recovery-housing-ohio": {
+    1: "What Housing Options Look Like in NE Ohio",
+    3: "Why Housing and MAT Are Inseparable",
+  },
+  "samhsa-guidelines-mat": {
+    1: "What SAMHSA's Guidelines Actually Say",
+    3: "What This Means for Ohio Patients",
+  },
+  "anonymous-technology-privacy": {
+    1: "How the Platform Is Built",
+    3: "Zero-PHI Means More Than Compliance",
+  },
+  "economics-of-addiction": {
+    1: "The Information Gap Problem",
+    3: "The Broader Economic Case",
+  },
+  "peer-support-specialists": {
+    1: "What the Research Shows",
+    3: "How Live Now Recovery Was Built Around Peer Specialists",
+  },
+  "er-72-hour-bridge": {
+    1: "What It Means in Practice",
+    3: "After the Bridge: The Warm Handoff",
+  },
+  "volunteer-warm-handoff": {
+    1: "What the Research Shows",
+    3: "A Founder's Firsthand Account",
+  },
 };
 
 export function BlogPostPage() {
@@ -90,6 +168,7 @@ export function BlogPostPage() {
   const slug = params.slug ?? "";
   const post = BLOG_POSTS.find((p) => p.slug === slug);
   const content = FULL_CONTENT[slug] ?? [];
+  const subheadings = SUBHEADINGS[slug] ?? {};
 
   if (!post) {
     return (
@@ -141,13 +220,17 @@ export function BlogPostPage() {
               {post.excerpt}
             </p>
           ) : (
-            content.map((para) => (
-              <p
-                key={para.slice(0, 40)}
-                className="text-muted-foreground leading-relaxed mb-5 text-base"
-              >
-                {para}
-              </p>
+            content.map((para, index) => (
+              <div key={para.slice(0, 40)}>
+                {subheadings[index] && (
+                  <h2 className="text-xl font-bold text-foreground mt-8 mb-3">
+                    {subheadings[index]}
+                  </h2>
+                )}
+                <p className="text-muted-foreground leading-relaxed mb-5 text-base">
+                  {para}
+                </p>
+              </div>
             ))
           )}
         </div>

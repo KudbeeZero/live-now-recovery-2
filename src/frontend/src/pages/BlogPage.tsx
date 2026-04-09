@@ -110,6 +110,23 @@ export const BLOG_POSTS = [
     date: "October 15, 2025",
     category: "Peer Recovery",
   },
+  {
+    slug: "er-72-hour-bridge",
+    title: "The 72-Hour Bridge: What Ohio ERs Can Do Right Now",
+    excerpt:
+      "Federal law allows emergency physicians to prescribe buprenorphine for up to 72 hours without a DEA waiver. Here is what that means for someone in crisis tonight.",
+    date: "2025-09-15",
+    category: "Clinical",
+  },
+  {
+    slug: "volunteer-warm-handoff",
+    title:
+      "What It Means to Be a Recovery Volunteer: The Warm Handoff Explained",
+    excerpt:
+      "A warm handoff is not a referral — it is a human hand between crisis and care. Here is what volunteers actually do and why it works.",
+    date: "2025-10-01",
+    category: "Peer Recovery",
+  },
 ];
 
 export function BlogPage() {

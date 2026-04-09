@@ -1,12 +1,106 @@
 import {
   Activity,
   AlertTriangle,
+  BarChart2,
   Clock,
   DollarSign,
   MapPin,
   TrendingDown,
   Users,
 } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+// ─── Color constants ────────────────────────────────────────────────────────────
+const GREEN = "#00e676";
+const TEAL = "#00bcd4";
+const AMBER = "#ffb300";
+const NAVY_CARD = "oklch(0.13 0.03 240)";
+const NAVY_BORDER = "oklch(0.22 0.05 240)";
+const MUTED_TEXT = "oklch(0.55 0.03 220)";
+
+// ─── Chart data ─────────────────────────────────────────────────────────────────
+const OVERDOSE_DATA = [
+  { year: "2018", deaths: 4854 },
+  { year: "2019", deaths: 5072 },
+  { year: "2020", deaths: 4017 },
+  { year: "2021", deaths: 3765 },
+  { year: "2022", deaths: 3523 },
+  { year: "2023", deaths: 3301 },
+  { year: "2024", deaths: 3050 },
+];
+
+const REGION_DATA = [
+  { region: "R1", providers: 12 },
+  { region: "R2", providers: 8 },
+  { region: "R3", providers: 19 },
+  { region: "R4", providers: 6 },
+  { region: "R5", providers: 11 },
+  { region: "R6", providers: 14 },
+  { region: "R7", providers: 9 },
+  { region: "R8", providers: 7 },
+  { region: "R9", providers: 16 },
+  { region: "R10", providers: 5 },
+  { region: "R11", providers: 22 },
+  { region: "R12", providers: 13 },
+  { region: "R13", providers: 18 },
+];
+
+const COVERAGE_DATA = [
+  { label: "Business Hours", pct: 92, fill: GREEN },
+  { label: "After 5pm / Weekends", pct: 23, fill: AMBER },
+];
+
+// ─── Custom tooltip ─────────────────────────────────────────────────────────────
+function DarkTooltip({
+  active,
+  payload,
+  label,
+  formatter,
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number | string; name?: string; color?: string }>;
+  label?: string;
+  formatter?: (val: number | string) => string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      className="px-3 py-2 rounded-xl text-xs shadow-xl"
+      style={{
+        background: "oklch(0.10 0.03 240)",
+        border: `1px solid ${NAVY_BORDER}`,
+        color: "oklch(0.88 0.01 200)",
+      }}
+    >
+      {label && (
+        <p className="font-bold mb-1" style={{ color: GREEN }}>
+          {label}
+        </p>
+      )}
+      {payload.map((entry) => (
+        <p
+          key={`${entry.name ?? ""}-${entry.value}`}
+          style={{ color: entry.color ?? "oklch(0.88 0.01 200)" }}
+        >
+          {entry.name ? `${entry.name}: ` : ""}
+          {formatter ? formatter(entry.value) : entry.value}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 const STATS = [
   {
@@ -97,6 +191,7 @@ export function OhioStatsPage() {
       </section>
 
       <div className="max-w-5xl mx-auto px-4 py-12">
+        {/* ── Stat cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-14">
           {STATS.map(({ icon: Icon, value, label, note, color, bg }) => (
             <div
@@ -115,6 +210,281 @@ export function OhioStatsPage() {
           ))}
         </div>
 
+        {/* ── Recovery Data Charts ── */}
+        <div className="mb-14">
+          <div className="mb-6">
+            <p className="text-xs font-bold uppercase tracking-widest text-live-green mb-1">
+              By the numbers
+            </p>
+            <h2 className="text-2xl font-bold text-white">Recovery Data</h2>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            {/* Chart 1 — Overdose deaths by year */}
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{
+                background: NAVY_CARD,
+                border: `1px solid ${NAVY_BORDER}`,
+              }}
+              data-ocid="ohio_stats.overdose_chart"
+            >
+              <div
+                className="px-6 py-4 flex items-center gap-2"
+                style={{ borderBottom: `1px solid ${NAVY_BORDER}` }}
+              >
+                <TrendingDown className="w-4 h-4" style={{ color: GREEN }} />
+                <h3
+                  className="font-bold text-sm"
+                  style={{ color: "oklch(0.92 0.01 200)" }}
+                >
+                  Ohio Overdose Deaths: The Impact of MAT Access
+                </h3>
+              </div>
+              <div className="p-6">
+                <ResponsiveContainer width="100%" height={240}>
+                  <AreaChart
+                    data={OVERDOSE_DATA}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="greenGrad"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop offset="5%" stopColor={GREEN} stopOpacity={0.3} />
+                        <stop
+                          offset="95%"
+                          stopColor={GREEN}
+                          stopOpacity={0.02}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={NAVY_BORDER}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="year"
+                      tick={{ fill: MUTED_TEXT, fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: MUTED_TEXT, fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v: number) => v.toLocaleString()}
+                      width={52}
+                    />
+                    <Tooltip
+                      content={
+                        <DarkTooltip
+                          formatter={(v) =>
+                            `${Number(v).toLocaleString()} deaths`
+                          }
+                        />
+                      }
+                    />
+                    <ReferenceLine
+                      x="2020"
+                      stroke={TEAL}
+                      strokeDasharray="4 3"
+                      label={{
+                        value: "MAT Access Expanded",
+                        position: "insideTopRight",
+                        fill: TEAL,
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="deaths"
+                      stroke={GREEN}
+                      strokeWidth={2.5}
+                      fill="url(#greenGrad)"
+                      dot={{ fill: GREEN, r: 3, strokeWidth: 0 }}
+                      activeDot={{ fill: GREEN, r: 5, strokeWidth: 0 }}
+                      name="Overdose Deaths"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+                <p className="text-xs mt-2" style={{ color: MUTED_TEXT }}>
+                  Source: Ohio Department of Health / CDC WONDER. Figures are
+                  estimated.
+                </p>
+              </div>
+            </div>
+
+            {/* Chart 2 — Providers by ADAMH Region */}
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{
+                background: NAVY_CARD,
+                border: `1px solid ${NAVY_BORDER}`,
+              }}
+              data-ocid="ohio_stats.region_chart"
+            >
+              <div
+                className="px-6 py-4 flex items-center gap-2"
+                style={{ borderBottom: `1px solid ${NAVY_BORDER}` }}
+              >
+                <BarChart2 className="w-4 h-4" style={{ color: TEAL }} />
+                <h3
+                  className="font-bold text-sm"
+                  style={{ color: "oklch(0.92 0.01 200)" }}
+                >
+                  MAT Providers by Ohio ADAMH Region
+                </h3>
+              </div>
+              <div className="p-6">
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart
+                    data={REGION_DATA}
+                    margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={NAVY_BORDER}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="region"
+                      tick={{ fill: MUTED_TEXT, fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: MUTED_TEXT, fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={30}
+                    />
+                    <Tooltip
+                      content={
+                        <DarkTooltip formatter={(v) => `${v} providers`} />
+                      }
+                    />
+                    <Bar
+                      dataKey="providers"
+                      name="MAT Providers"
+                      radius={[4, 4, 0, 0]}
+                    >
+                      {REGION_DATA.map((entry) => (
+                        <Cell
+                          key={entry.region}
+                          fill={entry.region === "R13" ? GREEN : TEAL}
+                          opacity={entry.region === "R13" ? 1 : 0.75}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="text-xs mt-2" style={{ color: MUTED_TEXT }}>
+                  Region 13 (Northeast Ohio) highlighted — pilot region for Live
+                  Now Recovery.
+                </p>
+              </div>
+            </div>
+
+            {/* Chart 3 — After-hours coverage gap */}
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{
+                background: NAVY_CARD,
+                border: `1px solid ${NAVY_BORDER}`,
+              }}
+              data-ocid="ohio_stats.coverage_chart"
+            >
+              <div
+                className="px-6 py-4 flex items-center gap-2"
+                style={{ borderBottom: `1px solid ${NAVY_BORDER}` }}
+              >
+                <Clock className="w-4 h-4" style={{ color: AMBER }} />
+                <h3
+                  className="font-bold text-sm"
+                  style={{ color: "oklch(0.92 0.01 200)" }}
+                >
+                  MAT Access Gap: Business Hours vs. After Hours
+                </h3>
+              </div>
+              <div className="p-6">
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart
+                    data={COVERAGE_DATA}
+                    layout="vertical"
+                    margin={{ top: 5, right: 60, left: 10, bottom: 5 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={NAVY_BORDER}
+                      horizontal={false}
+                    />
+                    <XAxis
+                      type="number"
+                      domain={[0, 100]}
+                      tick={{ fill: MUTED_TEXT, fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v: number) => `${v}%`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="label"
+                      tick={{ fill: MUTED_TEXT, fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={130}
+                    />
+                    <Tooltip
+                      content={
+                        <DarkTooltip formatter={(v) => `${v}% covered`} />
+                      }
+                    />
+                    <Bar
+                      dataKey="pct"
+                      name="Coverage"
+                      radius={[0, 4, 4, 0]}
+                      barSize={32}
+                    >
+                      {COVERAGE_DATA.map((entry) => (
+                        <Cell key={entry.label} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <div
+                  className="mt-4 flex items-center gap-2 rounded-lg px-4 py-3"
+                  style={{
+                    background: `${GREEN}12`,
+                    border: `1px solid ${GREEN}30`,
+                  }}
+                >
+                  <Activity
+                    className="w-4 h-4 shrink-0"
+                    style={{ color: GREEN }}
+                  />
+                  <p className="text-xs font-semibold" style={{ color: GREEN }}>
+                    69% coverage gap addressed by Live Now Recovery's 24/7
+                    after-hours platform
+                  </p>
+                </div>
+                <p className="text-xs mt-3" style={{ color: MUTED_TEXT }}>
+                  Estimates based on Ohio MHAR provider survey data. After-hours
+                  coverage includes ER 72-hour bridge, telehealth MAT, and
+                  naloxone kiosk access.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── After-hours gap callout ── */}
         <div className="rounded-xl border border-amber-recovery/40 bg-amber-recovery/5 p-6 mb-10">
           <div className="flex items-start gap-3">
             <Clock className="w-6 h-6 text-amber-recovery mt-0.5 shrink-0" />
@@ -139,6 +509,7 @@ export function OhioStatsPage() {
           </div>
         </div>
 
+        {/* ── Impact projection ── */}
         <div className="rounded-xl border border-live-green/30 bg-live-green/5 p-6 mb-14">
           <h3 className="font-bold text-live-green text-lg mb-3">
             Impact Projection
@@ -183,6 +554,7 @@ export function OhioStatsPage() {
           </div>
         </div>
 
+        {/* ── Region 13 coverage area ── */}
         <section>
           <div className="flex items-center gap-2 mb-5">
             <MapPin className="w-5 h-5 text-primary" />

@@ -8,6 +8,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { EmergencyBanner } from "./components/EmergencyBanner";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
@@ -17,6 +18,7 @@ import { AdminPage } from "./pages/AdminPage";
 import { BlogPage } from "./pages/BlogPage";
 import { BlogPostPage } from "./pages/BlogPostPage";
 import { ContactPage } from "./pages/ContactPage";
+import { CookiesPage } from "./pages/CookiesPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { FAQPage } from "./pages/FAQPage";
 import { FounderPage } from "./pages/FounderPage";
@@ -27,11 +29,13 @@ import { IntegrationPage } from "./pages/IntegrationPage";
 import { LocationPage } from "./pages/LocationPage";
 import { MissionPage } from "./pages/MissionPage";
 import { OhioStatsPage } from "./pages/OhioStatsPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
 import { ProviderPage } from "./pages/ProviderPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import { SignupPage } from "./pages/SignupPage";
 import { SitemapPage } from "./pages/SitemapPage";
+import { TermsPage } from "./pages/TermsPage";
 import { VerifyPage } from "./pages/VerifyPage";
 
 function ScrollToTop() {
@@ -56,6 +60,7 @@ function RootLayout() {
       <Footer />
       <Toaster richColors position="top-right" />
       <SentinelChat />
+      <CookieConsentBanner />
     </div>
   );
 }
@@ -162,6 +167,21 @@ const integrationRoute = createRoute({
   path: "/integration",
   component: IntegrationPage,
 });
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/privacy",
+  component: PrivacyPage,
+});
+const termsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/terms",
+  component: TermsPage,
+});
+const cookiesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/cookies",
+  component: CookiesPage,
+});
 
 // Direct SEO city routes
 const clevelandRoute = createRoute({
@@ -266,6 +286,9 @@ const routeTree = rootRoute.addChildren([
   howItWorksRoute,
   ohioStatsRoute,
   integrationRoute,
+  privacyRoute,
+  termsRoute,
+  cookiesRoute,
   clevelandRoute,
   lakewoodRoute,
   parmaRoute,
