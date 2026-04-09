@@ -11,7 +11,11 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  DollarSign,
+  Heart,
+  Info,
   MapPin,
+  Pill,
   Radio,
   Search,
   Server,
@@ -119,6 +123,38 @@ export function HomePage() {
   const [showWeather, setShowWeather] = useState(false);
   const [showAllCities, setShowAllCities] = useState(false);
   const [adminDrawerOpen, setAdminDrawerOpen] = useState(false);
+
+  // Volunteer count animation (0 → 47)
+  const [volunteerCount, setVolunteerCount] = useState(0);
+  useEffect(() => {
+    const target = 47;
+    const duration = 1500;
+    const startTime = performance.now();
+    let rafId: number;
+    let timerId: ReturnType<typeof setTimeout>;
+    function tick(now: number) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out: quadratic
+      const eased = 1 - (1 - progress) ** 2;
+      setVolunteerCount(Math.round(eased * target));
+      if (progress < 1) {
+        timerId = setTimeout(() => {
+          rafId = requestAnimationFrame(tick);
+        }, 16);
+      }
+    }
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      clearTimeout(timerId);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  // Provider card expanded tabs
+  type CardTab = "meds" | "services" | "cost" | "insurance";
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [cardTab, setCardTab] = useState<Record<string, CardTab>>({});
 
   // Provider self-service toggle state
   const [selfLiveState, setSelfLiveState] = useState<{
@@ -309,7 +345,7 @@ export function HomePage() {
                 placeholder="Search by name, city, or type…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-14 pl-10 pr-4 rounded-xl shadow-lg bg-white text-gray-900 placeholder-gray-500 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full h-14 pl-10 pr-4 rounded-xl shadow-lg bg-background text-foreground placeholder:text-muted-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
                 data-ocid="home.search_input"
               />
             </div>
@@ -408,7 +444,7 @@ export function HomePage() {
                   textShadow: "0 0 18px oklch(0.82 0.18 145 / 0.45)",
                 }}
               >
-                47
+                {volunteerCount}
               </span>
               <span
                 className="text-[10px] sm:text-xs font-medium mt-1 text-center leading-tight"
@@ -493,6 +529,76 @@ export function HomePage() {
               </span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── Peer Support Video CTA Banner ── */}
+      <section
+        className="w-full px-4 py-5"
+        style={{
+          background:
+            "linear-gradient(90deg, oklch(0.17 0.032 225) 0%, oklch(0.20 0.040 196) 100%)",
+          borderBottom: "1px solid oklch(0.26 0.045 196 / 0.5)",
+        }}
+        data-ocid="home.section"
+      >
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{
+                background: "oklch(0.72 0.20 142 / 0.15)",
+                border: "1px solid oklch(0.72 0.20 142 / 0.35)",
+              }}
+            >
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="oklch(0.72 0.20 142)"
+                  strokeWidth="1.5"
+                />
+                <polygon
+                  points="10,8 16,12 10,16"
+                  fill="oklch(0.72 0.20 142)"
+                />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p
+                className="font-bold text-sm leading-snug"
+                style={{ color: "oklch(0.92 0.02 200)" }}
+              >
+                Real Stories of Recovery
+              </p>
+              <p
+                className="text-xs leading-snug mt-0.5 line-clamp-1"
+                style={{ color: "oklch(0.58 0.04 220)" }}
+              >
+                Hear from people in recovery, MAT providers, and community
+                advocates — real stories that make the path forward visible.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/videos"
+            className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            style={{
+              background: "oklch(0.72 0.20 142 / 0.18)",
+              border: "1px solid oklch(0.72 0.20 142 / 0.45)",
+              color: "oklch(0.82 0.18 142)",
+            }}
+            data-ocid="home.videos_cta"
+          >
+            Watch Videos
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </section>
 
@@ -666,47 +772,295 @@ export function HomePage() {
                   {filtered.map((provider, idx) => {
                     const info = providerStatusInfo(provider);
                     const emergencyStatus = emergencyStatuses[provider.id];
+                    const pType = (
+                      (provider as unknown as { providerType?: string })
+                        .providerType ?? ""
+                    ).toLowerCase();
+                    const isExpanded = expandedCard === provider.id;
+                    const activeTab = cardTab[provider.id] ?? "meds";
+
+                    // Derive data from provider type
+                    const medsMap: Record<string, string[]> = {
+                      "mat clinic": [
+                        "Buprenorphine-Naloxone",
+                        "Methadone",
+                        "Naltrexone",
+                        "Vivitrol",
+                      ],
+                      "narcan distribution": [
+                        "Naloxone (Narcan)",
+                        "NEXT naloxone",
+                      ],
+                      "emergency room": ["Naloxone", "Buprenorphine (bridge)"],
+                      "naloxone kiosk": [
+                        "Naloxone (free)",
+                        "Fentanyl test strips",
+                      ],
+                      "telehealth mat": [
+                        "Buprenorphine-Naloxone",
+                        "Naltrexone",
+                        "Suboxone",
+                      ],
+                    };
+                    const servicesMap: Record<string, string[]> = {
+                      "mat clinic": [
+                        "Individual counseling",
+                        "Group therapy",
+                        "Case management",
+                        "Peer support",
+                      ],
+                      "narcan distribution": [
+                        "Free Narcan kits",
+                        "Training",
+                        "Referrals",
+                      ],
+                      "emergency room": [
+                        "Crisis stabilization",
+                        "Bridge prescription",
+                        "Warm handoff",
+                      ],
+                      "naloxone kiosk": [
+                        "24/7 access",
+                        "Anonymous pickup",
+                        "No ID required",
+                      ],
+                      "telehealth mat": [
+                        "Video visits",
+                        "e-Prescribing",
+                        "Remote monitoring",
+                      ],
+                    };
+                    const costMap: Record<string, string[]> = {
+                      "mat clinic": [
+                        "Buprenorphine via CostPlusDrugs: ~$20/mo",
+                        "Sliding-scale fees available",
+                        "Medicaid accepted",
+                      ],
+                      "narcan distribution": ["Free Narcan — no cost"],
+                      "emergency room": [
+                        "Covered under emergency Medicaid",
+                        "Bridge scripts billed to insurance",
+                      ],
+                      "naloxone kiosk": ["Naloxone: FREE (grant-funded)"],
+                      "telehealth mat": [
+                        "~$50–$100/visit without insurance",
+                        "Most major insurance accepted",
+                      ],
+                    };
+                    const insuranceMap: Record<string, string[]> = {
+                      "mat clinic": [
+                        "Medicaid",
+                        "Medicare",
+                        "BCBS",
+                        "Aetna",
+                        "Anthem",
+                        "Uninsured welcome",
+                      ],
+                      "narcan distribution": ["No insurance needed"],
+                      "emergency room": ["All insurance", "Uninsured", "CHIP"],
+                      "naloxone kiosk": ["No insurance needed — free"],
+                      "telehealth mat": [
+                        "Medicaid",
+                        "BCBS",
+                        "Aetna",
+                        "Out-of-pocket",
+                      ],
+                    };
+
+                    const meds = medsMap[pType] ?? ["Contact for details"];
+                    const services = servicesMap[pType] ?? [
+                      "Contact for details",
+                    ];
+                    const costs = costMap[pType] ?? ["Contact for details"];
+                    const insurances = insuranceMap[pType] ?? [
+                      "Contact provider",
+                    ];
+
+                    const TABS: {
+                      key: CardTab;
+                      label: string;
+                      icon: React.ReactNode;
+                      color: string;
+                    }[] = [
+                      {
+                        key: "meds",
+                        label: "Meds",
+                        icon: <Pill className="w-3 h-3" />,
+                        color: "#818cf8",
+                      },
+                      {
+                        key: "services",
+                        label: "Services",
+                        icon: <Heart className="w-3 h-3" />,
+                        color: "#6ee7d0",
+                      },
+                      {
+                        key: "cost",
+                        label: "Cost",
+                        icon: <DollarSign className="w-3 h-3" />,
+                        color: "#00ff88",
+                      },
+                      {
+                        key: "insurance",
+                        label: "Insurance",
+                        icon: <Shield className="w-3 h-3" />,
+                        color: "#fbbf24",
+                      },
+                    ];
+
+                    const tabContent: Record<CardTab, string[]> = {
+                      meds,
+                      services,
+                      cost: costs,
+                      insurance: insurances,
+                    };
+
                     return (
-                      <Link
+                      <div
                         key={provider.id}
-                        to="/provider/$id"
-                        params={{ id: provider.id }}
-                        className="block hover:-translate-y-0.5 transition-all duration-150"
+                        className="bg-card rounded-xl shadow-card border border-border transition-colors hover:border-primary/40"
                         data-ocid={`home.item.${idx + 1}`}
                       >
-                        <div className="group bg-card rounded-xl p-4 shadow-card border border-border hover:border-primary/40 transition-colors">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <span
-                                  className={`w-2 h-2 rounded-full shrink-0 ${info.dotClass}`}
-                                />
-                                <span
-                                  className={`text-xs font-bold ${info.textClass}`}
-                                >
-                                  {info.label}
+                        {/* Card header — click to expand or navigate */}
+                        <div className="flex items-start gap-2 p-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span
+                                className={`w-2 h-2 rounded-full shrink-0 ${info.dotClass}`}
+                              />
+                              <span
+                                className={`text-xs font-bold ${info.textClass}`}
+                              >
+                                {info.label}
+                              </span>
+                              {emergencyStatus === "open_bed" && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                  <BedDouble className="w-3 h-3" /> OPEN BED
                                 </span>
-                                {emergencyStatus === "open_bed" && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                    <BedDouble className="w-3 h-3" /> OPEN BED
-                                  </span>
-                                )}
-                                {emergencyStatus === "72hr_bridge" && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                                    <Clock className="w-3 h-3" /> 72HR BRIDGE
-                                  </span>
-                                )}
-                              </div>
-                              <p className="font-semibold text-sm text-foreground leading-snug truncate">
-                                {provider.name}
+                              )}
+                              {emergencyStatus === "72hr_bridge" && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                  <Clock className="w-3 h-3" /> 72HR BRIDGE
+                                </span>
+                              )}
+                            </div>
+                            <p className="font-semibold text-sm text-foreground leading-snug truncate">
+                              {provider.name}
+                            </p>
+                            {pType && (
+                              <p
+                                className="text-[10px] mt-0.5 capitalize"
+                                style={{ color: "oklch(0.60 0.08 185)" }}
+                              >
+                                {pType}
                               </p>
-                            </div>
-                            <div className="bg-primary rounded-lg p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* Expand/info button */}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedCard(isExpanded ? null : provider.id)
+                              }
+                              className="rounded-lg p-2 min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors"
+                              style={{
+                                background: isExpanded
+                                  ? "oklch(0.72 0.20 142 / 0.15)"
+                                  : "oklch(0.25 0.04 225 / 0.6)",
+                                color: isExpanded
+                                  ? "oklch(0.80 0.20 142)"
+                                  : "oklch(0.55 0.04 220)",
+                              }}
+                              aria-label={
+                                isExpanded ? "Collapse details" : "Show details"
+                              }
+                              data-ocid={`home.info_button.${idx + 1}`}
+                            >
+                              <Info className="w-3.5 h-3.5" />
+                            </button>
+                            {/* View profile */}
+                            <Link
+                              to="/provider/$id"
+                              params={{ id: provider.id }}
+                              className="bg-primary rounded-lg p-2.5 min-h-[36px] min-w-[36px] flex items-center justify-center hover:-translate-y-0.5 transition-all duration-150"
+                              aria-label={`View ${provider.name}`}
+                            >
                               <ArrowRight className="w-4 h-4 text-white" />
-                            </div>
+                            </Link>
                           </div>
                         </div>
-                      </Link>
+
+                        {/* Expandable tab panel */}
+                        {isExpanded && (
+                          <div
+                            style={{
+                              borderTop: "1px solid oklch(0.24 0.04 225 / 0.5)",
+                            }}
+                          >
+                            {/* Tab bar */}
+                            <div
+                              className="flex gap-1 px-3 pt-2"
+                              role="tablist"
+                            >
+                              {TABS.map((t) => (
+                                <button
+                                  key={t.key}
+                                  type="button"
+                                  role="tab"
+                                  aria-selected={activeTab === t.key}
+                                  onClick={() =>
+                                    setCardTab((prev) => ({
+                                      ...prev,
+                                      [provider.id]: t.key,
+                                    }))
+                                  }
+                                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all duration-150"
+                                  style={{
+                                    background:
+                                      activeTab === t.key
+                                        ? `${t.color}20`
+                                        : "transparent",
+                                    color:
+                                      activeTab === t.key
+                                        ? t.color
+                                        : "oklch(0.50 0.03 220)",
+                                    borderBottom:
+                                      activeTab === t.key
+                                        ? `2px solid ${t.color}`
+                                        : "2px solid transparent",
+                                  }}
+                                >
+                                  {t.icon}
+                                  {t.label}
+                                </button>
+                              ))}
+                            </div>
+                            {/* Tab content */}
+                            <div className="px-4 py-3">
+                              <ul className="space-y-1">
+                                {tabContent[activeTab].map((item) => (
+                                  <li
+                                    key={item}
+                                    className="flex items-start gap-2 text-xs"
+                                    style={{ color: "oklch(0.78 0.04 210)" }}
+                                  >
+                                    <span
+                                      className="mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full"
+                                      style={{
+                                        background:
+                                          TABS.find((t) => t.key === activeTab)
+                                            ?.color ?? "#6ee7d0",
+                                      }}
+                                    />
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -1412,17 +1766,49 @@ export function HomePage() {
                 Find Providers by City
               </h2>
               <div className="flex flex-wrap gap-3 justify-center">
-                {visibleCities.map(([city, path]) => (
-                  <Button
-                    key={path}
-                    asChild
-                    variant="outline"
-                    className="min-h-[44px] transition-all border-primary/40 text-primary hover:bg-primary/10 hover:scale-105"
-                    data-ocid="home.button"
-                  >
-                    <Link to={path}>{city}</Link>
-                  </Button>
-                ))}
+                {visibleCities.map(([city, path]) => {
+                  const cityLower = city.toLowerCase();
+                  const count = providers.filter((p) => {
+                    const nameLower = p.name.toLowerCase();
+                    if (nameLower.includes(cityLower)) return true;
+                    // Also check address field if available
+                    const addr = (
+                      (p as unknown as { address?: string }).address ?? ""
+                    ).toLowerCase();
+                    return addr.includes(cityLower);
+                  }).length;
+                  return (
+                    <Link
+                      key={path}
+                      to={path}
+                      className="relative inline-flex items-center min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 hover:scale-105 border"
+                      style={{
+                        borderColor: "oklch(0.72 0.20 142 / 0.35)",
+                        color: "oklch(0.72 0.20 142)",
+                        background: "oklch(0.72 0.20 142 / 0.06)",
+                      }}
+                      data-ocid="home.button"
+                    >
+                      {city}
+                      <span
+                        className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={
+                          count > 0
+                            ? {
+                                background: "oklch(0.72 0.20 142 / 0.20)",
+                                color: "oklch(0.80 0.20 142)",
+                              }
+                            : {
+                                background: "oklch(0.35 0.02 220 / 0.6)",
+                                color: "oklch(0.55 0.03 220)",
+                              }
+                        }
+                      >
+                        {count}
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
               <div className="flex justify-center mt-5">
                 <Button

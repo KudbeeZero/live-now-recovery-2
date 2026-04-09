@@ -86,6 +86,12 @@ export default {
         emergency: "oklch(var(--destructive) / <alpha-value>)",
         "trust-blue": "oklch(var(--primary) / <alpha-value>)",
         "live-green": "oklch(var(--live) / <alpha-value>)",
+        // Sentinel Risk Intelligence heat gradient
+        "risk-safe": "oklch(var(--risk-safe))",
+        "risk-low": "oklch(var(--risk-low))",
+        "risk-moderate": "oklch(var(--risk-moderate))",
+        "risk-high": "oklch(var(--risk-high))",
+        "risk-critical": "oklch(var(--risk-critical))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -114,6 +120,18 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.4" },
         },
+        slideInLeft: {
+          from: { opacity: "0", transform: "translateX(-24px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        slideOutLeft: {
+          from: { opacity: "1", transform: "translateX(0)" },
+          to: { opacity: "0", transform: "translateX(-24px)" },
+        },
+        gaussianPulse: {
+          "0%, 100%": { opacity: "0.3" },
+          "50%": { opacity: "0.8" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -121,6 +139,9 @@ export default {
         "shadow-pulse-calm": "shadowPulse 4s ease-in-out infinite",
         "shadow-pulse-rush": "shadowPulse 0.8s ease-in-out infinite",
         "pulse-slow": "pulse-slow 2s ease-in-out infinite",
+        "slide-in-left": "slideInLeft 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "slide-out-left": "slideOutLeft 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        "gaussian-pulse": "gaussianPulse 2s ease-in-out infinite",
       },
     },
   },

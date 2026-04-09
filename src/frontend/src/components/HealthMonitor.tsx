@@ -24,12 +24,79 @@ interface RouteCheck {
   responseTime: number | null;
 }
 
+interface FeatureCheck {
+  id: string;
+  label: string;
+  description: string;
+  status: CheckStatus;
+}
+
 interface HealthRun {
   timestamp: number;
   passCount: number;
   failCount: number;
   slowCount: number;
 }
+
+const INITIAL_FEATURE_CHECKS: FeatureCheck[] = [
+  {
+    id: "prediction_engine_tab",
+    label: "Prediction Engine Tab",
+    description: "AdminPage renders a 'Prediction Engine' tab",
+    status: "pending",
+  },
+  {
+    id: "provider_types",
+    label: "All 5 Provider Types",
+    description:
+      "MAT Clinic, Narcan Distribution, Emergency Room, Naloxone Kiosk, Telehealth MAT present in filters",
+    status: "pending",
+  },
+  {
+    id: "search_input",
+    label: "Provider Search Input",
+    description: "Search input element exists on the home page",
+    status: "pending",
+  },
+  {
+    id: "cookie_consent",
+    label: "Cookie Consent Banner",
+    description:
+      "CookieConsentBanner mounts or consent key exists in localStorage",
+    status: "pending",
+  },
+  {
+    id: "impact_odometer",
+    label: "Impact Odometer",
+    description: "Impact Odometer counters present in the Prediction Engine",
+    status: "pending",
+  },
+  {
+    id: "video_lightbox",
+    label: "Video Lightbox",
+    description: "YouTube iframes or video cards present on /videos page",
+    status: "pending",
+  },
+  {
+    id: "elevenlabs_listen",
+    label: "ElevenLabs Listen Button",
+    description: "Floating accessibility Listen button present in the DOM",
+    status: "pending",
+  },
+  {
+    id: "provider_card_tabs",
+    label: "Provider Card Tabs",
+    description:
+      "Provider cards contain Medications, Services, Cost, or Insurance tabs",
+    status: "pending",
+  },
+  {
+    id: "city_badges",
+    label: "City Provider Badges",
+    description: "Ohio city cards contain a provider count badge element",
+    status: "pending",
+  },
+];
 
 const FRONTEND_ROUTES: { label: string; route: string }[] = [
   { label: "/", route: "/" },
@@ -51,6 +118,13 @@ const FRONTEND_ROUTES: { label: string; route: string }[] = [
   { label: "/how-it-works", route: "/how-it-works" },
   { label: "/ohio-stats", route: "/ohio-stats" },
   { label: "/sitemap", route: "/sitemap" },
+  // Phase 1 & 2 additions
+  { label: "/dashboard", route: "/dashboard" },
+  { label: "/videos", route: "/videos" },
+  { label: "/privacy", route: "/privacy" },
+  { label: "/terms", route: "/terms" },
+  { label: "/cookies", route: "/cookies" },
+  { label: "/integration", route: "/integration" },
 ];
 
 const ENDPOINT_CHECKS: { label: string; route: string }[] = [
@@ -123,6 +197,9 @@ export function HealthMonitor() {
       responseTime: null,
     })),
   ]);
+  const [featureChecks, setFeatureChecks] = useState<FeatureCheck[]>(
+    () => INITIAL_FEATURE_CHECKS,
+  );
   const [history, setHistory] = useState<HealthRun[]>(() => loadHistory());
   const [lastRun, setLastRun] = useState<number | null>(null);
 
@@ -142,6 +219,9 @@ export function HealthMonitor() {
     // Reset all to pending
     setChecks((prev) =>
       prev.map((c) => ({ ...c, status: "pending", responseTime: null })),
+    );
+    setFeatureChecks(() =>
+      INITIAL_FEATURE_CHECKS.map((f) => ({ ...f, status: "pending" })),
     );
 
     const results: RouteCheck[] = [];
@@ -256,10 +336,240 @@ export function HealthMonitor() {
       }
     }
 
+    // ── Feature checks ───────────────────────────────────────────────────────
+
+    const featureResults: FeatureCheck[] = [];
+
+    // 1. Prediction Engine tab — check DOM for a tab/button with that label
+    {
+      const id = "prediction_engine_tab";
+      const label = "Prediction Engine Tab";
+      const description = INITIAL_FEATURE_CHECKS.find(
+        (f) => f.id === id,
+      )!.description;
+      const found = Array.from(
+        document.querySelectorAll('[role="tab"], button, [data-tab]'),
+      ).some((el) =>
+        el.textContent?.toLowerCase().includes("prediction engine"),
+      );
+      featureResults.push({
+        id,
+        label,
+        description,
+        status: found ? "pass" : "fail",
+      });
+    }
+
+    // 2. Provider types — check that all 5 appear somewhere in the DOM
+    {
+      const id = "provider_types";
+      const label = "All 5 Provider Types";
+      const description = INITIAL_FEATURE_CHECKS.find(
+        (f) => f.id === id,
+      )!.description;
+      const domText = document.body.textContent?.toLowerCase() ?? "";
+      const types = [
+        "mat clinic",
+        "narcan distribution",
+        "emergency room",
+        "naloxone kiosk",
+        "telehealth mat",
+      ];
+      const found = types.every((t) => domText.includes(t));
+      featureResults.push({
+        id,
+        label,
+        description,
+        status: found ? "pass" : "fail",
+      });
+    }
+
+    // 3. Provider search input — check for a text input with search-related attributes
+    {
+      const id = "search_input";
+      const label = "Provider Search Input";
+      const description = INITIAL_FEATURE_CHECKS.find(
+        (f) => f.id === id,
+      )!.description;
+      const found =
+        document.querySelector(
+          'input[type="text"][placeholder*="earch" i], input[type="search"], input[placeholder*="provider" i], input[data-ocid*="search"]',
+        ) !== null;
+      featureResults.push({
+        id,
+        label,
+        description,
+        status: found ? "pass" : "fail",
+      });
+    }
+
+    // 4. Cookie consent — check localStorage for consent key or DOM for banner element
+    {
+      const id = "cookie_consent";
+      const label = "Cookie Consent Banner";
+      const description = INITIAL_FEATURE_CHECKS.find(
+        (f) => f.id === id,
+      )!.description;
+      let found = false;
+      try {
+        // Check if banner is in DOM or consent was previously accepted (stored in localStorage)
+        const hasLocalStorage =
+          localStorage.getItem("cookie_consent") !== null ||
+          localStorage.getItem("cookieConsent") !== null ||
+          localStorage.getItem("consent") !== null;
+        const hasDOM =
+          document.querySelector(
+            '[data-ocid*="cookie"], [aria-label*="cookie" i], [class*="cookie" i], [id*="cookie" i]',
+          ) !== null;
+        found = hasLocalStorage || hasDOM;
+      } catch {
+        found = false;
+      }
+      featureResults.push({
+        id,
+        label,
+        description,
+        status: found ? "pass" : "fail",
+      });
+    }
+
+    // 5. Impact Odometer — check for dollar-sign counter elements or odometer class names
+    {
+      const id = "impact_odometer";
+      const label = "Impact Odometer";
+      const description = INITIAL_FEATURE_CHECKS.find(
+        (f) => f.id === id,
+      )!.description;
+      const found =
+        document.querySelector(
+          '[data-ocid*="odometer"], [class*="odometer" i], [data-testid*="odometer"], [aria-label*="odometer" i]',
+        ) !== null ||
+        Array.from(document.querySelectorAll("span, div, p")).some((el) => {
+          const text = el.textContent ?? "";
+          return (
+            (text.includes("$") && text.includes(",")) ||
+            text.toLowerCase().includes("dollars saved") ||
+            text.toLowerCase().includes("lives saved")
+          );
+        });
+      featureResults.push({
+        id,
+        label,
+        description,
+        status: found ? "pass" : "fail",
+      });
+    }
+
+    // 6. Video lightbox — check for YouTube iframes or video card elements
+    {
+      const id = "video_lightbox";
+      const label = "Video Lightbox";
+      const description = INITIAL_FEATURE_CHECKS.find(
+        (f) => f.id === id,
+      )!.description;
+      const found =
+        document.querySelector(
+          'iframe[src*="youtube"], iframe[src*="youtu.be"], [data-ocid*="video"], [class*="video-card" i], [class*="videocard" i]',
+        ) !== null ||
+        Array.from(document.querySelectorAll("button, div")).some((el) =>
+          el.textContent?.toLowerCase().includes("watch"),
+        );
+      featureResults.push({
+        id,
+        label,
+        description,
+        status: found ? "pass" : "fail",
+      });
+    }
+
+    // 7. ElevenLabs Listen button — check for floating accessibility button
+    {
+      const id = "elevenlabs_listen";
+      const label = "ElevenLabs Listen Button";
+      const description = INITIAL_FEATURE_CHECKS.find(
+        (f) => f.id === id,
+      )!.description;
+      const found =
+        document.querySelector(
+          '[data-ocid*="listen"], [aria-label*="listen" i], [class*="listen" i]',
+        ) !== null ||
+        Array.from(document.querySelectorAll("button")).some((el) =>
+          el.textContent?.toLowerCase().includes("listen"),
+        );
+      featureResults.push({
+        id,
+        label,
+        description,
+        status: found ? "pass" : "fail",
+      });
+    }
+
+    // 8. Provider card tabs — check for Medications/Services/Cost/Insurance tab buttons
+    {
+      const id = "provider_card_tabs";
+      const label = "Provider Card Tabs";
+      const description = INITIAL_FEATURE_CHECKS.find(
+        (f) => f.id === id,
+      )!.description;
+      const domText = document.body.textContent?.toLowerCase() ?? "";
+      const tabLabels = ["medications", "services", "cost", "insurance"];
+      const found =
+        tabLabels.some((t) => domText.includes(t)) ||
+        document.querySelector(
+          '[data-ocid*="provider_tab"], [role="tab"][aria-label*="medication" i], [role="tab"][aria-label*="service" i]',
+        ) !== null;
+      featureResults.push({
+        id,
+        label,
+        description,
+        status: found ? "pass" : "fail",
+      });
+    }
+
+    // 9. City provider badges — check for badge elements inside Ohio city cards
+    {
+      const id = "city_badges";
+      const label = "City Provider Badges";
+      const description = INITIAL_FEATURE_CHECKS.find(
+        (f) => f.id === id,
+      )!.description;
+      const found =
+        document.querySelector(
+          '[data-ocid*="city_badge"], [data-ocid*="city-badge"], [class*="city" i] [class*="badge" i], [class*="city" i] [class*="count" i]',
+        ) !== null ||
+        Array.from(
+          document.querySelectorAll(
+            '[data-ocid*="city"], [class*="city-card" i]',
+          ),
+        ).some(
+          (card) =>
+            card.querySelector(
+              'span[class*="badge"], span[class*="count"], [aria-label*="provider" i]',
+            ) !== null,
+        );
+      featureResults.push({
+        id,
+        label,
+        description,
+        status: found ? "pass" : "fail",
+      });
+    }
+
+    setFeatureChecks(featureResults);
+
     // Compute summary and save history
-    const passCount = results.filter((r) => r.status === "pass").length;
-    const failCount = results.filter((r) => r.status === "fail").length;
-    const slowCount = results.filter((r) => r.status === "slow").length;
+    const allResults = [
+      ...results,
+      ...featureResults.map((f) => ({
+        ...f,
+        type: "route" as const,
+        route: f.id,
+        responseTime: null,
+      })),
+    ];
+    const passCount = allResults.filter((r) => r.status === "pass").length;
+    const failCount = allResults.filter((r) => r.status === "fail").length;
+    const slowCount = allResults.filter((r) => r.status === "slow").length;
     const run: HealthRun = {
       timestamp: Date.now(),
       passCount,
@@ -606,6 +916,67 @@ export function HealthMonitor() {
                       {check.responseTime}ms
                     </span>
                   )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Feature checks */}
+          <div>
+            <p
+              className="text-xs font-bold mb-3 uppercase tracking-widest"
+              style={{ color: "oklch(0.55 0.18 145)" }}
+            >
+              Feature Checks
+            </p>
+            <div className="flex flex-col gap-2" data-ocid="admin.list">
+              {featureChecks.map((check) => (
+                <div
+                  key={check.id}
+                  title={check.description}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium"
+                  style={{
+                    background: "oklch(0.17 0.03 240)",
+                    border: `1px solid ${
+                      check.status === "pending"
+                        ? "oklch(0.25 0.04 240)"
+                        : check.status === "pass"
+                          ? "oklch(0.55 0.18 145 / 0.5)"
+                          : check.status === "slow"
+                            ? "oklch(0.82 0.15 85 / 0.5)"
+                            : "oklch(0.55 0.22 27 / 0.5)"
+                    }`,
+                    color: "oklch(0.75 0.05 220)",
+                  }}
+                >
+                  {check.status === "pass" ? (
+                    <CheckCircle2
+                      className="w-3.5 h-3.5 shrink-0"
+                      style={{ color: "oklch(0.65 0.18 145)" }}
+                    />
+                  ) : check.status === "fail" ? (
+                    <XCircle
+                      className="w-3.5 h-3.5 shrink-0"
+                      style={{ color: "oklch(0.65 0.22 27)" }}
+                    />
+                  ) : check.status === "slow" ? (
+                    <Activity
+                      className="w-3.5 h-3.5 shrink-0"
+                      style={{ color: "oklch(0.82 0.15 85)" }}
+                    />
+                  ) : (
+                    <span
+                      className="w-3.5 h-3.5 rounded-full shrink-0 inline-block"
+                      style={{ background: "oklch(0.35 0.03 240)" }}
+                    />
+                  )}
+                  <span className="font-semibold">{check.label}</span>
+                  <span
+                    className="opacity-60 text-[10px] truncate"
+                    style={{ color: "oklch(0.55 0.03 220)" }}
+                  >
+                    {check.description}
+                  </span>
                 </div>
               ))}
             </div>

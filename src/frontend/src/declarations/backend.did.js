@@ -8,6 +8,16 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const RiskEvent = IDL.Record({
+  'id' : IDL.Text,
+  'multiplier' : IDL.Float64,
+  'endDate' : IDL.Int,
+  'affectedZIPs' : IDL.Vec(IDL.Text),
+  'name' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'startDate' : IDL.Int,
+  'fileUrl' : IDL.Text,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -50,6 +60,21 @@ export const CanisterStateSummary = IDL.Record({
   'total_active_providers' : IDL.Nat,
   'high_risk_window_active' : IDL.Bool,
 });
+export const PredictionEngineState = IDL.Record({
+  'avgDailyHandoffCount' : IDL.Nat,
+  'potencyToggle' : IDL.Bool,
+  'sensitivitySlider' : IDL.Nat,
+  'weatherToggle' : IDL.Bool,
+  'simulationEnabled' : IDL.Bool,
+  'stressToggle' : IDL.Bool,
+  'paydayToggle' : IDL.Bool,
+});
+export const TouchpointRecord = IDL.Record({
+  'touchpoints' : IDL.Nat,
+  'agentId' : IDL.Text,
+  'totalSaved' : IDL.Float64,
+  'isStabilized' : IDL.Bool,
+});
 export const RiskPacket = IDL.Record({
   'status' : IDL.Bool,
   'data_source' : IDL.Text,
@@ -66,6 +91,7 @@ export const VerifyResult = IDL.Variant({
 
 export const idlService = IDL.Service({
   '_initializeAccessControl' : IDL.Func([], [], []),
+  'addRiskEvent' : IDL.Func([RiskEvent], [IDL.Text], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
   'getAllHelpers' : IDL.Func([], [IDL.Vec(Helper)], ['query']),
@@ -86,22 +112,47 @@ export const idlService = IDL.Service({
       ],
       ['query'],
     ),
+  'getFiscalData' : IDL.Func(
+      [],
+      [
+        IDL.Record({
+          'communityReinvestmentFund' : IDL.Float64,
+          'stabilityPipelinePercent' : IDL.Float64,
+          'livesSaved' : IDL.Float64,
+          'stabilizedAgents' : IDL.Nat,
+          'touchpointCount' : IDL.Nat,
+          'dollarsSaved' : IDL.Float64,
+        }),
+      ],
+      ['query'],
+    ),
   'getHandoffCountsByZip' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
       ['query'],
     ),
   'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
+  'getPredictionEngineState' : IDL.Func([], [PredictionEngineState], ['query']),
+  'getRiskEvents' : IDL.Func([], [IDL.Vec(RiskEvent)], ['query']),
+  'getSocialStressBaseline' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Float64))],
+      [],
+    ),
   'getTotalCostPlusReferrals' : IDL.Func([], [IDL.Nat], ['query']),
   'getTotalHandoffs' : IDL.Func([], [IDL.Nat], ['query']),
+  'getTouchpointData' : IDL.Func([], [IDL.Vec(TouchpointRecord)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'getWeatherAlerts' : IDL.Func([], [IDL.Text], []),
+  'getWeatherRisk' : IDL.Func([], [IDL.Float64], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
   'recordCostPlusReferral' : IDL.Func([IDL.Text], [], []),
+  'recordTouchpoint' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'registerHelper' : IDL.Func(
       [
         IDL.Text,
@@ -121,12 +172,16 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
+  'removeRiskEvent' : IDL.Func([IDL.Text], [IDL.Bool], []),
+  'resetFiscalData' : IDL.Func([], [], []),
   'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setEmergencyActive' : IDL.Func([IDL.Bool], [], []),
+  'setPredictionEngineState' : IDL.Func([PredictionEngineState], [], []),
   'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
   'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
   'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'updateRiskEvent' : IDL.Func([IDL.Text, RiskEvent], [IDL.Bool], []),
   'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
   'verifyProvider' : IDL.Func([IDL.Text], [], []),
 });
@@ -134,6 +189,16 @@ export const idlService = IDL.Service({
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const RiskEvent = IDL.Record({
+    'id' : IDL.Text,
+    'multiplier' : IDL.Float64,
+    'endDate' : IDL.Int,
+    'affectedZIPs' : IDL.Vec(IDL.Text),
+    'name' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'startDate' : IDL.Int,
+    'fileUrl' : IDL.Text,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
@@ -176,6 +241,21 @@ export const idlFactory = ({ IDL }) => {
     'total_active_providers' : IDL.Nat,
     'high_risk_window_active' : IDL.Bool,
   });
+  const PredictionEngineState = IDL.Record({
+    'avgDailyHandoffCount' : IDL.Nat,
+    'potencyToggle' : IDL.Bool,
+    'sensitivitySlider' : IDL.Nat,
+    'weatherToggle' : IDL.Bool,
+    'simulationEnabled' : IDL.Bool,
+    'stressToggle' : IDL.Bool,
+    'paydayToggle' : IDL.Bool,
+  });
+  const TouchpointRecord = IDL.Record({
+    'touchpoints' : IDL.Nat,
+    'agentId' : IDL.Text,
+    'totalSaved' : IDL.Float64,
+    'isStabilized' : IDL.Bool,
+  });
   const RiskPacket = IDL.Record({
     'status' : IDL.Bool,
     'data_source' : IDL.Text,
@@ -192,6 +272,7 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControl' : IDL.Func([], [], []),
+    'addRiskEvent' : IDL.Func([RiskEvent], [IDL.Text], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
     'getAllHelpers' : IDL.Func([], [IDL.Vec(Helper)], ['query']),
@@ -216,22 +297,51 @@ export const idlFactory = ({ IDL }) => {
         ],
         ['query'],
       ),
+    'getFiscalData' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'communityReinvestmentFund' : IDL.Float64,
+            'stabilityPipelinePercent' : IDL.Float64,
+            'livesSaved' : IDL.Float64,
+            'stabilizedAgents' : IDL.Nat,
+            'touchpointCount' : IDL.Nat,
+            'dollarsSaved' : IDL.Float64,
+          }),
+        ],
+        ['query'],
+      ),
     'getHandoffCountsByZip' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
         ['query'],
       ),
     'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
+    'getPredictionEngineState' : IDL.Func(
+        [],
+        [PredictionEngineState],
+        ['query'],
+      ),
+    'getRiskEvents' : IDL.Func([], [IDL.Vec(RiskEvent)], ['query']),
+    'getSocialStressBaseline' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Float64))],
+        [],
+      ),
     'getTotalCostPlusReferrals' : IDL.Func([], [IDL.Nat], ['query']),
     'getTotalHandoffs' : IDL.Func([], [IDL.Nat], ['query']),
+    'getTouchpointData' : IDL.Func([], [IDL.Vec(TouchpointRecord)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'getWeatherAlerts' : IDL.Func([], [IDL.Text], []),
+    'getWeatherRisk' : IDL.Func([], [IDL.Float64], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
     'recordCostPlusReferral' : IDL.Func([IDL.Text], [], []),
+    'recordTouchpoint' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'registerHelper' : IDL.Func(
         [
           IDL.Text,
@@ -251,12 +361,16 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'removeRiskEvent' : IDL.Func([IDL.Text], [IDL.Bool], []),
+    'resetFiscalData' : IDL.Func([], [], []),
     'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setEmergencyActive' : IDL.Func([IDL.Bool], [], []),
+    'setPredictionEngineState' : IDL.Func([PredictionEngineState], [], []),
     'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
     'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
     'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'updateRiskEvent' : IDL.Func([IDL.Text, RiskEvent], [IDL.Bool], []),
     'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
     'verifyProvider' : IDL.Func([IDL.Text], [], []),
   });

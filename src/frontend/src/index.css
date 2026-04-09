@@ -42,6 +42,12 @@
     --sidebar-accent-foreground: 0.96 0 0;
     --sidebar-border: 0.26 0.012 240;
     --sidebar-ring: 0.62 0.12 218;
+    /* Sentinel Risk Intelligence palette — risk heat gradient */
+    --risk-safe: 0.62 0.17 155;
+    --risk-low: 0.75 0.15 120;
+    --risk-moderate: 0.7 0.18 85;
+    --risk-high: 0.65 0.2 40;
+    --risk-critical: 0.52 0.19 27;
   }
 
   * {
@@ -103,6 +109,46 @@
   .hover-lift {
     @apply transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md;
   }
+  /* Sentinel Risk Intelligence utilities */
+  .risk-heatmap-safe {
+    @apply bg-gradient-to-b from-[oklch(var(--risk-safe))] to-[oklch(var(--risk-safe)_/_0.1)];
+  }
+  .risk-heatmap-low {
+    @apply bg-gradient-to-b from-[oklch(var(--risk-low))] to-[oklch(var(--risk-low)_/_0.1)];
+  }
+  .risk-heatmap-moderate {
+    @apply bg-gradient-to-b from-[oklch(var(--risk-moderate))] to-[oklch(var(--risk-moderate)_/_0.1)];
+  }
+  .risk-heatmap-high {
+    @apply bg-gradient-to-b from-[oklch(var(--risk-high))] to-[oklch(var(--risk-high)_/_0.1)];
+  }
+  .risk-heatmap-critical {
+    @apply bg-gradient-to-b from-[oklch(var(--risk-critical))] to-[oklch(var(--risk-critical)_/_0.1)];
+  }
+  .risk-indicator-safe {
+    @apply h-3 w-3 rounded-full bg-[oklch(var(--risk-safe))];
+  }
+  .risk-indicator-low {
+    @apply h-3 w-3 rounded-full bg-[oklch(var(--risk-low))] shadow-md shadow-[oklch(var(--risk-low)_/_0.4)];
+  }
+  .risk-indicator-moderate {
+    @apply h-3 w-3 rounded-full bg-[oklch(var(--risk-moderate))] shadow-md shadow-[oklch(var(--risk-moderate)_/_0.4)];
+  }
+  .risk-indicator-high {
+    @apply h-3 w-3 rounded-full bg-[oklch(var(--risk-high))] shadow-md shadow-[oklch(var(--risk-high)_/_0.4)];
+  }
+  .risk-indicator-critical {
+    @apply h-3 w-3 rounded-full bg-[oklch(var(--risk-critical))] shadow-md shadow-[oklch(var(--risk-critical)_/_0.5)] animate-pulse;
+  }
+  .gaussian-curve-fill {
+    @apply fill-[oklch(var(--live)_/_0.2)] stroke-[oklch(var(--live)_/_0.6)] stroke-2;
+  }
+  .activity-toast-enter {
+    animation: slideInLeft 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .activity-toast-exit {
+    animation: slideOutLeft 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
 }
 
 @keyframes shadowPulse {
@@ -124,5 +170,37 @@
   }
   50% {
     opacity: 0.4;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes gaussianPulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.8;
   }
 }

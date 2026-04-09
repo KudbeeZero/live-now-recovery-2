@@ -12,6 +12,13 @@ type UserRole =
    user;
  };
 type UserProfile = record {name: text;};
+type TouchpointRecord = 
+ record {
+   agentId: text;
+   isStabilized: bool;
+   totalSaved: float64;
+   touchpoints: nat;
+ };
 type RiskPacket = 
  record {
    data_source: text;
@@ -19,6 +26,17 @@ type RiskPacket =
    provider_id: text;
    risk_score: nat;
    status: bool;
+ };
+type RiskEvent = 
+ record {
+   affectedZIPs: vec text;
+   createdAt: int;
+   endDate: int;
+   fileUrl: text;
+   id: text;
+   multiplier: float64;
+   name: text;
+   startDate: int;
  };
 type ProviderWithStatus = 
  record {
@@ -40,6 +58,16 @@ type ProviderStatus =
    Live;
    Offline;
    Unknown;
+ };
+type PredictionEngineState = 
+ record {
+   avgDailyHandoffCount: nat;
+   paydayToggle: bool;
+   potencyToggle: bool;
+   sensitivitySlider: nat;
+   simulationEnabled: bool;
+   stressToggle: bool;
+   weatherToggle: bool;
  };
 type Helper = 
  record {
@@ -66,6 +94,7 @@ type CanisterStateSummary =
  };
 service : {
   _initializeAccessControl: () -> ();
+  addRiskEvent: (event: RiskEvent) -> (text);
   assignCallerUserRole: (user: principal, role: UserRole) -> ();
   generateHandoffToken: (zipCode: text) -> (text);
   getAllHelpers: () -> (vec Helper) query;
@@ -81,27 +110,50 @@ service : {
       activatedBy: text;
       isActive: bool;
     }) query;
+  getFiscalData: () ->
+   (record {
+      communityReinvestmentFund: float64;
+      dollarsSaved: float64;
+      livesSaved: float64;
+      stabilityPipelinePercent: float64;
+      stabilizedAgents: nat;
+      touchpointCount: nat;
+    }) query;
   getHandoffCountsByZip: () -> (vec record {
                                       text;
                                       nat;
                                     }) query;
   getMarketplaceGeoJSON: () -> (text) query;
+  getPredictionEngineState: () -> (PredictionEngineState) query;
+  getRiskEvents: () -> (vec RiskEvent) query;
+  getSocialStressBaseline: () -> (vec record {
+                                        text;
+                                        float64;
+                                      });
   getTotalCostPlusReferrals: () -> (nat) query;
   getTotalHandoffs: () -> (nat) query;
+  getTouchpointData: () -> (vec TouchpointRecord) query;
   getUserProfile: (user: principal) -> (opt UserProfile) query;
+  getWeatherAlerts: () -> (text);
+  getWeatherRisk: () -> (float64);
   isCallerAdmin: () -> (bool) query;
   receiveRiskPacket: (packet: RiskPacket) -> ();
   recordCostPlusReferral: (providerId: text) -> ();
+  recordTouchpoint: (agentId: text, _zip: text) -> ();
   registerHelper: (firstName: text, lastName: text, email: text, zip: 
    text, phone: text, helpType: text, consent: bool, note: text) -> ();
   registerProvider: (id: text, name: text, lat: float64, lng: float64,
    providerType: text) -> ();
+  removeRiskEvent: (id: text) -> (bool);
+  resetFiscalData: () -> ();
   runHeartbeat: () -> (vec text);
   saveCallerUserProfile: (profile: UserProfile) -> ();
   setEmergencyActive: (isActive: bool) -> ();
+  setPredictionEngineState: (state: PredictionEngineState) -> ();
   setProviderActiveStatus: (id: text, status: bool) -> ();
   toggleLive: (id: text, status: bool) -> ();
   updateInventory: (id: text, newInventory: text) -> ();
+  updateRiskEvent: (id: text, event: RiskEvent) -> (bool);
   verifyHandoff: (token: text) -> (VerifyResult);
   verifyProvider: (id: text) -> ();
 }

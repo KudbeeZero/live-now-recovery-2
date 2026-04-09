@@ -329,6 +329,81 @@ export function useRecordCostPlusReferral() {
   });
 }
 
+// ─── Prediction Engine queries ────────────────────────────────────────────────
+
+export function useGetPredictionEngineState() {
+  const { actor, isFetching } = useActor(createActor);
+  return useQuery({
+    queryKey: ["predictionEngineState"],
+    queryFn: async () => {
+      if (!actor) return null;
+      try {
+        return await actor.getPredictionEngineState();
+      } catch (err) {
+        console.error("[useGetPredictionEngineState] Failed:", err);
+        return null;
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useGetRiskEvents() {
+  const { actor, isFetching } = useActor(createActor);
+  return useQuery({
+    queryKey: ["riskEvents"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getRiskEvents();
+      } catch (err) {
+        console.error("[useGetRiskEvents] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useGetWeatherRisk() {
+  const { actor, isFetching } = useActor(createActor);
+  return useQuery({
+    queryKey: ["weatherRisk"],
+    queryFn: async () => {
+      if (!actor) return 1.0;
+      try {
+        return await actor.getWeatherRisk();
+      } catch (err) {
+        console.error("[useGetWeatherRisk] Failed:", err);
+        return 1.0;
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 300_000, // 5 min — weather doesn't change rapidly
+  });
+}
+
+export function useGetSocialStressBaseline() {
+  const { actor, isFetching } = useActor(createActor);
+  return useQuery<[string, number][]>({
+    queryKey: ["socialStressBaseline"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getSocialStressBaseline();
+      } catch (err) {
+        console.error("[useGetSocialStressBaseline] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    // Census data is static — fetch once per session, no polling
+    staleTime: 30 * 60_000,
+  });
+}
+
 export function useRegisterHelper() {
   const { actor } = useActor(createActor);
   return useMutation({

@@ -8,6 +8,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
+import ActivitySimulationToasts from "./components/ActivitySimulationToasts";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { EmergencyBanner } from "./components/EmergencyBanner";
 import { Footer } from "./components/Footer";
@@ -37,6 +38,7 @@ import { SignupPage } from "./pages/SignupPage";
 import { SitemapPage } from "./pages/SitemapPage";
 import { TermsPage } from "./pages/TermsPage";
 import { VerifyPage } from "./pages/VerifyPage";
+import { VideosPage } from "./pages/VideosPage";
 
 function ScrollToTop() {
   const { location } = useRouterState();
@@ -59,6 +61,7 @@ function RootLayout() {
       </div>
       <Footer />
       <Toaster richColors position="top-right" />
+      <ActivitySimulationToasts />
       <SentinelChat />
       <CookieConsentBanner />
     </div>
@@ -182,6 +185,11 @@ const cookiesRoute = createRoute({
   path: "/cookies",
   component: CookiesPage,
 });
+const videosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/videos",
+  component: VideosPage,
+});
 
 // Direct SEO city routes
 const clevelandRoute = createRoute({
@@ -289,6 +297,7 @@ const routeTree = rootRoute.addChildren([
   privacyRoute,
   termsRoute,
   cookiesRoute,
+  videosRoute,
   clevelandRoute,
   lakewoodRoute,
   parmaRoute,

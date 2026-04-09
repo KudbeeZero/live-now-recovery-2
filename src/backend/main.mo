@@ -6,12 +6,26 @@ import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Float "mo:core/Float";
 import Order "mo:core/Order";
+import Int "mo:core/Int";
 import AccessControl "mo:caffeineai-authorization/access-control";
 import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
 
-
-
 actor {
+  // Management canister actor type alias for ICP HTTP outcalls
+  type ICManagement = actor {
+    http_request : ({
+      url : Text;
+      max_response_bytes : ?Nat64;
+      method : { #get; #head; #post };
+      headers : [{ name : Text; value : Text }];
+      body : ?Blob;
+      transform : ?{
+        function : shared query ({ response : { status : Nat; headers : [{ name : Text; value : Text }]; body : Blob }; context : Blob }) -> async { status : Nat; headers : [{ name : Text; value : Text }]; body : Blob };
+        context : Blob;
+      };
+      is_replicated : ?Bool;
+    }) -> async { status : Nat; headers : [{ name : Text; value : Text }]; body : Blob };
+  };
   let DECAY_NS = 14_400_000_000_000;
   let TOKEN_EXPIRY_NS = 300_000_000_000;
   let HIGH_RISK_THRESHOLD = 80;
@@ -19,6 +33,9 @@ actor {
   // Initialize access control
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
+
+  // ICP management canister for HTTP outcalls
+  let ic : ICManagement = actor "aaaaa-aa";
 
   // User Profile Type
   public type UserProfile = {
@@ -548,7 +565,468 @@ actor {
     total;
   };
 
-  // Internal helper function
+  // ── Fiscal Impact Engine Types ────────────────────────────────────────────────
+
+  public type TouchpointRecord = {
+    agentId : Text;
+    touchpoints : Nat;
+    isStabilized : Bool;
+    totalSaved : Float;
+  };
+
+  // ── Fiscal Impact State ───────────────────────────────────────────────────────
+
+  var dollarsSaved : Float = 0.0;
+  var livesSaved : Float = 0.0;
+  var stabilizedAgents : Nat = 0;
+  var touchpointData : [TouchpointRecord] = [];
+
+  // ── Fiscal Impact Functions ───────────────────────────────────────────────────
+
+  // recordTouchpoint — public update (no PHI), implements 7-Attempts model
+  public shared func recordTouchpoint(agentId : Text, _zip : Text) : async () {
+    // Find existing record or create new one
+    let existing : ?TouchpointRecord = touchpointData.find(func(r) { r.agentId == agentId });
+    let currentTouchpoints : Nat = switch (existing) {
+      case (?r) { r.touchpoints };
+      case null { 0 };
+    };
+    let currentTotalSaved : Float = switch (existing) {
+      case (?r) { r.totalSaved };
+      case null { 0.0 };
+    };
+    let newTouchpoints = currentTouchpoints + 1;
+
+    // 7-Attempts model: calculate incremental savings for this touchpoint
+    let increment : Float = if (newTouchpoints <= 3) {
+      25_000.0; // Cost avoidance
+    } else if (newTouchpoints <= 6) {
+      30_000.0; // $25k base + $5k productivity bonus
+    } else {
+      75_000.0; // $25k + $5k + $45k community ROI (touchpoint 7+)
+    };
+
+    let newTotalSaved = currentTotalSaved + increment;
+    let isStabilized = newTouchpoints >= 7;
+
+    // Update stabilizedAgents counter if newly stabilized on exactly touchpoint 7
+    if (newTouchpoints == 7) {
+      stabilizedAgents += 1;
+    };
+
+    // Update or insert the record
+    let updatedRecord : TouchpointRecord = {
+      agentId;
+      touchpoints = newTouchpoints;
+      isStabilized;
+      totalSaved = newTotalSaved;
+    };
+
+    touchpointData := switch (existing) {
+      case null { touchpointData.concat([updatedRecord]) };
+      case (?_) {
+        touchpointData.map(func(r) {
+          if (r.agentId == agentId) { updatedRecord } else r
+        })
+      };
+    };
+
+    // Accumulate global dollars saved
+    dollarsSaved += increment;
+
+    // Recalculate livesSaved from total handoffs (0.08 lethality-to-handoff ratio)
+    var totalHandoffCount : Nat = 0;
+    for ((_, count) in zipCounts.entries()) {
+      totalHandoffCount += count;
+    };
+    livesSaved := totalHandoffCount.toFloat() * 0.08;
+  };
+
+  // getFiscalData — public query, returns aggregated fiscal metrics
+  public query func getFiscalData() : async {
+    dollarsSaved : Float;
+    livesSaved : Float;
+    communityReinvestmentFund : Float;
+    stabilizedAgents : Nat;
+    touchpointCount : Nat;
+    stabilityPipelinePercent : Float;
+  } {
+    let touchpointCount = touchpointData.size();
+    let stabilityPipelinePercent : Float = if (touchpointCount == 0) {
+      0.0;
+    } else {
+      (stabilizedAgents.toFloat() * 100.0) / touchpointCount.toFloat();
+    };
+    {
+      dollarsSaved;
+      livesSaved;
+      communityReinvestmentFund = dollarsSaved * 0.15;
+      stabilizedAgents;
+      touchpointCount;
+      stabilityPipelinePercent;
+    };
+  };
+
+  // resetFiscalData — admin-only, resets all fiscal vars for demo
+  public shared ({ caller }) func resetFiscalData() : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can reset fiscal data");
+    };
+    dollarsSaved := 0.0;
+    livesSaved := 0.0;
+    stabilizedAgents := 0;
+    touchpointData := [];
+  };
+
+  // getTouchpointData — admin-only query, returns full touchpoint records
+  public query ({ caller }) func getTouchpointData() : async [TouchpointRecord] {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can view touchpoint data");
+    };
+    touchpointData;
+  };
+
+  // ── Prediction Engine Types ──────────────────────────────────────────────────
+
+  public type RiskEvent = {
+    id : Text;
+    name : Text;
+    startDate : Int;
+    endDate : Int;
+    affectedZIPs : [Text];
+    multiplier : Float;
+    fileUrl : Text;
+    createdAt : Int;
+  };
+
+  public type PredictionEngineState = {
+    weatherToggle : Bool;
+    paydayToggle : Bool;
+    stressToggle : Bool;
+    potencyToggle : Bool;
+    sensitivitySlider : Nat;
+    avgDailyHandoffCount : Nat;
+    simulationEnabled : Bool;
+  };
+
+  // ── Prediction Engine State ───────────────────────────────────────────────────
+
+  var predictionEngineState : PredictionEngineState = {
+    weatherToggle = false;
+    paydayToggle = true;
+    stressToggle = false;
+    potencyToggle = false;
+    sensitivitySlider = 50;
+    avgDailyHandoffCount = 12;
+    simulationEnabled = true;
+  };
+
+  var riskEvents : [RiskEvent] = [];
+
+  // ── Seed Init ────────────────────────────────────────────────────────────────
+  // One-time seed: only fires when canister is empty (fresh install, not upgrade)
+  do {
+    if (providers.isEmpty()) {
+      let seedProviders : [(Text, Text, Float, Float, Text)] = [
+        ("p-01", "Coleman Health Services - Akron", 41.0534, -81.5185, "MAT Clinic"),
+        ("p-02", "Oriana House - Akron MAT", 41.0814, -81.5198, "MAT Clinic"),
+        ("p-03", "Quest Recovery Center - Cleveland", 41.4993, -81.6944, "MAT Clinic"),
+        ("p-04", "The Centers for Families and Children", 41.5085, -81.6954, "MAT Clinic"),
+        ("p-05", "Signature Health - Mentor", 41.6662, -81.3396, "MAT Clinic"),
+        ("p-06", "Meridian HealthCare - Youngstown", 41.0998, -80.6495, "MAT Clinic"),
+        ("p-07", "Crossroads Health - Lake County", 41.5931, -81.5240, "Narcan Distribution"),
+        ("p-08", "Northeast Ohio Neighborhood Health (NEON)", 41.4637, -81.6769, "Narcan Distribution"),
+        ("p-09", "Recovery Resources Cleveland", 41.5140, -81.6023, "Narcan Distribution"),
+        ("p-10", "Akron General Medical Center ER", 41.0814, -81.5198, "Emergency Room"),
+        ("p-11", "MetroHealth Medical Center ER - Cleveland", 41.4732, -81.6996, "Emergency Room"),
+        ("p-12", "Cleveland Clinic Main Campus ER", 41.5031, -81.6219, "Emergency Room"),
+        ("p-13", "St. Elizabeth Youngstown Hospital ER", 41.0959, -80.6537, "Emergency Room"),
+        ("p-14", "The Centers Naloxone Vending - Cuyahoga", 41.4993, -81.6944, "Naloxone Kiosk/Vending Machine"),
+        ("p-15", "Massillon PD Naloxone Kiosk", 40.7967, -81.5218, "Naloxone Kiosk/Vending Machine"),
+        ("p-16", "Jackson PD Naloxone Kiosk", 40.5534, -81.9985, "Naloxone Kiosk/Vending Machine"),
+        ("p-17", "Spero Health Ohio - Telehealth MAT", 41.4993, -81.6944, "Telehealth MAT"),
+        ("p-18", "Eagle HealthWorks - Telehealth MAT Ohio", 41.0534, -81.5185, "Telehealth MAT"),
+      ];
+      for ((id, name, lat, lng, providerType) in seedProviders.vals()) {
+        providers.add(
+          id,
+          {
+            id;
+            name;
+            lat;
+            lng;
+            isLive = true;
+            lastVerified = Time.now();
+            providerType;
+            is_verified = true;
+            is_active = true;
+            inventory = "";
+            reputationScore = 85;
+          },
+        );
+      };
+    };
+  };
+
+  // ── Prediction Engine Functions ───────────────────────────────────────────────
+
+  public shared ({ caller }) func setPredictionEngineState(state : PredictionEngineState) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can update prediction engine state");
+    };
+    predictionEngineState := state;
+  };
+
+  public query func getPredictionEngineState() : async PredictionEngineState {
+    predictionEngineState;
+  };
+
+  public shared ({ caller }) func addRiskEvent(event : RiskEvent) : async Text {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can add risk events");
+    };
+    riskEvents := riskEvents.concat([event]);
+    event.id;
+  };
+
+  public shared ({ caller }) func removeRiskEvent(id : Text) : async Bool {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can remove risk events");
+    };
+    let before = riskEvents.size();
+    riskEvents := riskEvents.filter(func(e) { e.id != id });
+    riskEvents.size() < before;
+  };
+
+  public shared ({ caller }) func updateRiskEvent(id : Text, event : RiskEvent) : async Bool {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can update risk events");
+    };
+    var found = false;
+    riskEvents := riskEvents.map(func(e) {
+      if (e.id == id) { found := true; event } else e
+    });
+    found;
+  };
+
+  public query func getRiskEvents() : async [RiskEvent] {
+    riskEvents;
+  };
+
+  // ── HTTP Outcall Cache State ──────────────────────────────────────────────────
+
+  // Cache: last weather fetch timestamp (seconds) and result
+  var lastWeatherFetchSecs : Int = 0;
+  var cachedWeatherRisk : Float = 1.0;
+
+  // Cache: last alerts fetch timestamp (seconds) and result
+  var lastAlertsFetchSecs : Int = 0;
+  var cachedAlertsText : Text = "No active weather alerts";
+
+  // Cache: last social stress fetch timestamp (seconds) and result
+  var lastStressFetchSecs : Int = 0;
+  var cachedSocialStress : [(Text, Float)] = [];
+
+  // ── Helper: nowSecs ───────────────────────────────────────────────────────────
+
+  func nowSecs() : Int {
+    Time.now() / 1_000_000_000;
+  };
+
+  // ── getWeatherRisk ────────────────────────────────────────────────────────────
+  // Calls NWS gridpoint forecast for Cleveland. Returns 1.25 if temp < 32°F or
+  // "Severe"/"Warning" in forecast. Returns 1.0 on any error. Caches 3600s.
+  public func getWeatherRisk() : async Float {
+    let nowS = nowSecs();
+    // Return cached value if fresh
+    if (nowS - lastWeatherFetchSecs < 3600 and lastWeatherFetchSecs > 0) {
+      return cachedWeatherRisk;
+    };
+
+    let url = "https://api.weather.gov/gridpoints/CLE/66,75/forecast";
+    try {
+      let response = await (with cycles = 220_000_000_000) ic.http_request({
+        url;
+        max_response_bytes = ?(50_000 : Nat64);
+        method = #get;
+        headers = [
+          { name = "Accept"; value = "application/geo+json" },
+          { name = "User-Agent"; value = "LiveNowRecovery/1.0 (sentinel@livenowrecovery.org)" },
+        ];
+        body = null;
+        transform = null;
+        is_replicated = ?false;
+      });
+
+      if (response.status == 200) {
+        let bodyText = switch (response.body.decodeUtf8()) {
+          case null { "" };
+          case (?t) { t };
+        };
+
+        // Check for severe/warning keywords (case-insensitive via toLower)
+        let bodyLower = bodyText.toLower();
+        let hasSevere = bodyLower.contains(#text "severe") or bodyLower.contains(#text "warning");
+
+        // Look for first "temperature" field and check if < 32°F
+        var isCold = false;
+        // Split on "temperature": to get the part after the key, then read the number
+        let tempParts = bodyText.split(#text "\"temperature\":").toArray();
+        if (tempParts.size() > 1) {
+          let afterKey = tempParts[1];
+          let numText = Text.fromIter(afterKey.toIter().takeWhile(func(c : Char) : Bool {
+            (c >= '0' and c <= '9') or c == '-'
+          }));
+          switch (Int.fromText(numText)) {
+            case null {};
+            case (?tempF) { if (tempF < 32) { isCold := true } };
+          };
+        };
+
+        let risk : Float = if (hasSevere or isCold) 1.25 else 1.0;
+        lastWeatherFetchSecs := nowS;
+        cachedWeatherRisk := risk;
+        risk;
+      } else {
+        1.0;
+      };
+    } catch (_) {
+      1.0;
+    };
+  };
+
+  // ── getWeatherAlerts ──────────────────────────────────────────────────────────
+  // Calls NWS active alerts for Ohio. Returns summary string. Caches 900s (15 min).
+  public func getWeatherAlerts() : async Text {
+    let nowS = nowSecs();
+    if (nowS - lastAlertsFetchSecs < 900 and lastAlertsFetchSecs > 0) {
+      return cachedAlertsText;
+    };
+
+    let url = "https://api.weather.gov/alerts/active?area=OH";
+    try {
+      let response = await (with cycles = 220_000_000_000) ic.http_request({
+        url;
+        max_response_bytes = ?(100_000 : Nat64);
+        method = #get;
+        headers = [
+          { name = "Accept"; value = "application/geo+json" },
+          { name = "User-Agent"; value = "LiveNowRecovery/1.0 (sentinel@livenowrecovery.org)" },
+        ];
+        body = null;
+        transform = null;
+        is_replicated = ?false;
+      });
+
+      if (response.status == 200) {
+        let bodyText = switch (response.body.decodeUtf8()) {
+          case null { "" };
+          case (?t) { t };
+        };
+
+        // Count "event": occurrences as proxy for alert count
+        let alertCount = bodyText.split(#text "\"event\":").toArray().size();
+        // split gives N+1 parts for N occurrences — subtract 1 for the part before first match
+        let count = if (alertCount > 0) alertCount - 1 else 0;
+
+        let result = if (count == 0) {
+          "No active weather alerts";
+        } else {
+          count.toText() # " active weather alert(s) in Ohio";
+        };
+
+        lastAlertsFetchSecs := nowS;
+        cachedAlertsText := result;
+        result;
+      } else {
+        "Weather alert service unavailable";
+      };
+    } catch (_) {
+      "Weather alert service unavailable";
+    };
+  };
+
+  // ── getSocialStressBaseline ───────────────────────────────────────────────────
+  // Calls Census ACS S1201 for Ohio ZIPs. Returns (ZIP, multiplier) pairs where
+  // (divorced% + separated%) > 15% → 1.15x multiplier. Caches 14400s (4 hrs).
+  public func getSocialStressBaseline() : async [(Text, Float)] {
+    let nowS = nowSecs();
+    if (nowS - lastStressFetchSecs < 14400 and lastStressFetchSecs > 0) {
+      return cachedSocialStress;
+    };
+
+    // S1201_C04_001E = divorced %, S1201_C05_001E = separated % (Ohio ZIPs)
+    let url = "https://api.census.gov/data/2022/acs/acs5/subject?get=NAME,S1201_C04_001E,S1201_C05_001E&for=zip+code+tabulation+area:*&in=state:39";
+    try {
+      let response = await (with cycles = 500_000_000_000) ic.http_request({
+        url;
+        max_response_bytes = ?(2_000_000 : Nat64);
+        method = #get;
+        headers = [
+          { name = "Accept"; value = "application/json" },
+          { name = "User-Agent"; value = "LiveNowRecovery/1.0 (sentinel@livenowrecovery.org)" },
+        ];
+        body = null;
+        transform = null;
+        is_replicated = ?false;
+      });
+
+      if (response.status == 200) {
+        let bodyText = switch (response.body.decodeUtf8()) {
+          case null { "" };
+          case (?t) { t };
+        };
+
+        // Census returns JSON array of arrays. Each row (after header) is:
+        // ["ZCTA5 44101","8","3","44101"]
+        // fields: name, divorced%, separated%, zip
+        // Split by row delimiter "]," — rows[0] is header, skip it.
+        var results : [(Text, Float)] = [];
+        let rows = bodyText.split(#text "],").toArray();
+        var i = 1;
+        while (i < rows.size()) {
+          let row = rows[i];
+          let fields = row.split(#text ",").toArray();
+          // Need at least 4 fields: name, divorced%, separated%, zip
+          if (fields.size() >= 4) {
+            let rawZip = fields[fields.size() - 1];
+            // Strip JSON syntax chars from zip
+            let zip = rawZip
+              .replace(#text "\"", "")
+              .replace(#text "]", "")
+              .replace(#text "[", "")
+              .trim(#text " ");
+
+            let divorcedRaw = fields[1].replace(#text "\"", "").trim(#text " ");
+            let separatedRaw = fields[2].replace(#text "\"", "").trim(#text " ");
+
+            switch (Nat.fromText(divorcedRaw), Nat.fromText(separatedRaw)) {
+              case (?divorced, ?separated) {
+                // Values are already percentages (e.g. 8 = 8%)
+                let combinedPct : Float = (divorced + separated).toFloat();
+                if (combinedPct > 15.0) {
+                  results := results.concat([(zip, 1.15)]);
+                };
+              };
+              case _ {};
+            };
+          };
+          i += 1;
+        };
+
+        lastStressFetchSecs := nowS;
+        cachedSocialStress := results;
+        results;
+      } else {
+        [];
+      };
+    } catch (_) {
+      [];
+    };
+  };
+
+  // ── Internal helper function ─────────────────────────────────────────────────
+
   func resolveStatus(provider : Provider) : ProviderStatus {
     let age = Time.now() - provider.lastVerified;
     if (not provider.isLive) {

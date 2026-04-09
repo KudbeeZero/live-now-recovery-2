@@ -27,6 +27,15 @@ export interface Helper {
   'lastName' : string,
   'firstName' : string,
 }
+export interface PredictionEngineState {
+  'avgDailyHandoffCount' : bigint,
+  'potencyToggle' : boolean,
+  'sensitivitySlider' : bigint,
+  'weatherToggle' : boolean,
+  'simulationEnabled' : boolean,
+  'stressToggle' : boolean,
+  'paydayToggle' : boolean,
+}
 export type ProviderStatus = { 'Live' : null } |
   { 'Offline' : null } |
   { 'Unknown' : null };
@@ -44,12 +53,28 @@ export interface ProviderWithStatus {
   'providerType' : string,
   'is_active' : boolean,
 }
+export interface RiskEvent {
+  'id' : string,
+  'multiplier' : number,
+  'endDate' : bigint,
+  'affectedZIPs' : Array<string>,
+  'name' : string,
+  'createdAt' : bigint,
+  'startDate' : bigint,
+  'fileUrl' : string,
+}
 export interface RiskPacket {
   'status' : boolean,
   'data_source' : string,
   'last_update_time' : bigint,
   'provider_id' : string,
   'risk_score' : bigint,
+}
+export interface TouchpointRecord {
+  'touchpoints' : bigint,
+  'agentId' : string,
+  'totalSaved' : number,
+  'isStabilized' : boolean,
 }
 export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
@@ -61,6 +86,7 @@ export type VerifyResult = { 'Ok' : string } |
   { 'AlreadyUsed' : null };
 export interface _SERVICE {
   '_initializeAccessControl' : ActorMethod<[], undefined>,
+  'addRiskEvent' : ActorMethod<[RiskEvent], string>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'generateHandoffToken' : ActorMethod<[string], string>,
   'getAllHelpers' : ActorMethod<[], Array<Helper>>,
@@ -74,14 +100,32 @@ export interface _SERVICE {
     [],
     { 'activatedAt' : bigint, 'activatedBy' : string, 'isActive' : boolean }
   >,
+  'getFiscalData' : ActorMethod<
+    [],
+    {
+      'communityReinvestmentFund' : number,
+      'stabilityPipelinePercent' : number,
+      'livesSaved' : number,
+      'stabilizedAgents' : bigint,
+      'touchpointCount' : bigint,
+      'dollarsSaved' : number,
+    }
+  >,
   'getHandoffCountsByZip' : ActorMethod<[], Array<[string, bigint]>>,
   'getMarketplaceGeoJSON' : ActorMethod<[], string>,
+  'getPredictionEngineState' : ActorMethod<[], PredictionEngineState>,
+  'getRiskEvents' : ActorMethod<[], Array<RiskEvent>>,
+  'getSocialStressBaseline' : ActorMethod<[], Array<[string, number]>>,
   'getTotalCostPlusReferrals' : ActorMethod<[], bigint>,
   'getTotalHandoffs' : ActorMethod<[], bigint>,
+  'getTouchpointData' : ActorMethod<[], Array<TouchpointRecord>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getWeatherAlerts' : ActorMethod<[], string>,
+  'getWeatherRisk' : ActorMethod<[], number>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'receiveRiskPacket' : ActorMethod<[RiskPacket], undefined>,
   'recordCostPlusReferral' : ActorMethod<[string], undefined>,
+  'recordTouchpoint' : ActorMethod<[string, string], undefined>,
   'registerHelper' : ActorMethod<
     [string, string, string, string, string, string, boolean, string],
     undefined
@@ -90,12 +134,16 @@ export interface _SERVICE {
     [string, string, number, number, string],
     undefined
   >,
+  'removeRiskEvent' : ActorMethod<[string], boolean>,
+  'resetFiscalData' : ActorMethod<[], undefined>,
   'runHeartbeat' : ActorMethod<[], Array<string>>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setEmergencyActive' : ActorMethod<[boolean], undefined>,
+  'setPredictionEngineState' : ActorMethod<[PredictionEngineState], undefined>,
   'setProviderActiveStatus' : ActorMethod<[string, boolean], undefined>,
   'toggleLive' : ActorMethod<[string, boolean], undefined>,
   'updateInventory' : ActorMethod<[string, string], undefined>,
+  'updateRiskEvent' : ActorMethod<[string, RiskEvent], boolean>,
   'verifyHandoff' : ActorMethod<[string], VerifyResult>,
   'verifyProvider' : ActorMethod<[string], undefined>,
 }

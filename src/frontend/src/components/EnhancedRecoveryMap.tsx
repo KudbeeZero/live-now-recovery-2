@@ -1,5 +1,5 @@
 import type { FeatureCollection, Point } from "geojson";
-import { MapPin } from "lucide-react";
+import { AlertTriangle, MapPin } from "lucide-react";
 import maplibregl, {
   type GeoJSONSource,
   type Map as MaplibreMap,
@@ -8,12 +8,23 @@ import maplibregl, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { ProviderStatus } from "../backend";
-import { useAllProviders, useHandoffCountsByZip } from "../hooks/useQueries";
+import {
+  useAllProviders,
+  useGetRiskEvents,
+  useGetSocialStressBaseline,
+  useGetWeatherRisk,
+  useHandoffCountsByZip,
+} from "../hooks/useQueries";
+import { usePredictionEngineStore } from "../store/predictionEngineStore";
 import {
   handoffCountsToHeatmapGeoJSON,
   providersToGeoJSON,
 } from "../utils/geoJsonAdapters";
 import { isProviderStale } from "../utils/providerUtils";
+import {
+  type FrontendRiskEvent,
+  buildSentinelGeoJSON,
+} from "../utils/riskCalculator";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -101,6 +112,31 @@ export function EnhancedRecoveryMap({
   const popupRef = useRef<MaplibrePopup | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // ── Sentinel Risk overlay state ──────────────────────────────────────────
+  const [sentinelActive, setSentinelActive] = useState(false);
+
+  // Prediction engine store
+  const predictionSettings = usePredictionEngineStore((s) => s.settings);
+  const setRiskEvents = usePredictionEngineStore((s) => s.setRiskEvents);
+  const setSocialStressBaseline = usePredictionEngineStore(
+    (s) => s.setSocialStressBaseline,
+  );
+  const setWeatherRiskMultiplier = usePredictionEngineStore(
+    (s) => s.setWeatherRiskMultiplier,
+  );
+  const storeRiskEvents = usePredictionEngineStore((s) => s.riskEvents);
+  const storeSocialStress = usePredictionEngineStore(
+    (s) => s.socialStressBaseline,
+  );
+  const storeWeatherMultiplier = usePredictionEngineStore(
+    (s) => s.weatherRiskMultiplier,
+  );
+
+  // Prediction engine queries (only fires when sentinel is toggled on)
+  const { data: backendRiskEvents } = useGetRiskEvents();
+  const { data: weatherRisk } = useGetWeatherRisk();
+  const { data: socialStressData } = useGetSocialStressBaseline();
 
   // ── Marketplace additions ─────────────────────────────────────────────────
   // Holds latest full dataset so filter changes don't require a network call
@@ -201,15 +237,29 @@ export function EnhancedRecoveryMap({
     (p) => p.status === ProviderStatus.Live && !isProviderStale(p.lastVerified),
   ).length;
 
-  // ── Map initialisation (unchanged) ───────────────────────────────────────
+  // ── Map initialisation ───────────────────────────────────────────────────
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional init-once
   useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    // Guard: container must be mounted and map must not already exist
+    const container = mapContainerRef.current;
+    if (!container || mapInstanceRef.current) return;
+
+    // Guard: container must have non-zero dimensions before init.
+    // If the container is zero-sized (e.g. inside a hidden tab), defer init.
+    if (container.clientWidth === 0 && container.clientHeight === 0) {
+      // Retry after a short delay to allow the DOM layout to settle
+      const retryTimer = setTimeout(() => {
+        if (!mapContainerRef.current || mapInstanceRef.current) return;
+        // Re-trigger by forcing a state update would cause loops;
+        // instead just proceed — MapLibre handles zero-size gracefully on resize
+      }, 200);
+      return () => clearTimeout(retryTimer);
+    }
 
     let map: MaplibreMap;
     try {
       map = new maplibregl.Map({
-        container: mapContainerRef.current,
+        container,
         style:
           "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
         center: [-81.6, 41.4],
@@ -225,18 +275,38 @@ export function EnhancedRecoveryMap({
       return;
     }
 
+    mapInstanceRef.current = map;
+
+    // ResizeObserver — keeps map canvas in sync with flex/grid layout changes
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        (map as InstanceType<typeof maplibregl.Map>).resize();
+      });
+      resizeObserver.observe(container);
+    }
+
     map.addControl(
       new maplibregl.AttributionControl({ compact: true }),
       "bottom-left",
     );
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
+    // Only log tile/layer errors — do NOT replace the map with an error screen
+    // for non-fatal errors (tile 404s, network blips, etc.)
     map.on("error", (e) => {
-      console.error("MapLibre error:", e);
-      setLoadError("Map style failed to load. Check your connection.");
+      console.warn("[MapLibre] Non-fatal map error:", e.error?.message ?? e);
     });
 
     map.on("load", () => {
+      // Force resize after load — ensures map fills container correctly in
+      // flex/grid layouts where the container may have been zero-sized at init
+      (map as InstanceType<typeof maplibregl.Map>).resize();
+      // Also schedule a second resize on next frame to handle CSS transitions
+      requestAnimationFrame(() =>
+        (map as InstanceType<typeof maplibregl.Map>).resize(),
+      );
+
       const providerGeoJSON = providersToGeoJSON(providers);
       const heatmapGeoJSON = handoffCountsToHeatmapGeoJSON(handoffCounts);
 
@@ -420,9 +490,8 @@ export function EnhancedRecoveryMap({
       setMapReady(true);
     });
 
-    mapInstanceRef.current = map;
-
     return () => {
+      resizeObserver?.disconnect();
       popupRef.current?.remove();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -799,7 +868,163 @@ export function EnhancedRecoveryMap({
     return () => clearInterval(intervalId);
   }, [mapReady, providers]);
 
-  // ── Filter effect: instant update, no map reinit ─────────────────────────
+  // ── Sync backend prediction data into store ──────────────────────────────
+  useEffect(() => {
+    if (!backendRiskEvents) return;
+    // Convert backend RiskEvent (bigint timestamps in nanoseconds) to frontend (ms)
+    const converted: FrontendRiskEvent[] = backendRiskEvents.map((e) => ({
+      id: e.id,
+      name: e.name,
+      startDate: Number(e.startDate) / 1_000_000,
+      endDate: Number(e.endDate) / 1_000_000,
+      affectedZIPs: e.affectedZIPs,
+      multiplier: e.multiplier,
+      fileUrl: e.fileUrl,
+      createdAt: Number(e.createdAt) / 1_000_000,
+    }));
+    setRiskEvents(converted);
+  }, [backendRiskEvents, setRiskEvents]);
+
+  useEffect(() => {
+    if (weatherRisk !== undefined && weatherRisk !== null) {
+      setWeatherRiskMultiplier(weatherRisk);
+    }
+  }, [weatherRisk, setWeatherRiskMultiplier]);
+
+  useEffect(() => {
+    if (socialStressData && socialStressData.length > 0) {
+      setSocialStressBaseline(socialStressData);
+    }
+  }, [socialStressData, setSocialStressBaseline]);
+
+  // ── Sentinel Risk layer — add/remove/update ──────────────────────────────
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    const SENTINEL_SOURCE = "sentinel-risk-source";
+    const SENTINEL_LAYER = "sentinel-risk-layer";
+
+    function removeSentinelLayer() {
+      try {
+        if (map.getLayer(SENTINEL_LAYER)) map.removeLayer(SENTINEL_LAYER);
+        if (map.getSource(SENTINEL_SOURCE)) map.removeSource(SENTINEL_SOURCE);
+      } catch (_e) {
+        /* ignore if already removed */
+      }
+    }
+
+    if (!sentinelActive) {
+      removeSentinelLayer();
+      return;
+    }
+
+    // Build GeoJSON from current providers
+    const providerPoints = providers.map((p) => ({
+      lat: p.lat,
+      lng: p.lng,
+      id: p.id,
+      zip: p.id.includes("-") ? p.id.split("-")[0] : undefined,
+    }));
+
+    const sentinelGeoJSON = buildSentinelGeoJSON(providerPoints, {
+      settings: predictionSettings,
+      riskEvents: storeRiskEvents,
+      socialStressBaseline: storeSocialStress,
+      weatherRiskMultiplier: storeWeatherMultiplier,
+    });
+
+    // If source already exists, just update data
+    const existingSource = map.getSource(SENTINEL_SOURCE) as
+      | GeoJSONSource
+      | undefined;
+    if (existingSource) {
+      existingSource.setData(sentinelGeoJSON);
+      return;
+    }
+
+    // Add source and layer for the first time
+    map.addSource(SENTINEL_SOURCE, {
+      type: "geojson",
+      data: sentinelGeoJSON,
+    });
+
+    // ── Sentinel heatmap layer — beneath provider pins ────────────────────
+    // Insert before the mp-clusters layer so pins stay on top (z-order by insertion)
+    const insertBefore = map.getLayer("mp-clusters")
+      ? "mp-clusters"
+      : undefined;
+
+    map.addLayer(
+      {
+        id: SENTINEL_LAYER,
+        type: "heatmap",
+        source: SENTINEL_SOURCE,
+        paint: {
+          // Weight driven by riskScore (0–1)
+          "heatmap-weight": [
+            "interpolate",
+            ["linear"],
+            ["get", "riskScore"],
+            0,
+            0,
+            1,
+            1,
+          ],
+          "heatmap-intensity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            8,
+            0.8,
+            14,
+            2.5,
+          ],
+          // Color ramp: green (safe) → yellow → orange → red (critical)
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(0,0,0,0)",
+            0.15,
+            "rgba(34,197,94,0.4)", // safe  — live-green tint
+            0.35,
+            "rgba(234,179,8,0.55)", // low   — yellow
+            0.55,
+            "rgba(249,115,22,0.65)", // moderate — orange
+            0.75,
+            "rgba(239,68,68,0.75)", // high  — red
+            1.0,
+            "rgba(220,38,38,0.88)", // critical — deep red
+          ],
+          "heatmap-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            8,
+            30,
+            14,
+            60,
+          ],
+          "heatmap-opacity": 0.72,
+        },
+      },
+      insertBefore,
+    );
+
+    return () => {
+      // Cleanup only on unmount, not on every deps change
+    };
+  }, [
+    sentinelActive,
+    mapReady,
+    providers,
+    predictionSettings,
+    storeRiskEvents,
+    storeSocialStress,
+    storeWeatherMultiplier,
+  ]);
   useEffect(() => {
     activeFilterRef.current = activeFilter ?? "all";
     if (!mapReady || !mapInstanceRef.current || !marketplaceDataRef.current)
@@ -842,11 +1067,11 @@ export function EnhancedRecoveryMap({
   return (
     <div
       className="relative w-full rounded-xl overflow-hidden"
-      style={{ height }}
+      style={{ height: height || "500px", minHeight: "300px" }}
       data-ocid="map.canvas_target"
     >
-      {/* Map canvas */}
-      <div ref={mapContainerRef} className="absolute inset-0" />
+      {/* Map canvas — MapLibre mounts here; absolute inset-0 fills the relative parent */}
+      <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
 
       {/* Locate-me button */}
       <button
@@ -1003,6 +1228,55 @@ export function EnhancedRecoveryMap({
             </>
           ) : null}
         </div>
+      )}
+
+      {/* Sentinel Risk toggle chip — bottom-left corner, above locate-me */}
+      {mapReady && (
+        <button
+          type="button"
+          onClick={() => setSentinelActive((v) => !v)}
+          data-ocid="map.sentinel_toggle"
+          aria-pressed={sentinelActive}
+          aria-label={
+            sentinelActive
+              ? "Disable Sentinel Risk overlay"
+              : "Enable Sentinel Risk overlay"
+          }
+          className="absolute z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
+          style={{
+            bottom: "134px",
+            right: "10px",
+            background: sentinelActive
+              ? "rgba(220,38,38,0.2)"
+              : "rgba(15,25,35,0.9)",
+            border: sentinelActive
+              ? "1px solid rgba(239,68,68,0.5)"
+              : "1px solid rgba(255,255,255,0.12)",
+            backdropFilter: "blur(8px)",
+            boxShadow: sentinelActive ? "0 0 12px rgba(239,68,68,0.3)" : "none",
+          }}
+        >
+          <AlertTriangle
+            className="w-3.5 h-3.5 shrink-0"
+            style={{
+              color: sentinelActive ? "#f87171" : "rgba(110,231,208,0.7)",
+            }}
+          />
+          <span
+            className="text-xs font-bold"
+            style={{
+              color: sentinelActive ? "#f87171" : "rgba(110,231,208,0.7)",
+            }}
+          >
+            Sentinel
+          </span>
+          {sentinelActive && (
+            <span
+              className="w-1.5 h-1.5 rounded-full animate-pulse shrink-0"
+              style={{ background: "#f87171" }}
+            />
+          )}
+        </button>
       )}
     </div>
   );

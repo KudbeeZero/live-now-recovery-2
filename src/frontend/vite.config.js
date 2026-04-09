@@ -23,6 +23,7 @@ export default defineConfig({
     postcss: "./postcss.config.js",
   },
   optimizeDeps: {
+    include: ["maplibre-gl"],
     esbuildOptions: {
       define: {
         global: "globalThis",

@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createActor } from "../backend";
 import { HealthMonitor } from "../components/HealthMonitor";
+import { PredictionEnginePanel } from "../components/PredictionEnginePanel";
 import {
   useAllProviders,
   useCanisterState,
@@ -323,6 +324,7 @@ export function AdminPage() {
     lng: "",
     providerType: "MAT Clinic",
   });
+  const [adminTab, setAdminTab] = useState<"health" | "prediction">("health");
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const [seedProgress, setSeedProgress] = useState<{
     running: boolean;
@@ -696,7 +698,7 @@ export function AdminPage() {
         )}
 
         {/* Pending Verification */}
-        <div className="bg-white rounded-2xl shadow-card border border-border p-6 mb-8">
+        <div className="bg-card rounded-2xl shadow-card border border-border p-6 mb-8">
           <div className="flex items-center gap-2 mb-5">
             <ShieldCheck className="w-5 h-5 text-live-green" />
             <h2 className="font-bold text-navy">Pending Verification</h2>
@@ -1039,7 +1041,7 @@ export function AdminPage() {
         </div>
 
         {/* Seed Demo Providers */}
-        <div className="bg-white rounded-2xl shadow-card border border-border p-6 mb-8">
+        <div className="bg-card rounded-2xl shadow-card border border-border p-6 mb-8">
           <div className="flex items-center gap-2 mb-4">
             <Database className="w-5 h-5 text-live-green" />
             <h2 className="font-bold text-navy">Seed Demo Providers</h2>
@@ -1111,7 +1113,7 @@ export function AdminPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Register provider */}
-          <div className="bg-white rounded-2xl shadow-card border border-border p-6">
+          <div className="bg-card rounded-2xl shadow-card border border-border p-6">
             <div className="flex items-center gap-2 mb-5">
               <Plus className="w-5 h-5 text-live-green" />
               <h2 className="font-bold text-navy">Register Provider</h2>
@@ -1216,7 +1218,7 @@ export function AdminPage() {
           </div>
 
           {/* Provider toggles */}
-          <div className="bg-white rounded-2xl shadow-card border border-border overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center gap-2">
               <Users className="w-4 h-4 text-live-green" />
               <h2 className="font-bold text-navy">Provider Controls</h2>
@@ -1261,9 +1263,42 @@ export function AdminPage() {
           </div>
         </div>
 
-        {/* Health Monitor */}
+        {/* Admin Panel Tabs — Health Monitor & Prediction Engine */}
         <div className="mt-8">
-          <HealthMonitor />
+          {/* Tab Bar */}
+          <div className="flex border-b border-border mb-6">
+            <button
+              type="button"
+              onClick={() => setAdminTab("health")}
+              className={`px-5 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                adminTab === "health"
+                  ? "text-live-green border-b-2 border-live-green -mb-px"
+                  : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"
+              }`}
+              data-ocid="admin.tab_health_monitor"
+            >
+              Health Monitor
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminTab("prediction")}
+              className={`px-5 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                adminTab === "prediction"
+                  ? "text-live-green border-b-2 border-live-green -mb-px"
+                  : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"
+              }`}
+              data-ocid="admin.tab_prediction_engine"
+            >
+              Prediction Engine
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {adminTab === "health" ? (
+            <HealthMonitor />
+          ) : (
+            <PredictionEnginePanel />
+          )}
         </div>
       </div>
     </main>

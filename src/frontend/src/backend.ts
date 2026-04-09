@@ -102,6 +102,16 @@ export type VerifyResult = {
     __kind__: "AlreadyUsed";
     AlreadyUsed: null;
 };
+export interface RiskEvent {
+    id: string;
+    multiplier: number;
+    endDate: bigint;
+    affectedZIPs: Array<string>;
+    name: string;
+    createdAt: bigint;
+    startDate: bigint;
+    fileUrl: string;
+}
 export interface RiskPacket {
     status: boolean;
     data_source: string;
@@ -126,6 +136,15 @@ export interface Helper {
     lastName: string;
     firstName: string;
 }
+export interface PredictionEngineState {
+    avgDailyHandoffCount: bigint;
+    potencyToggle: boolean;
+    sensitivitySlider: bigint;
+    weatherToggle: boolean;
+    simulationEnabled: boolean;
+    stressToggle: boolean;
+    paydayToggle: boolean;
+}
 export interface ProviderWithStatus {
     id: string;
     lat: number;
@@ -143,6 +162,12 @@ export interface ProviderWithStatus {
 export interface UserProfile {
     name: string;
 }
+export interface TouchpointRecord {
+    touchpoints: bigint;
+    agentId: string;
+    totalSaved: number;
+    isStabilized: boolean;
+}
 export enum ProviderStatus {
     Live = "Live",
     Offline = "Offline",
@@ -155,6 +180,7 @@ export enum UserRole {
 }
 export interface backendInterface {
     _initializeAccessControl(): Promise<void>;
+    addRiskEvent(event: RiskEvent): Promise<string>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     generateHandoffToken(zipCode: string): Promise<string>;
     getAllHelpers(): Promise<Array<Helper>>;
@@ -169,22 +195,41 @@ export interface backendInterface {
         activatedBy: string;
         isActive: boolean;
     }>;
+    getFiscalData(): Promise<{
+        communityReinvestmentFund: number;
+        stabilityPipelinePercent: number;
+        livesSaved: number;
+        stabilizedAgents: bigint;
+        touchpointCount: bigint;
+        dollarsSaved: number;
+    }>;
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
     getMarketplaceGeoJSON(): Promise<string>;
+    getPredictionEngineState(): Promise<PredictionEngineState>;
+    getRiskEvents(): Promise<Array<RiskEvent>>;
+    getSocialStressBaseline(): Promise<Array<[string, number]>>;
     getTotalCostPlusReferrals(): Promise<bigint>;
     getTotalHandoffs(): Promise<bigint>;
+    getTouchpointData(): Promise<Array<TouchpointRecord>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getWeatherAlerts(): Promise<string>;
+    getWeatherRisk(): Promise<number>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
     recordCostPlusReferral(providerId: string): Promise<void>;
+    recordTouchpoint(agentId: string, _zip: string): Promise<void>;
     registerHelper(firstName: string, lastName: string, email: string, zip: string, phone: string, helpType: string, consent: boolean, note: string): Promise<void>;
     registerProvider(id: string, name: string, lat: number, lng: number, providerType: string): Promise<void>;
+    removeRiskEvent(id: string): Promise<boolean>;
+    resetFiscalData(): Promise<void>;
     runHeartbeat(): Promise<Array<string>>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setEmergencyActive(isActive: boolean): Promise<void>;
+    setPredictionEngineState(state: PredictionEngineState): Promise<void>;
     setProviderActiveStatus(id: string, status: boolean): Promise<void>;
     toggleLive(id: string, status: boolean): Promise<void>;
     updateInventory(id: string, newInventory: string): Promise<void>;
+    updateRiskEvent(id: string, event: RiskEvent): Promise<boolean>;
     verifyHandoff(token: string): Promise<VerifyResult>;
     verifyProvider(id: string): Promise<void>;
 }
@@ -202,6 +247,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor._initializeAccessControl();
+            return result;
+        }
+    }
+    async addRiskEvent(arg0: RiskEvent): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addRiskEvent(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addRiskEvent(arg0);
             return result;
         }
     }
@@ -349,6 +408,27 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getFiscalData(): Promise<{
+        communityReinvestmentFund: number;
+        stabilityPipelinePercent: number;
+        livesSaved: number;
+        stabilizedAgents: bigint;
+        touchpointCount: bigint;
+        dollarsSaved: number;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getFiscalData();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getFiscalData();
+            return result;
+        }
+    }
     async getHandoffCountsByZip(): Promise<Array<[string, bigint]>> {
         if (this.processError) {
             try {
@@ -374,6 +454,48 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getMarketplaceGeoJSON();
+            return result;
+        }
+    }
+    async getPredictionEngineState(): Promise<PredictionEngineState> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPredictionEngineState();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPredictionEngineState();
+            return result;
+        }
+    }
+    async getRiskEvents(): Promise<Array<RiskEvent>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getRiskEvents();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getRiskEvents();
+            return result;
+        }
+    }
+    async getSocialStressBaseline(): Promise<Array<[string, number]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getSocialStressBaseline();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getSocialStressBaseline();
             return result;
         }
     }
@@ -405,6 +527,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getTouchpointData(): Promise<Array<TouchpointRecord>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTouchpointData();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTouchpointData();
+            return result;
+        }
+    }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
@@ -417,6 +553,34 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getUserProfile(arg0);
             return from_candid_opt_n8(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getWeatherAlerts(): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getWeatherAlerts();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getWeatherAlerts();
+            return result;
+        }
+    }
+    async getWeatherRisk(): Promise<number> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getWeatherRisk();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getWeatherRisk();
+            return result;
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -461,6 +625,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async recordTouchpoint(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.recordTouchpoint(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.recordTouchpoint(arg0, arg1);
+            return result;
+        }
+    }
     async registerHelper(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: boolean, arg7: string): Promise<void> {
         if (this.processError) {
             try {
@@ -486,6 +664,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3, arg4);
+            return result;
+        }
+    }
+    async removeRiskEvent(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.removeRiskEvent(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.removeRiskEvent(arg0);
+            return result;
+        }
+    }
+    async resetFiscalData(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.resetFiscalData();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.resetFiscalData();
             return result;
         }
     }
@@ -531,6 +737,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async setPredictionEngineState(arg0: PredictionEngineState): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setPredictionEngineState(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setPredictionEngineState(arg0);
+            return result;
+        }
+    }
     async setProviderActiveStatus(arg0: string, arg1: boolean): Promise<void> {
         if (this.processError) {
             try {
@@ -570,6 +790,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateInventory(arg0, arg1);
+            return result;
+        }
+    }
+    async updateRiskEvent(arg0: string, arg1: RiskEvent): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateRiskEvent(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateRiskEvent(arg0, arg1);
             return result;
         }
     }

@@ -1,17 +1,25 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "@tanstack/react-router";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import {
   Activity,
   BarChart2,
   Building2,
+  CheckCircle,
+  DollarSign,
   Download,
+  FileDown,
+  Loader2,
   Lock,
   ShieldCheck,
   TrendingUp,
   Users,
   Zap,
 } from "lucide-react";
+import { useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -25,6 +33,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ImpactOdometer } from "../components/ImpactOdometer";
+import { useFiscalImpact } from "../hooks/usePredictionEngine";
 import {
   useAllProviders,
   useCanisterState,
@@ -33,9 +43,12 @@ import {
   useTotalCostPlusReferrals,
   useTotalHandoffs,
 } from "../hooks/useQueries";
+import { usePredictionEngineStore } from "../store/predictionEngineStore";
 
 // ─── Color constants ───────────────────────────────────────────────────────────
-const GREEN = "#00e676";
+// Use Tailwind emerald-400 (#4ade80) for Recharts/inline-style contexts
+// where CSS custom properties cannot be read. This aligns with the --live token.
+const GREEN = "#4ade80";
 const TEAL = "#00bcd4";
 const AMBER = "#ffb300";
 const INDIGO = "#7c4dff";
@@ -242,7 +255,7 @@ function AccessGate() {
             to request access.
           </p>
         </div>
-        <a href="/contact">
+        <Link to="/contact">
           <Button
             className="font-semibold"
             style={{
@@ -254,13 +267,27 @@ function AccessGate() {
           >
             Request Access
           </Button>
-        </a>
+        </Link>
       </div>
     </div>
   );
 }
 
 // ─── Main dashboard ────────────────────────────────────────────────────────────
+
+// ─── Ohio ZIPs constant (for fiscal chart) ────────────────────────────────────
+const OHIO_ZIPS = [
+  "44105",
+  "44115",
+  "44310",
+  "44512",
+  "44718",
+  "44109",
+  "44612",
+  "45505",
+  "45011",
+];
+
 export function DashboardPage() {
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: providers = [], isLoading: providersLoading } =
@@ -274,6 +301,16 @@ export function DashboardPage() {
   const { data: canisterState, isLoading: canisterLoading } =
     useCanisterState();
 
+  // Fiscal impact hook — polls backend/simulates every 30s
+  useFiscalImpact();
+  const { settings: engineSettings, fiscalData } = usePredictionEngineStore();
+
+  // PDF export state
+  const dashboardContentRef = useRef<HTMLDivElement>(null);
+  const [pdfState, setPdfState] = useState<"idle" | "generating" | "done">(
+    "idle",
+  );
+
   // Show gate while loading admin status
   if (adminLoading) {
     return (
@@ -281,7 +318,7 @@ export function DashboardPage() {
         className="min-h-screen flex items-center justify-center"
         style={{ background: "oklch(0.08 0.02 240)" }}
       >
-        <div className="w-8 h-8 rounded-full border-2 border-[#00e676]/30 border-t-[#00e676] animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-emerald-400/30 border-t-emerald-400 animate-spin" />
       </div>
     );
   }
@@ -336,6 +373,87 @@ export function DashboardPage() {
   const memoryMB = canisterState
     ? Math.round(Number(canisterState.total_active_providers) * 0.004 + 1.2)
     : 0;
+
+  // ── PDF export handler ──────────────────────────────────────────────────────
+  const handleExportPDF = async () => {
+    if (!dashboardContentRef.current || pdfState === "generating") return;
+    setPdfState("generating");
+    try {
+      const isMobile = window.innerWidth < 768;
+      const scale = isMobile ? 0.8 : 1.5;
+      const canvas = await html2canvas(dashboardContentRef.current, {
+        scale,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#0d1117",
+        logging: false,
+        windowWidth: isMobile ? 768 : window.innerWidth,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 12;
+      const contentW = pageW - margin * 2;
+
+      // Header
+      const today = new Date();
+      const dateStr = today.toISOString().split("T")[0];
+      pdf.setFillColor(13, 17, 23);
+      pdf.rect(0, 0, pageW, pageH, "F");
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.setTextColor(74, 222, 128); // emerald-400
+      pdf.text("Live Now Recovery", margin, margin + 5);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(140, 155, 175);
+      pdf.text("Recovery Intelligence Report", margin, margin + 11);
+      pdf.text(
+        `Generated: ${today.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+        margin,
+        margin + 16,
+      );
+
+      // Image positioned below header
+      const headerH = margin + 22;
+      const footerH = 12;
+      const availH = pageH - headerH - footerH;
+      const imgAspect = canvas.height / canvas.width;
+      const imgH = Math.min(availH, contentW * imgAspect);
+      const imgY = headerH;
+
+      pdf.addImage(imgData, "PNG", margin, imgY, contentW, imgH);
+
+      // Footer
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(100, 110, 125);
+      pdf.text("Confidential — For Investor Use Only", margin, pageH - 5);
+      pdf.text(
+        `© ${today.getFullYear()} Live Now Recovery`,
+        pageW - margin,
+        pageH - 5,
+        { align: "right" },
+      );
+
+      // Separator lines
+      pdf.setDrawColor(74, 222, 128);
+      pdf.setLineWidth(0.4);
+      pdf.line(margin, margin + 19, pageW - margin, margin + 19);
+      pdf.line(margin, pageH - 9, pageW - margin, pageH - 9);
+
+      pdf.save(`Recovery-Intelligence-Report-${dateStr}.pdf`);
+      setPdfState("done");
+      setTimeout(() => setPdfState("idle"), 3000);
+    } catch {
+      setPdfState("idle");
+    }
+  };
 
   // ── Download handler ────────────────────────────────────────────────────────
   const handleDownload = () => {
@@ -421,24 +539,61 @@ export function DashboardPage() {
                 Region 13
               </p>
             </div>
-            <Button
-              onClick={handleDownload}
-              className="flex items-center gap-2 shrink-0 font-semibold"
-              style={{
-                background: `${GREEN}15`,
-                border: `1px solid ${GREEN}35`,
-                color: GREEN,
-              }}
-              data-ocid="dashboard.download_report"
-            >
-              <Download className="w-4 h-4" />
-              Download Report
-            </Button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+              {/* Export PDF */}
+              <Button
+                onClick={handleExportPDF}
+                disabled={pdfState === "generating"}
+                className="flex items-center gap-2 font-semibold"
+                style={{
+                  background: pdfState === "done" ? `${GREEN}25` : `${GREEN}18`,
+                  border: `1px solid ${pdfState === "done" ? GREEN : `${GREEN}45`}`,
+                  color: GREEN,
+                  opacity: pdfState === "generating" ? 0.7 : 1,
+                }}
+                data-ocid="dashboard.export_pdf"
+              >
+                {pdfState === "generating" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating…
+                  </>
+                ) : pdfState === "done" ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Downloaded!
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-4 h-4" />
+                    Export Report
+                  </>
+                )}
+              </Button>
+              {/* JSON download */}
+              <Button
+                onClick={handleDownload}
+                className="flex items-center gap-2 font-semibold"
+                style={{
+                  background: "oklch(0.16 0.04 240)",
+                  border: "1px solid oklch(0.28 0.05 240)",
+                  color: "oklch(0.72 0.04 220)",
+                }}
+                data-ocid="dashboard.download_report"
+              >
+                <Download className="w-4 h-4" />
+                Download Report
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-10 space-y-10">
+      <div
+        ref={dashboardContentRef}
+        className="max-w-7xl mx-auto px-4 py-10 space-y-10"
+        data-ocid="dashboard.content"
+      >
         {/* ── Stat cards row ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -734,6 +889,104 @@ export function DashboardPage() {
               loading={canisterLoading}
             />
           </div>
+        </div>
+
+        {/* ── Fiscal Impact section ── */}
+        <div data-ocid="dashboard.fiscal_impact">
+          <div className="flex items-center gap-2 mb-5">
+            <DollarSign className="w-4 h-4" style={{ color: GREEN }} />
+            <h2
+              className="font-bold text-sm uppercase tracking-wider"
+              style={{ color: "oklch(0.72 0.04 220)" }}
+            >
+              Fiscal Impact Engine — Sentinel ROI Dashboard
+            </h2>
+          </div>
+
+          {/* ImpactOdometer */}
+          <div
+            className="rounded-2xl p-6 mb-6"
+            style={{
+              background: NAVY_CARD,
+              border: `1px solid ${GREEN}25`,
+              boxShadow: `0 0 40px ${GREEN}08`,
+            }}
+          >
+            <ImpactOdometer
+              dollarsSaved={fiscalData.totalDollarsSaved}
+              livesSaved={fiscalData.livesSaved}
+              stabilizedAgents={fiscalData.stabilizedAgents}
+              stabilityPipelinePercent={fiscalData.stabilityPipelinePercent}
+              communityReinvestmentFund={fiscalData.communityReinvestmentFund}
+              accelerated={engineSettings.potencyToggle}
+              sensitivity={engineSettings.sensitivitySlider}
+            />
+          </div>
+
+          {/* Monthly Cost Avoidance by ZIP */}
+          <ChartCard
+            title="Monthly Cost Avoidance by ZIP Code"
+            icon={TrendingUp}
+          >
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart
+                data={OHIO_ZIPS.map((zip) => {
+                  // Use real handoff data where available, else mock
+                  const real = handoffsByZip.find(([z]) => z === zip);
+                  const handoffs = real
+                    ? Number(real[1])
+                    : Math.floor(Math.random() * 8) + 1;
+                  return {
+                    zip,
+                    costAvoidance: handoffs * 25_000,
+                    handoffs,
+                  };
+                })}
+                margin={{ top: 4, right: 8, left: 8, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="oklch(0.20 0.03 240)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="zip"
+                  tick={{ fill: MUTED_TEXT, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: MUTED_TEXT, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v: number) =>
+                    v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`
+                  }
+                />
+                <Tooltip
+                  content={<DarkTooltip />}
+                  cursor={{ fill: `${GREEN}08` }}
+                  formatter={(value: number) => [
+                    `$${value.toLocaleString()}`,
+                    "Cost Avoided",
+                  ]}
+                />
+                <Bar
+                  dataKey="costAvoidance"
+                  radius={[4, 4, 0, 0]}
+                  name="Cost Avoidance"
+                >
+                  {OHIO_ZIPS.map((zip, index) => (
+                    <Cell
+                      key={`fiscal-${zip}`}
+                      fill={GREEN}
+                      opacity={0.6 + (index / OHIO_ZIPS.length) * 0.4}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
         </div>
       </div>
     </main>

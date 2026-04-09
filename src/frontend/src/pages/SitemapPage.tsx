@@ -6,6 +6,8 @@ const sections = [
     title: "Platform",
     links: [
       { to: "/", label: "Home" },
+      { to: "/dashboard", label: "Recovery Intelligence Dashboard" },
+      { to: "/videos", label: "Video Library" },
       { to: "/helper", label: "Helper Guide" },
       { to: "/verify", label: "Verify Handoff" },
       { to: "/register", label: "Register as Provider" },
@@ -21,6 +23,7 @@ const sections = [
       { to: "/how-it-works", label: "How It Works" },
       { to: "/ohio-stats", label: "Ohio Stats" },
       { to: "/blog", label: "Blog" },
+      { to: "/integration", label: "Sentinel AI Integration" },
     ],
   },
   {
@@ -30,6 +33,14 @@ const sections = [
       { to: "/about", label: "About Us" },
       { to: "/founder", label: "Our Founder" },
       { to: "/contact", label: "Contact" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { to: "/privacy", label: "Privacy Policy" },
+      { to: "/terms", label: "Terms of Service" },
+      { to: "/cookies", label: "Cookie Policy" },
     ],
   },
   {
