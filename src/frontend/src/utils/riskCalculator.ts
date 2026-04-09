@@ -235,16 +235,26 @@ export interface SentinelPointProperties {
  * Builds a GeoJSON FeatureCollection for the sentinel-risk-layer heatmap.
  * Each provider becomes a Point with a `riskScore` property derived from
  * the composite risk score for its ZIP code.
+ *
+ * @param providers   List of providers with lat/lng/zip
+ * @param inputs      Active prediction engine inputs (settings, events, stress, weather)
+ * @param citizenBoosts  Optional ZIP → citizen-report boost amount (additive, post-calculation)
  */
 export function buildSentinelGeoJSON(
   providers: Array<{ lat: number; lng: number; id: string; zip?: string }>,
   inputs: RiskInputs,
+  citizenBoosts?: Record<string, number>,
 ): GeoJSON.FeatureCollection<GeoJSON.Point, SentinelPointProperties> {
   const now = new Date();
   const features = providers.map((p) => {
     const zip = p.zip ?? "";
     const raw = compositeRiskScore(zip, inputs, now);
-    const riskScore = riskScoreToHeatmapOpacity(raw);
+
+    // Add citizen-report boost on top of the composite score (additive, capped at 5.0)
+    const citizenBoost = citizenBoosts ? (citizenBoosts[zip] ?? 0) : 0;
+    const boostedRaw = Math.min(5.0, raw + citizenBoost);
+
+    const riskScore = riskScoreToHeatmapOpacity(boostedRaw);
     return {
       type: "Feature" as const,
       geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },

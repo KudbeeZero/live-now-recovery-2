@@ -6,10 +6,12 @@ import maplibregl, {
   type Popup as MaplibrePopup,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { ProviderStatus } from "../backend";
 import {
   useAllProviders,
+  useGetActiveRiskBoosts,
   useGetAllReports,
   useGetRiskEvents,
   useGetSocialStressBaseline,
@@ -144,6 +146,16 @@ export function EnhancedRecoveryMap({
   const storeWeatherMultiplier = usePredictionEngineStore(
     (s) => s.weatherRiskMultiplier,
   );
+  const citizenReportBoosts = usePredictionEngineStore(
+    (s) => s.citizenReportBoosts,
+  );
+  const setCitizenReportBoosts = usePredictionEngineStore(
+    (s) => s.setCitizenReportBoosts,
+  );
+
+  // ── Active risk boosts from citizen reports (30s polling) ────────────────
+  const { data: activeRiskBoosts = [] } = useGetActiveRiskBoosts();
+  const queryClient = useQueryClient();
 
   // Prediction engine queries (only fires when sentinel is toggled on)
   const { data: backendRiskEvents } = useGetRiskEvents();
@@ -909,6 +921,20 @@ export function EnhancedRecoveryMap({
     }
   }, [socialStressData, setSocialStressBaseline]);
 
+  // ── Sync citizen report boosts into Zustand store ────────────────────────
+  // activeRiskBoosts is polled every 30s (refetchInterval set in useGetActiveRiskBoosts).
+  // We convert the array of [zipCode, boostAmount] objects into a plain Record
+  // and store it so buildSentinelGeoJSON can consume it.
+  useEffect(() => {
+    if (!activeRiskBoosts.length) return;
+    const boostMap: Record<string, number> = {};
+    for (const boost of activeRiskBoosts) {
+      boostMap[boost.zipCode] =
+        (boostMap[boost.zipCode] ?? 0) + boost.boostAmount;
+    }
+    setCitizenReportBoosts(boostMap);
+  }, [activeRiskBoosts, setCitizenReportBoosts]);
+
   // ── Sentinel Risk layer — add/remove/update ──────────────────────────────
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current) return;
@@ -939,12 +965,16 @@ export function EnhancedRecoveryMap({
       zip: p.id.includes("-") ? p.id.split("-")[0] : undefined,
     }));
 
-    const sentinelGeoJSON = buildSentinelGeoJSON(providerPoints, {
-      settings: predictionSettings,
-      riskEvents: storeRiskEvents,
-      socialStressBaseline: storeSocialStress,
-      weatherRiskMultiplier: storeWeatherMultiplier,
-    });
+    const sentinelGeoJSON = buildSentinelGeoJSON(
+      providerPoints,
+      {
+        settings: predictionSettings,
+        riskEvents: storeRiskEvents,
+        socialStressBaseline: storeSocialStress,
+        weatherRiskMultiplier: storeWeatherMultiplier,
+      },
+      citizenReportBoosts,
+    );
 
     // If source already exists, just update data
     const existingSource = map.getSource(SENTINEL_SOURCE) as
@@ -1036,6 +1066,7 @@ export function EnhancedRecoveryMap({
     storeRiskEvents,
     storeSocialStress,
     storeWeatherMultiplier,
+    citizenReportBoosts,
   ]);
   useEffect(() => {
     activeFilterRef.current = activeFilter ?? "all";
@@ -1430,7 +1461,14 @@ export function EnhancedRecoveryMap({
 
       {/* Citizen Report Composer modal */}
       {showComposer && (
-        <CitizenReportComposer onClose={() => setShowComposer(false)} />
+        <CitizenReportComposer
+          onClose={() => {
+            setShowComposer(false);
+            // Immediately refetch risk boosts so the heatmap reflects the new report
+            // without waiting for the next 30-second polling interval
+            queryClient.invalidateQueries({ queryKey: ["activeRiskBoosts"] });
+          }}
+        />
       )}
     </div>
   );

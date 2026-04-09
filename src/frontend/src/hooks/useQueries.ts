@@ -10,8 +10,10 @@ import { createActor } from "../backend";
 import type {
   ActivityTypeValue,
   CitizenReport,
+  CitizenRiskBoost,
   ProviderPost,
   RecoveryProfile,
+  Testimonial,
 } from "../types/community";
 
 // ─── Public queries — no authentication required ────────────────────────────
@@ -593,35 +595,311 @@ export function useAddFavoriteProvider() {
 // ─── Community Layer: Citizen Reports ────────────────────────────────────────
 
 export function useGetAllReports() {
+  const { actor } = useActor(createActor);
   return useQuery<CitizenReport[]>({
     queryKey: ["citizenReports"],
-    queryFn: async () => [],
-    staleTime: 30_000,
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        const raw = await actor.getAllReports();
+        // Backend CitizenReport uses bigint for upvotes/createdAt; normalize to number
+        return raw.map((r) => ({
+          ...r,
+          upvotes: Number(r.upvotes),
+          createdAt: Number(r.createdAt),
+          activityType: r.activityType as CitizenReport["activityType"],
+        }));
+      } catch (err) {
+        console.error("[useGetAllReports] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor,
+    refetchInterval: 30_000,
+    retry: 2,
   });
 }
 
 export function useSubmitCitizenReport() {
+  const { actor } = useActor(createActor);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (
-      _report: Omit<CitizenReport, "id" | "upvotes" | "createdAt">,
+      report: Omit<CitizenReport, "id" | "upvotes" | "createdAt">,
     ): Promise<void> => {
-      return Promise.resolve();
+      if (!actor) throw new Error("Not connected");
+      await actor.submitCitizenReport(
+        report.zipCode,
+        report.activityType,
+        report.content,
+        report.lat ?? null,
+        report.lng ?? null,
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["citizenReports"] });
+      qc.invalidateQueries({ queryKey: ["activeRiskBoosts"] });
     },
   });
 }
 
 export function useUpvoteCitizenReport() {
+  const { actor } = useActor(createActor);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (_reportId: string): Promise<void> => {
-      return Promise.resolve();
+    mutationFn: async (reportId: string): Promise<void> => {
+      if (!actor) throw new Error("Not connected");
+      await actor.upvoteCitizenReport(reportId);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["citizenReports"] });
     },
+  });
+}
+
+// ─── Community Layer: Citizen Report Flagging ─────────────────────────────────
+
+export function useFlagCitizenReport() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (reportId: string): Promise<void> => {
+      if (!actor) throw new Error("Not connected");
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (
+          actor as unknown as Record<string, (a: string) => Promise<void>>
+        ).flagCitizenReport(reportId);
+      } catch (err) {
+        console.error("[useFlagCitizenReport] Failed:", err);
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["citizenReports"] });
+    },
+  });
+}
+
+// ─── Community Layer: Active Risk Boosts ─────────────────────────────────────
+
+export function useGetActiveRiskBoosts() {
+  const { actor } = useActor(createActor);
+  return useQuery<CitizenRiskBoost[]>({
+    queryKey: ["activeRiskBoosts"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = await (
+          actor as unknown as Record<string, () => Promise<unknown>>
+        ).getActiveRiskBoosts();
+        return raw as CitizenRiskBoost[];
+      } catch (err) {
+        console.error("[useGetActiveRiskBoosts] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor,
+    refetchInterval: 30_000,
+    retry: 2,
+  });
+}
+
+// ─── Community Layer: Testimonials ───────────────────────────────────────────
+
+export function useStoreTestimonial() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      authorDisplayName: string;
+      zipCode: string;
+      content: string;
+    }): Promise<void> => {
+      if (!actor) throw new Error("Not connected");
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (
+          actor as unknown as Record<
+            string,
+            (a: string, b: string, c: string) => Promise<void>
+          >
+        ).storeTestimonial(
+          payload.authorDisplayName,
+          payload.zipCode,
+          payload.content,
+        );
+      } catch (err) {
+        console.error("[useStoreTestimonial] Failed:", err);
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["approvedTestimonials"] });
+    },
+  });
+}
+
+export function useGetApprovedTestimonials() {
+  const { actor } = useActor(createActor);
+  return useQuery<Testimonial[]>({
+    queryKey: ["approvedTestimonials"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = await (
+          actor as unknown as Record<string, () => Promise<unknown>>
+        ).getApprovedTestimonials();
+        return raw as Testimonial[];
+      } catch (err) {
+        console.error("[useGetApprovedTestimonials] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor,
+    refetchInterval: 30_000,
+    retry: 2,
+  });
+}
+
+export function useGetAllTestimonialsAdmin() {
+  const { actor, isFetching } = useActor(createActor);
+  return useQuery<Testimonial[]>({
+    queryKey: ["allTestimonialsAdmin"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = await (
+          actor as unknown as Record<string, () => Promise<unknown>>
+        ).getAllTestimonialsAdmin();
+        return raw as Testimonial[];
+      } catch (err) {
+        console.error("[useGetAllTestimonialsAdmin] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 15_000,
+    retry: 2,
+  });
+}
+
+export function useApproveTestimonial() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (testimonialId: string): Promise<void> => {
+      if (!actor) throw new Error("Not connected");
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (
+          actor as unknown as Record<string, (a: string) => Promise<void>>
+        ).approveTestimonial(testimonialId);
+      } catch (err) {
+        console.error("[useApproveTestimonial] Failed:", err);
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["allTestimonialsAdmin"] });
+      qc.invalidateQueries({ queryKey: ["approvedTestimonials"] });
+    },
+  });
+}
+
+export function useHideTestimonial() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (testimonialId: string): Promise<void> => {
+      if (!actor) throw new Error("Not connected");
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (
+          actor as unknown as Record<string, (a: string) => Promise<void>>
+        ).hideTestimonial(testimonialId);
+      } catch (err) {
+        console.error("[useHideTestimonial] Failed:", err);
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["allTestimonialsAdmin"] });
+      qc.invalidateQueries({ queryKey: ["approvedTestimonials"] });
+    },
+  });
+}
+
+// ─── Community Layer: Aggregate Counts ───────────────────────────────────────
+
+export function useGetHelperCount() {
+  const { actor } = useActor(createActor);
+  return useQuery<bigint>({
+    queryKey: ["helperCount"],
+    queryFn: async () => {
+      if (!actor) return 0n;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return await (
+          actor as unknown as Record<string, () => Promise<bigint>>
+        ).getHelperCount();
+      } catch (err) {
+        // Fallback: count helpers from getAllHelpers
+        try {
+          const helpers = await actor.getAllHelpers();
+          return BigInt(helpers.length);
+        } catch {
+          console.error("[useGetHelperCount] Failed:", err);
+          return 0n;
+        }
+      }
+    },
+    enabled: !!actor,
+    refetchInterval: 60_000,
+    retry: 2,
+  });
+}
+
+export function useAllHelpers() {
+  const { actor, isFetching } = useActor(createActor);
+  return useQuery({
+    queryKey: ["allHelpers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getAllHelpers();
+      } catch (err) {
+        console.error("[useAllHelpers] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30_000,
+    retry: 2,
+  });
+}
+
+export function useGetTestimonialCount() {
+  const { actor } = useActor(createActor);
+  return useQuery<bigint>({
+    queryKey: ["testimonialCount"],
+    queryFn: async () => {
+      if (!actor) return 0n;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return await (
+          actor as unknown as Record<string, () => Promise<bigint>>
+        ).getTestimonialCount();
+      } catch (err) {
+        console.error("[useGetTestimonialCount] Failed:", err);
+        return 0n;
+      }
+    },
+    enabled: !!actor,
+    refetchInterval: 60_000,
+    retry: 2,
   });
 }

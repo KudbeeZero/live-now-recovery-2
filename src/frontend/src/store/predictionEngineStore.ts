@@ -48,6 +48,12 @@ interface PredictionEngineStoreState {
   fiscalData: FiscalImpactSummary;
   setFiscalData: (data: Partial<FiscalImpactSummary>) => void;
   resetFiscalData: () => void;
+
+  // ── Citizen report risk boosts (ZIP → boost amount) ──────────────────────
+  /** Active citizen-report-derived risk boosts keyed by ZIP code.
+   *  Populated from getActiveRiskBoosts backend call and fed into buildSentinelGeoJSON. */
+  citizenReportBoosts: Record<string, number>;
+  setCitizenReportBoosts: (boosts: Record<string, number>) => void;
 }
 
 const DEFAULT_SETTINGS: PredictionEngineSettings = {
@@ -114,6 +120,10 @@ export const usePredictionEngineStore = create<PredictionEngineStoreState>()(
           fiscalData: { ...state.fiscalData, ...data },
         })),
       resetFiscalData: () => set({ fiscalData: DEFAULT_FISCAL }),
+
+      // Citizen report boosts (not persisted — refreshed from backend)
+      citizenReportBoosts: {},
+      setCitizenReportBoosts: (boosts) => set({ citizenReportBoosts: boosts }),
     }),
     {
       name: "prediction-engine-settings",

@@ -51,6 +51,23 @@ export interface ResourceOrg {
   city: string;
 }
 
+export interface Testimonial {
+  id: string;
+  authorId: string;
+  authorDisplayName: string;
+  zipCode: string;
+  content: string;
+  isApproved: boolean;
+  isHidden: boolean;
+  createdAt: bigint;
+}
+
+export interface CitizenRiskBoost {
+  zipCode: string;
+  boostAmount: number;
+  expiresAt: bigint;
+}
+
 export const ActivityType = {
   NARCAN_USED: "narcan-used",
   SUSPECTED_OD: "suspected-od",

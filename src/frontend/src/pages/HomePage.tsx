@@ -34,6 +34,7 @@ import { useActivitySimulation } from "../hooks/useActivitySimulation";
 import {
   useAllProviders,
   useCanisterState,
+  useGetHelperCount,
   useIsAdmin,
   useToggleLive,
   useTotalHandoffs,
@@ -113,6 +114,7 @@ export function HomePage() {
   const { data: isAdmin } = useIsAdmin();
   const { data: totalHandoffs, isLoading: handoffsLoading } =
     useTotalHandoffs();
+  const { data: helperCount } = useGetHelperCount();
   const toggleLive = useToggleLive();
   const { loginStatus, identity } = useInternetIdentity();
   const isLoggedIn = loginStatus === "success" && !!identity;
@@ -132,9 +134,14 @@ export function HomePage() {
   const [showAllCities, setShowAllCities] = useState(false);
   const [adminDrawerOpen, setAdminDrawerOpen] = useState(false);
 
-  // Animate volunteer count up from 0 to backendTotalVolunteers (or 47 default)
+  // Animate volunteer count up from 0 to real helper count (falling back to sim count, then 47)
+  const realHelperCount = helperCount !== undefined ? Number(helperCount) : 0;
   const targetVolunteers =
-    backendTotalVolunteers > 0 ? backendTotalVolunteers : 47;
+    realHelperCount > 0
+      ? realHelperCount
+      : backendTotalVolunteers > 0
+        ? backendTotalVolunteers
+        : 47;
   const [volunteerCount, setVolunteerCount] = useState(0);
   useEffect(() => {
     const target = targetVolunteers;
@@ -463,8 +470,8 @@ export function HomePage() {
                 {volunteerCount}
               </span>
               <span
-                className="text-[10px] sm:text-xs font-medium mt-1 text-center leading-tight"
-                style={{ color: "oklch(0.58 0.04 220)" }}
+                className="text-[10px] sm:text-xs font-semibold mt-1 text-center leading-tight stat-label"
+                style={{ color: "oklch(0.68 0.1 218)" }}
               >
                 Community Volunteers
               </span>
@@ -499,8 +506,8 @@ export function HomePage() {
                 </span>
               )}
               <span
-                className="text-[10px] sm:text-xs font-medium mt-1 text-center leading-tight"
-                style={{ color: "oklch(0.58 0.04 220)" }}
+                className="text-[10px] sm:text-xs font-semibold mt-1 text-center leading-tight stat-label"
+                style={{ color: "oklch(0.68 0.1 218)" }}
               >
                 Recovery Handoffs
               </span>
@@ -532,12 +539,12 @@ export function HomePage() {
                     textShadow: "0 0 18px oklch(0.82 0.18 145 / 0.55)",
                   }}
                 >
-                  {liveCount}
+                  {providers.length || liveCount}
                 </span>
               )}
               <span
-                className="text-[10px] sm:text-xs font-medium mt-1 text-center leading-tight"
-                style={{ color: "oklch(0.58 0.04 220)" }}
+                className="text-[10px] sm:text-xs font-semibold mt-1 text-center leading-tight stat-label"
+                style={{ color: "oklch(0.68 0.1 218)" }}
               >
                 Active Providers
               </span>

@@ -1,57 +1,120 @@
+/**
+ * AdminPage — 8-tab admin command center for Live Now Recovery.
+ * Auth guard: useInternetIdentity() + useIsAdmin()
+ * Tabs: Overview, Providers, Citizen Reports, Testimonials, Helpers, Fiscal Impact, Health Monitor, Prediction Engine
+ */
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import {
+  Activity,
   AlertTriangle,
+  BarChart3,
   BedDouble,
   CheckCircle2,
   Clock,
   Database,
+  DollarSign,
+  Download,
+  ExternalLink,
+  FileText,
+  Flag,
+  Heart,
   Loader2,
   Lock,
+  MessageSquare,
   Plus,
   Settings,
+  Shield,
   ShieldCheck,
+  TrendingUp,
   Users,
   X,
+  Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createActor } from "../backend";
+import type { Helper, ProviderWithStatus, TouchpointRecord } from "../backend";
 import { HealthMonitor } from "../components/HealthMonitor";
+import { ImpactOdometer } from "../components/ImpactOdometer";
 import { PredictionEnginePanel } from "../components/PredictionEnginePanel";
 import {
   useAllProviders,
-  useCanisterState,
+  useApproveTestimonial,
+  useFlagCitizenReport,
+  useGetAllReports,
+  useGetAllTestimonialsAdmin,
+  useGetHelperCount,
+  useHideTestimonial,
   useIsAdmin,
   useRegisterProvider,
+  useSetProviderActiveStatus,
   useToggleLive,
   useVerifyProvider,
 } from "../hooks/useQueries";
+import { usePredictionEngineStore } from "../store/predictionEngineStore";
+import type { CitizenReport, Testimonial } from "../types/community";
 import { isProviderStale, statusLabel } from "../utils/providerUtils";
 
-const PROVIDER_TYPE_LABELS: Record<string, string> = {
-  MAT: "MAT Clinic",
-  Narcan: "Narcan Distribution",
-  ER: "Emergency Room",
-  "Naloxone Kiosk": "Naloxone Kiosk",
-  "Telehealth MAT": "Telehealth MAT",
-  "MAT Clinic": "MAT Clinic",
-  "Narcan Distribution": "Narcan Distribution",
-  "Emergency Room": "Emergency Room",
-};
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type AdminTab =
+  | "overview"
+  | "providers"
+  | "reports"
+  | "testimonials"
+  | "helpers"
+  | "fiscal"
+  | "health"
+  | "prediction";
 
 type EmergencyStatus = "open_bed" | "72hr_bridge" | null;
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const PROVIDER_TYPE_COLORS: Record<string, string> = {
+  MAT: "bg-emerald-900/40 text-emerald-400 border-emerald-700/40",
+  "MAT Clinic": "bg-emerald-900/40 text-emerald-400 border-emerald-700/40",
+  Narcan: "bg-amber-900/40 text-amber-400 border-amber-700/40",
+  "Narcan Distribution": "bg-amber-900/40 text-amber-400 border-amber-700/40",
+  ER: "bg-red-900/40 text-red-400 border-red-700/40",
+  "Emergency Room": "bg-red-900/40 text-red-400 border-red-700/40",
+  "Naloxone Kiosk": "bg-purple-900/40 text-purple-400 border-purple-700/40",
+  "Telehealth MAT": "bg-indigo-900/40 text-indigo-400 border-indigo-700/40",
+};
+
+const REPORT_TYPE_COLORS: Record<string, string> = {
+  "suspected-od": "bg-red-900/40 text-red-400 border-red-700/40",
+  "narcan-used": "bg-amber-900/40 text-amber-400 border-amber-700/40",
+  "bad-batch-alert": "bg-orange-900/40 text-orange-400 border-orange-700/40",
+  "area-concern": "bg-purple-900/40 text-purple-400 border-purple-700/40",
+  "check-in": "bg-emerald-900/40 text-emerald-400 border-emerald-700/40",
+  "resource-found": "bg-teal-900/40 text-teal-400 border-teal-700/40",
+  other: "bg-slate-700/40 text-slate-400 border-slate-600/40",
+};
+
+const REPORT_TYPE_LABELS: Record<string, string> = {
+  "suspected-od": "Suspected OD",
+  "narcan-used": "Narcan Used",
+  "bad-batch-alert": "Bad Batch Alert",
+  "area-concern": "Area Concern",
+  "check-in": "Check-In",
+  "resource-found": "Resource Found",
+  other: "Other",
+};
+
+// ─── Emergency helpers ────────────────────────────────────────────────────────
 
 function getEmergencyStatus(
   id: string,
 ): { status: EmergencyStatus; setAt: number } | null {
   try {
-    // Check the bridge_active key first (new), then fall back to emergency_status (legacy)
     const bridgeRaw = localStorage.getItem(`bridge_active_${id}`);
     if (bridgeRaw) {
       const parsed = JSON.parse(bridgeRaw) as { expiresAt: number };
@@ -77,12 +140,11 @@ function getEmergencyStatus(
   }
 }
 
-function setEmergencyStatus(id: string, status: EmergencyStatus) {
+function _setEmergencyStatus(id: string, status: EmergencyStatus) {
   if (!status) {
     localStorage.removeItem(`emergency_status_${id}`);
     localStorage.removeItem(`bridge_active_${id}`);
   } else if (status === "72hr_bridge") {
-    // Use the bridge_active key with an expiry timestamp
     localStorage.setItem(
       `bridge_active_${id}`,
       JSON.stringify({ expiresAt: Date.now() + 72 * 3600000 }),
@@ -96,7 +158,7 @@ function setEmergencyStatus(id: string, status: EmergencyStatus) {
 }
 
 function isERProvider(p: { name: string; providerType?: string }): boolean {
-  const type = (p as { providerType?: string }).providerType ?? "";
+  const type = p.providerType ?? "";
   if (type === "ER" || type === "Emergency Room") return true;
   const lower = p.name.toLowerCase();
   return (
@@ -116,8 +178,55 @@ function formatCountdown(setAt: number): string {
   return `${hours}h ${minutes}m remaining`;
 }
 
+function formatTime(ts: bigint | number): string {
+  const ms = typeof ts === "bigint" ? Number(ts) / 1_000_000 : ts;
+  if (!ms) return "—";
+  return new Date(ms).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+// ─── Tab definitions ──────────────────────────────────────────────────────────
+
+const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    icon: <BarChart3 className="w-4 h-4" />,
+  },
+  { id: "providers", label: "Providers", icon: <Shield className="w-4 h-4" /> },
+  {
+    id: "reports",
+    label: "Citizen Reports",
+    icon: <Activity className="w-4 h-4" />,
+  },
+  {
+    id: "testimonials",
+    label: "Testimonials",
+    icon: <MessageSquare className="w-4 h-4" />,
+  },
+  { id: "helpers", label: "Helpers", icon: <Users className="w-4 h-4" /> },
+  {
+    id: "fiscal",
+    label: "Fiscal Impact",
+    icon: <DollarSign className="w-4 h-4" />,
+  },
+  {
+    id: "health",
+    label: "Health Monitor",
+    icon: <Heart className="w-4 h-4" />,
+  },
+  {
+    id: "prediction",
+    label: "Prediction Engine",
+    icon: <Zap className="w-4 h-4" />,
+  },
+];
+
 const SEED_PROVIDERS = [
-  // MAT Clinics
   {
     id: "seed-mat-001",
     name: "Signature Health – Cleveland",
@@ -160,7 +269,6 @@ const SEED_PROVIDERS = [
     lng: -82.1077,
     providerType: "MAT",
   },
-  // Narcan Distribution
   {
     id: "seed-narcan-001",
     name: "AIDS Taskforce of Greater Cleveland",
@@ -203,7 +311,6 @@ const SEED_PROVIDERS = [
     lng: -81.3859,
     providerType: "Narcan",
   },
-  // Emergency Rooms
   {
     id: "seed-er-001",
     name: "MetroHealth Medical Center ER",
@@ -246,7 +353,6 @@ const SEED_PROVIDERS = [
     lng: -82.1035,
     providerType: "ER",
   },
-  // Naloxone Kiosks (24/7 — always live)
   {
     id: "seed-kiosk-001",
     name: "The Centers Ohio Kiosk – Payne Ave Cleveland",
@@ -263,33 +369,25 @@ const SEED_PROVIDERS = [
   },
   {
     id: "seed-kiosk-003",
-    name: "The Centers Ohio Kiosk – 1641 Payne Ave Cleveland",
-    lat: 41.508,
-    lng: -81.6537,
-    providerType: "Naloxone Kiosk",
-  },
-  {
-    id: "seed-kiosk-004",
     name: "The Centers Ohio Kiosk – Sherman Ave Akron",
     lat: 41.0754,
     lng: -81.5124,
     providerType: "Naloxone Kiosk",
   },
   {
-    id: "seed-kiosk-005",
+    id: "seed-kiosk-004",
     name: "Massillon Police Dept Naloxone Kiosk",
     lat: 40.7962,
     lng: -81.5218,
     providerType: "Naloxone Kiosk",
   },
   {
-    id: "seed-kiosk-006",
+    id: "seed-kiosk-005",
     name: "Jackson Township Police Naloxone Kiosk",
     lat: 40.8329,
     lng: -81.5457,
     providerType: "Naloxone Kiosk",
   },
-  // Telehealth MAT (extended hours)
   {
     id: "seed-telehealth-001",
     name: "Spero Health Ohio – Telehealth",
@@ -306,57 +404,317 @@ const SEED_PROVIDERS = [
   },
 ];
 
-export function AdminPage() {
-  const { login, loginStatus } = useInternetIdentity();
-  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
-  const { data: providers = [] } = useAllProviders();
-  const { data: canisterState } = useCanisterState();
-  const registerProvider = useRegisterProvider();
-  const toggleLive = useToggleLive();
+// ─── Sub-tab components ───────────────────────────────────────────────────────
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  color = "text-foreground",
+  isLoading = false,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  color?: string;
+  isLoading?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="bg-card rounded-2xl border border-border p-5 text-left hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      data-ocid="admin.metric_card"
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+          {icon}
+        </div>
+        <span className="text-sm text-muted-foreground font-medium">
+          {label}
+        </span>
+      </div>
+      {isLoading ? (
+        <Skeleton className="h-8 w-20" />
+      ) : (
+        <p className={`text-2xl font-bold ${color}`}>{value}</p>
+      )}
+    </button>
+  );
+}
+
+function ProviderTypeBadge({ type }: { type: string }) {
+  const cls =
+    PROVIDER_TYPE_COLORS[type] ??
+    "bg-muted text-muted-foreground border-border";
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cls}`}
+    >
+      {type}
+    </span>
+  );
+}
+
+// ─── Tab: Overview ────────────────────────────────────────────────────────────
+
+function OverviewTab({
+  providers,
+  setTab,
+}: {
+  providers: ProviderWithStatus[];
+  setTab: (t: AdminTab) => void;
+}) {
+  const { data: allReports = [] } = useGetAllReports();
+  const { data: allTestimonials = [] } = useGetAllTestimonialsAdmin();
+  const { data: helperCount, isLoading: helperLoading } = useGetHelperCount();
+  const fiscalData = usePredictionEngineStore((s) => s.fiscalData);
+
+  const activeProviders = providers.filter((p) => p.is_active).length;
+  const pendingVerifications = providers.filter((p) => !p.is_verified).length;
+  const pendingTestimonials = allTestimonials.filter(
+    (t) => !t.isApproved && !t.isHidden,
+  ).length;
+  const approvedTestimonials = allTestimonials.filter(
+    (t) => t.isApproved,
+  ).length;
+
+  const dollarsSaved = fiscalData.totalDollarsSaved;
+
+  return (
+    <div className="space-y-8" data-ocid="admin.overview_tab">
+      {/* Metric grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <MetricCard
+          icon={<Shield className="w-4 h-4" />}
+          label="Active Providers"
+          value={activeProviders}
+          color="text-emerald-400"
+          onClick={() => setTab("providers")}
+        />
+        <MetricCard
+          icon={<ShieldCheck className="w-4 h-4" />}
+          label="Pending Verification"
+          value={pendingVerifications}
+          color={
+            pendingVerifications > 0
+              ? "text-amber-400"
+              : "text-muted-foreground"
+          }
+          onClick={() => setTab("providers")}
+        />
+        <MetricCard
+          icon={<Activity className="w-4 h-4" />}
+          label="Citizen Reports"
+          value={allReports.length}
+          color="text-blue-400"
+          onClick={() => setTab("reports")}
+        />
+        <MetricCard
+          icon={<MessageSquare className="w-4 h-4" />}
+          label="Pending Testimonials"
+          value={pendingTestimonials}
+          color={
+            pendingTestimonials > 0 ? "text-amber-400" : "text-muted-foreground"
+          }
+          onClick={() => setTab("testimonials")}
+        />
+        <MetricCard
+          icon={<Users className="w-4 h-4" />}
+          label="Total Helpers"
+          value={helperLoading ? "…" : Number(helperCount ?? 0n)}
+          color="text-purple-400"
+          isLoading={helperLoading}
+          onClick={() => setTab("helpers")}
+        />
+        <MetricCard
+          icon={<DollarSign className="w-4 h-4" />}
+          label="Dollars Saved"
+          value={`$${(dollarsSaved / 1000).toFixed(0)}K`}
+          color="text-emerald-400"
+          onClick={() => setTab("fiscal")}
+        />
+      </div>
+
+      {/* Quick status grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Provider breakdown */}
+        <div className="bg-card rounded-2xl border border-border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-live-green" />
+              <h3 className="font-semibold text-foreground">
+                Provider Breakdown
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTab("providers")}
+              className="text-xs text-primary hover:text-primary/80 transition-colors"
+            >
+              View all →
+            </button>
+          </div>
+          {(
+            ["MAT", "Narcan", "ER", "Naloxone Kiosk", "Telehealth MAT"] as const
+          ).map((type) => {
+            const count = providers.filter(
+              (p) =>
+                p.providerType === type ||
+                (type === "MAT" && p.providerType === "MAT Clinic"),
+            ).length;
+            const active = providers.filter(
+              (p) =>
+                (p.providerType === type ||
+                  (type === "MAT" && p.providerType === "MAT Clinic")) &&
+                p.is_active,
+            ).length;
+            return (
+              <div
+                key={type}
+                className="flex items-center justify-between py-2 border-b border-border last:border-0"
+              >
+                <ProviderTypeBadge type={type} />
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="text-emerald-400 font-medium">
+                    {active} active
+                  </span>
+                  <span className="text-muted-foreground">/ {count} total</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Testimonials snapshot */}
+        <div className="bg-card rounded-2xl border border-border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-live-green" />
+              <h3 className="font-semibold text-foreground">Testimonials</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTab("testimonials")}
+              className="text-xs text-primary hover:text-primary/80 transition-colors"
+            >
+              Moderate →
+            </button>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-sm text-muted-foreground">
+                Pending review
+              </span>
+              <span
+                className={`font-bold ${pendingTestimonials > 0 ? "text-amber-400" : "text-muted-foreground"}`}
+              >
+                {pendingTestimonials}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-sm text-muted-foreground">
+                Approved stories
+              </span>
+              <span className="font-bold text-emerald-400">
+                {approvedTestimonials}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm text-muted-foreground">
+                Total submitted
+              </span>
+              <span className="font-bold text-foreground">
+                {allTestimonials.length}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* System quick actions */}
+      <div className="bg-card rounded-2xl border border-border p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings className="w-4 h-4 text-live-green" />
+          <h3 className="font-semibold text-foreground">Quick Navigation</h3>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {TABS.slice(1).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setTab(tab.id)}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted hover:bg-muted/80 text-sm font-medium text-foreground transition-colors border border-border"
+              data-ocid={`admin.tab_nav_${tab.id}`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Providers ───────────────────────────────────────────────────────────
+
+function ProvidersTab({ providers }: { providers: ProviderWithStatus[] }) {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
+  const [seedProgress, setSeedProgress] = useState({
+    running: false,
+    done: 0,
+    total: SEED_PROVIDERS.length,
+  });
+
   const verifyProvider = useVerifyProvider();
-  const { actor, isFetching: actorFetching } = useActor(createActor);
+  const setActiveStatus = useSetProviderActiveStatus();
+  const toggleLive = useToggleLive();
+  const { actor } = useActor(createActor);
   const qc = useQueryClient();
 
-  const [form, setForm] = useState({
-    id: "",
-    name: "",
-    lat: "",
-    lng: "",
-    providerType: "MAT Clinic",
-  });
-  const [adminTab, setAdminTab] = useState<"health" | "prediction">("health");
-  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
-  const [seedProgress, setSeedProgress] = useState<{
-    running: boolean;
-    done: number;
-    total: number;
-    errors: string[];
-  }>({ running: false, done: 0, total: SEED_PROVIDERS.length, errors: [] });
-
-  // === Backend-backed global bridge status ===
+  // Bridge status
   const { data: bridgeStatus, isLoading: bridgeLoading } = useQuery({
     queryKey: ["emergencyBridgeStatus"],
     queryFn: async () => {
       if (!actor) return null;
       return actor.getEmergencyBridgeStatus();
     },
-    enabled: !!actor && !actorFetching,
+    enabled: !!actor,
     refetchInterval: 30_000,
   });
   const [bridgeActing, setBridgeActing] = useState(false);
-
-  // Derive the activatedAt in ms from backend bigint nanoseconds
   const bridgeActivatedAtMs =
     bridgeStatus?.isActive && bridgeStatus.activatedAt
       ? Number(bridgeStatus.activatedAt) / 1_000_000
       : null;
+
+  // Sync per-ER emergency statuses from backend bridge status
+  useEffect(() => {
+    for (const p of providers) {
+      if (
+        bridgeStatus?.isActive &&
+        bridgeActivatedAtMs &&
+        isERProvider({ name: p.name, providerType: p.providerType })
+      ) {
+        const existing = getEmergencyStatus(p.id);
+        if (!existing || existing.status !== "open_bed") {
+          _setEmergencyStatus(p.id, "72hr_bridge");
+        }
+      }
+    }
+  }, [providers, bridgeStatus, bridgeActivatedAtMs]);
 
   const handleGlobalBridgeToggle = async (activate: boolean) => {
     if (!actor) return;
     setBridgeActing(true);
     try {
       await actor.setEmergencyActive(activate);
-      // Also mirror to localStorage as a cache for quick reads elsewhere
       if (activate) {
         localStorage.setItem(
           "bridge_active_global",
@@ -368,8 +726,8 @@ export function AdminPage() {
       await qc.invalidateQueries({ queryKey: ["emergencyBridgeStatus"] });
       toast.success(
         activate
-          ? "72-Hour Bridge status activated on-chain."
-          : "Bridge status cleared on-chain.",
+          ? "72-Hour Bridge activated on-chain."
+          : "Bridge status cleared.",
       );
     } catch {
       toast.error("Failed to update bridge status. Admin access required.");
@@ -378,71 +736,28 @@ export function AdminPage() {
     }
   };
 
-  // Per-ER legacy open_bed toggle (localStorage only, no backend for individual ER status)
-  // Emergency availability state
-  const [emergencyStatuses, setEmergencyStatuses] = useState<
-    Record<string, { status: EmergencyStatus; setAt: number } | null>
-  >({});
-
-  useEffect(() => {
-    const map: Record<
-      string,
-      { status: EmergencyStatus; setAt: number } | null
-    > = {};
-    for (const p of providers) {
-      map[p.id] = getEmergencyStatus(p.id);
-    }
-    // Sync 72hr_bridge status from backend if active
-    if (bridgeStatus?.isActive && bridgeActivatedAtMs) {
-      for (const p of providers) {
-        if (isERProvider({ name: p.name, providerType: p.providerType })) {
-          // If backend bridge is active and no local open_bed override, show bridge
-          if (!map[p.id] || map[p.id]?.status !== "open_bed") {
-            map[p.id] = { status: "72hr_bridge", setAt: bridgeActivatedAtMs };
-          }
-        }
-      }
-    }
-    setEmergencyStatuses(map);
-  }, [providers, bridgeStatus, bridgeActivatedAtMs]);
-
-  const handleEmergencyToggle = async (id: string, status: EmergencyStatus) => {
-    const current = emergencyStatuses[id]?.status;
-    const next = current === status ? null : status;
-
-    // For 72hr_bridge toggles, wire to backend
-    if (
-      status === "72hr_bridge" ||
-      (next === null && current === "72hr_bridge")
-    ) {
-      await handleGlobalBridgeToggle(next === "72hr_bridge");
-      return;
-    }
-
-    // For open_bed, keep localStorage-only
-    setEmergencyStatus(id, next);
-    setEmergencyStatuses((prev) => ({
-      ...prev,
-      [id]: next ? { status: next, setAt: Date.now() } : null,
-    }));
-    if (next) {
-      toast.success(
-        `${status === "open_bed" ? "Open Bed" : "72-Hour Bridge"} status set for this ER.`,
-      );
-    } else {
-      toast.success("Emergency status cleared.");
-    }
-  };
-
-  const pendingProviders = providers.filter((p) => !p.isLive);
+  const filteredProviders = providers.filter((p) => {
+    const matchesSearch =
+      search === "" || p.name.toLowerCase().includes(search.toLowerCase());
+    const matchesType =
+      typeFilter === "all" ||
+      p.providerType === typeFilter ||
+      (typeFilter === "MAT" && p.providerType === "MAT Clinic");
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && p.is_active) ||
+      (statusFilter === "inactive" && !p.is_active) ||
+      (statusFilter === "unverified" && !p.is_verified);
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
   const handleApprove = async (id: string) => {
     setApprovingIds((prev) => new Set(prev).add(id));
     try {
       await verifyProvider.mutateAsync(id);
-      toast.success("Provider approved — now live on map");
+      toast.success("Provider verified and now live on map");
     } catch {
-      toast.error("Approval failed. Admin access required.");
+      toast.error("Verification failed.");
     } finally {
       setApprovingIds((prev) => {
         const next = new Set(prev);
@@ -451,6 +766,958 @@ export function AdminPage() {
       });
     }
   };
+
+  const handleToggleActive = async (id: string, current: boolean) => {
+    try {
+      await setActiveStatus.mutateAsync({ id, status: !current });
+      toast.success(`Provider ${!current ? "activated" : "suspended"}`);
+    } catch {
+      toast.error("Toggle failed.");
+    }
+  };
+
+  const handleSeedDemoData = async () => {
+    if (!actor) return;
+    setSeedProgress({ running: true, done: 0, total: SEED_PROVIDERS.length });
+    let done = 0;
+    for (const p of SEED_PROVIDERS) {
+      try {
+        await (
+          actor as unknown as Record<
+            string,
+            (...args: unknown[]) => Promise<void>
+          >
+        ).registerProvider(p.id, p.name, p.lat, p.lng, p.providerType);
+        await toggleLive.mutateAsync({ id: p.id, status: true });
+        done++;
+        setSeedProgress((prev) => ({ ...prev, done }));
+      } catch {
+        done++;
+        setSeedProgress((prev) => ({ ...prev, done }));
+      }
+    }
+    setSeedProgress((prev) => ({ ...prev, running: false }));
+    toast.success(`Seeded ${done} of ${SEED_PROVIDERS.length} Ohio providers`);
+    qc.invalidateQueries({ queryKey: ["allProviders"] });
+  };
+
+  const pendingVerifications = providers.filter((p) => !p.is_verified);
+
+  return (
+    <div className="space-y-6" data-ocid="admin.providers_tab">
+      {/* Pending Verifications */}
+      {pendingVerifications.length > 0 && (
+        <div className="bg-amber-950/30 border border-amber-700/30 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <ShieldCheck className="w-4 h-4 text-amber-400" />
+            <h3 className="font-semibold text-amber-300">
+              Pending Verification
+            </h3>
+            <Badge className="ml-auto bg-amber-900/50 text-amber-400 border-amber-700/40 text-xs">
+              {pendingVerifications.length}
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            {pendingVerifications.slice(0, 5).map((p, i) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 bg-card/50 rounded-xl px-4 py-3"
+                data-ocid={`admin.pending_item.${i + 1}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">
+                    {p.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">ID: {p.id}</p>
+                </div>
+                <ProviderTypeBadge type={p.providerType} />
+                <Button
+                  size="sm"
+                  disabled={approvingIds.has(p.id)}
+                  onClick={() => handleApprove(p.id)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold min-h-[36px]"
+                  data-ocid={`admin.approve_button.${i + 1}`}
+                >
+                  {approvingIds.has(p.id) ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    "Make Live"
+                  )}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 72-Hour Bridge Toggle */}
+      <div className="bg-card rounded-2xl border border-border p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-2 flex-1">
+            <BedDouble className="w-4 h-4 text-amber-400" />
+            <div>
+              <p className="font-semibold text-foreground">
+                72-Hour Bridge Status
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Federal ER buprenorphine bridge — stored on-chain, expires in
+                72h
+              </p>
+            </div>
+          </div>
+          {bridgeStatus?.isActive ? (
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5 text-sm text-amber-400 font-medium">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                {bridgeLoading ? "…" : "ACTIVE"}
+                {bridgeActivatedAtMs && (
+                  <span className="text-amber-600 text-xs">
+                    · {formatCountdown(bridgeActivatedAtMs)}
+                  </span>
+                )}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleGlobalBridgeToggle(false)}
+                disabled={bridgeActing}
+                className="border-amber-700/40 text-amber-400 hover:bg-amber-950/40"
+                data-ocid="admin.bridge_deactivate"
+              >
+                {bridgeActing ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  "Deactivate"
+                )}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => handleGlobalBridgeToggle(true)}
+              disabled={bridgeActing || bridgeLoading}
+              className="bg-amber-600 hover:bg-amber-500 text-white"
+              data-ocid="admin.bridge_activate"
+            >
+              {bridgeActing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <>
+                  <Clock className="w-3.5 h-3.5 mr-1.5" />
+                  Activate Bridge
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Seed + Filters row */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Input
+          placeholder="Search providers by name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 min-h-[40px]"
+          data-ocid="admin.provider_search"
+        />
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="min-h-[40px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+          data-ocid="admin.type_filter"
+        >
+          <option value="all">All Types</option>
+          <option value="MAT">MAT Clinic</option>
+          <option value="Narcan">Narcan Distribution</option>
+          <option value="ER">Emergency Room</option>
+          <option value="Naloxone Kiosk">Naloxone Kiosk</option>
+          <option value="Telehealth MAT">Telehealth MAT</option>
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="min-h-[40px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+          data-ocid="admin.status_filter"
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="unverified">Unverified</option>
+        </select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSeedDemoData}
+          disabled={seedProgress.running || !actor}
+          className="min-h-[40px] whitespace-nowrap"
+          data-ocid="admin.seed_button"
+        >
+          {seedProgress.running ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              {seedProgress.done}/{seedProgress.total}
+            </>
+          ) : (
+            <>
+              <Database className="w-3.5 h-3.5 mr-1.5" />
+              Seed Ohio Providers
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Provider table */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground">
+            {filteredProviders.length} providers
+          </span>
+        </div>
+        {filteredProviders.length === 0 ? (
+          <div className="p-12 text-center" data-ocid="admin.providers_empty">
+            <Shield className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+            <p className="text-muted-foreground">
+              No providers match your filters
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Verified
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Rep.
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Last Seen
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredProviders.map((p, i) => (
+                  <tr
+                    key={p.id}
+                    className="hover:bg-muted/30 transition-colors"
+                    data-ocid={`admin.provider_row.${i + 1}`}
+                  >
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-foreground truncate max-w-[200px]">
+                        {p.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.id.slice(0, 12)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <ProviderTypeBadge type={p.providerType} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${p.is_active ? "bg-emerald-900/40 text-emerald-400 border border-emerald-700/40" : "bg-muted text-muted-foreground border border-border"}`}
+                      >
+                        {p.is_active && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        )}
+                        {p.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`text-xs font-medium ${p.is_verified ? "text-emerald-400" : "text-amber-400"}`}
+                      >
+                        {p.is_verified ? "✓ Verified" : "⚠ Pending"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-xs text-muted-foreground">
+                        {Number(p.reputationScore)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs text-muted-foreground">
+                        {isProviderStale(p.lastVerified)
+                          ? "Stale"
+                          : statusLabel(p.status)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(p.id, p.is_active)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${p.is_active ? "border-red-700/40 text-red-400 hover:bg-red-950/30" : "border-emerald-700/40 text-emerald-400 hover:bg-emerald-950/30"}`}
+                          data-ocid={`admin.toggle_active.${i + 1}`}
+                        >
+                          {p.is_active ? "Suspend" : "Activate"}
+                        </button>
+                        {!p.is_verified && (
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(p.id)}
+                            disabled={approvingIds.has(p.id)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium border border-emerald-700/40 text-emerald-400 hover:bg-emerald-950/30 transition-colors"
+                            data-ocid={`admin.verify_button.${i + 1}`}
+                          >
+                            {approvingIds.has(p.id) ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              "Verify"
+                            )}
+                          </button>
+                        )}
+                        <Link
+                          to="/provider/$id"
+                          params={{ id: p.id }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-border text-muted-foreground hover:text-foreground transition-colors"
+                          data-ocid={`admin.view_provider.${i + 1}`}
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Citizen Reports ─────────────────────────────────────────────────────
+
+function CitizenReportsTab() {
+  const { data: reports = [], isLoading } = useGetAllReports();
+  const flagReport = useFlagCitizenReport();
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [flaggingIds, setFlaggingIds] = useState<Set<string>>(new Set());
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const filteredReports = reports.filter(
+    (r: CitizenReport) => typeFilter === "all" || r.activityType === typeFilter,
+  );
+
+  const reportsToday = reports.filter((r: CitizenReport) => {
+    const ts =
+      typeof r.createdAt === "bigint"
+        ? Number(r.createdAt) / 1_000_000
+        : r.createdAt;
+    return ts >= today.getTime();
+  }).length;
+
+  const byType = reports.reduce<Record<string, number>>(
+    (acc, r: CitizenReport) => {
+      const key = r.activityType ?? "other";
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    },
+    {},
+  );
+
+  const handleFlag = async (id: string) => {
+    setFlaggingIds((prev) => new Set(prev).add(id));
+    try {
+      await flagReport.mutateAsync(id);
+      toast.success("Report flagged and removed");
+    } catch {
+      toast.error("Failed to flag report");
+    } finally {
+      setFlaggingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6" data-ocid="admin.reports_tab">
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-2xl font-bold text-foreground">{reports.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">Total Reports</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-2xl font-bold text-blue-400">{reportsToday}</p>
+          <p className="text-xs text-muted-foreground mt-1">Reports Today</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-2xl font-bold text-red-400">
+            {byType["suspected-od"] ?? 0}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">Suspected ODs</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-2xl font-bold text-amber-400">
+            {byType["narcan-used"] ?? 0}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">Narcan Used</p>
+        </div>
+      </div>
+
+      {/* Type breakdown */}
+      <div className="bg-card rounded-2xl border border-border p-5">
+        <h3 className="font-semibold text-foreground mb-3 text-sm">
+          Reports by Type
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(byType).map(([type, count]: [string, number]) => (
+            <span
+              key={type}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border font-medium ${REPORT_TYPE_COLORS[type] ?? "bg-muted text-muted-foreground border-border"}`}
+            >
+              {REPORT_TYPE_LABELS[type] ?? type}
+              <span className="font-bold">{count}</span>
+            </span>
+          ))}
+          {Object.keys(byType).length === 0 && (
+            <span className="text-sm text-muted-foreground">
+              No reports yet
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Filter + table */}
+      <div className="flex items-center gap-3">
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="min-h-[40px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+          data-ocid="admin.report_type_filter"
+        >
+          <option value="all">All Types</option>
+          {Object.entries(REPORT_TYPE_LABELS).map(([val, label]) => (
+            <option key={val} value={val}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <span className="text-sm text-muted-foreground">
+          {filteredReports.length} showing
+        </span>
+      </div>
+
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        {isLoading ? (
+          <div className="p-8 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : filteredReports.length === 0 ? (
+          <div className="p-12 text-center" data-ocid="admin.reports_empty">
+            <Activity className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+            <p className="text-muted-foreground">No citizen reports yet</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {filteredReports.map((report: CitizenReport, i: number) => (
+              <div
+                key={report.id}
+                className="px-5 py-4 flex gap-4"
+                data-ocid={`admin.report_row.${i + 1}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span
+                      className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${REPORT_TYPE_COLORS[report.activityType] ?? "bg-muted text-muted-foreground border-border"}`}
+                    >
+                      {REPORT_TYPE_LABELS[report.activityType] ??
+                        report.activityType}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      ZIP {report.zipCode}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      · {formatTime(report.createdAt)}
+                    </span>
+                    <span className="text-xs text-blue-400 ml-auto">
+                      ↑ {Number(report.upvotes)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground line-clamp-2">
+                    {report.content || "No content provided"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleFlag(report.id)}
+                  disabled={flaggingIds.has(report.id)}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-red-700/40 text-red-400 hover:bg-red-950/30 transition-colors min-h-[36px]"
+                  data-ocid={`admin.flag_button.${i + 1}`}
+                >
+                  {flaggingIds.has(report.id) ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <>
+                      <Flag className="w-3 h-3" />
+                      Remove
+                    </>
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Testimonials ────────────────────────────────────────────────────────
+
+function TestimonialsTab() {
+  const { data: testimonials = [], isLoading } = useGetAllTestimonialsAdmin();
+  const approveTestimonial = useApproveTestimonial();
+  const hideTestimonial = useHideTestimonial();
+  const [actingIds, setActingIds] = useState<Set<string>>(new Set());
+
+  const pending = testimonials.filter(
+    (t: Testimonial) => !t.isApproved && !t.isHidden,
+  );
+  const approved = testimonials.filter(
+    (t: Testimonial) => t.isApproved && !t.isHidden,
+  );
+
+  const act = async (id: string, action: "approve" | "hide") => {
+    setActingIds((prev) => new Set(prev).add(id));
+    try {
+      if (action === "approve") {
+        await approveTestimonial.mutateAsync(id);
+        toast.success("Story approved and published");
+      } else {
+        await hideTestimonial.mutateAsync(id);
+        toast.success("Story hidden");
+      }
+    } catch {
+      toast.error(`Failed to ${action} testimonial`);
+    } finally {
+      setActingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const TestimonialCard = ({
+    t,
+    showApprove,
+  }: { t: Testimonial; showApprove: boolean }) => (
+    <div
+      className="bg-card/60 rounded-xl border border-border p-4 space-y-2"
+      data-ocid="admin.testimonial_card"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-medium text-foreground text-sm">
+            {t.authorDisplayName || "Anonymous"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            ZIP {t.zipCode} · {formatTime(t.createdAt)}
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          {showApprove && (
+            <button
+              type="button"
+              onClick={() => act(t.id, "approve")}
+              disabled={actingIds.has(t.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-900/40 text-emerald-400 border border-emerald-700/40 hover:bg-emerald-900/60 transition-colors min-h-[32px]"
+              data-ocid="admin.approve_testimonial"
+            >
+              {actingIds.has(t.id) ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle2 className="w-3 h-3" />
+                  Approve
+                </>
+              )}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => act(t.id, "hide")}
+            disabled={actingIds.has(t.id)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border text-muted-foreground hover:text-red-400 hover:border-red-700/40 transition-colors min-h-[32px]"
+            data-ocid="admin.hide_testimonial"
+          >
+            <X className="w-3 h-3" />
+            Hide
+          </button>
+        </div>
+      </div>
+      <p className="text-sm text-foreground/80 line-clamp-3">{t.content}</p>
+    </div>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((n) => (
+          <Skeleton key={n} className="h-24 w-full rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8" data-ocid="admin.testimonials_tab">
+      {/* Pending queue */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          <h3 className="font-semibold text-foreground">Pending Moderation</h3>
+          <Badge className="bg-amber-900/40 text-amber-400 border-amber-700/40 text-xs">
+            {pending.length}
+          </Badge>
+        </div>
+        {pending.length === 0 ? (
+          <div
+            className="bg-card rounded-xl border border-border p-8 text-center"
+            data-ocid="admin.pending_testimonials_empty"
+          >
+            <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-400/60" />
+            <p className="text-sm text-muted-foreground">
+              Moderation queue is clear
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pending.map((t: Testimonial) => (
+              <TestimonialCard key={t.id} t={t} showApprove={true} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Approved */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <h3 className="font-semibold text-foreground">Approved Stories</h3>
+          <Badge className="bg-emerald-900/40 text-emerald-400 border-emerald-700/40 text-xs">
+            {approved.length}
+          </Badge>
+        </div>
+        {approved.length === 0 ? (
+          <div
+            className="bg-card rounded-xl border border-border p-8 text-center"
+            data-ocid="admin.approved_testimonials_empty"
+          >
+            <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              No approved stories yet
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {approved.map((t: Testimonial) => (
+              <TestimonialCard key={t.id} t={t} showApprove={false} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Helpers ─────────────────────────────────────────────────────────────
+
+function HelpersTab() {
+  const { actor, isFetching } = useActor(createActor);
+  const { data: helpers = [], isLoading } = useQuery<Helper[]>({
+    queryKey: ["allHelpers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getAllHelpers();
+      } catch (err) {
+        console.error("[getAllHelpers] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30_000,
+  });
+
+  const handleExportCSV = () => {
+    const headers = [
+      "First Name",
+      "Last Name",
+      "Email",
+      "ZIP",
+      "Help Type",
+      "Signup Date",
+    ];
+    const rows = helpers.map((h) => [
+      h.firstName,
+      h.lastName,
+      h.email,
+      h.zip,
+      h.helpType,
+      formatTime(h.createdAt),
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((c) => `"${c}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `helpers-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${helpers.length} helpers to CSV`);
+  };
+
+  return (
+    <div className="space-y-6" data-ocid="admin.helpers_tab">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-card rounded-xl border border-border px-4 py-3">
+            <p className="text-2xl font-bold text-purple-400">
+              {helpers.length}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Total Volunteers
+            </p>
+          </div>
+        </div>
+        <Button
+          onClick={handleExportCSV}
+          disabled={helpers.length === 0}
+          variant="outline"
+          size="sm"
+          className="min-h-[40px]"
+          data-ocid="admin.export_csv"
+        >
+          <Download className="w-3.5 h-3.5 mr-1.5" />
+          Export CSV
+        </Button>
+      </div>
+
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        {isLoading ? (
+          <div className="p-8 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : helpers.length === 0 ? (
+          <div className="p-12 text-center" data-ocid="admin.helpers_empty">
+            <Users className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+            <p className="text-muted-foreground">No volunteer signups yet</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Email
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    ZIP
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Help Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Signed Up
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {helpers.map((h, i) => (
+                  <tr
+                    key={h.id || `${h.email}-${i}`}
+                    className="hover:bg-muted/30 transition-colors"
+                    data-ocid={`admin.helper_row.${i + 1}`}
+                  >
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      {h.firstName} {h.lastName}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {h.email}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{h.zip}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-purple-900/40 text-purple-400 border border-purple-700/40">
+                        {h.helpType}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {formatTime(h.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Fiscal Impact ───────────────────────────────────────────────────────
+
+function FiscalImpactTab() {
+  const { actor, isFetching } = useActor(createActor);
+  const fiscalData = usePredictionEngineStore((s) => s.fiscalData);
+
+  const { data: touchpointData = [], isLoading: touchpointLoading } = useQuery<
+    TouchpointRecord[]
+  >({
+    queryKey: ["touchpointData"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getTouchpointData();
+      } catch (err) {
+        console.error("[getTouchpointData] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30_000,
+  });
+
+  return (
+    <div className="space-y-8" data-ocid="admin.fiscal_tab">
+      {/* ImpactOdometer embedded */}
+      <ImpactOdometer
+        dollarsSaved={fiscalData.totalDollarsSaved}
+        livesSaved={fiscalData.livesSaved}
+        communityReinvestmentFund={fiscalData.communityReinvestmentFund}
+        stabilityPipelinePercent={fiscalData.stabilityPipelinePercent}
+      />
+
+      {/* Touchpoint progression table */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-live-green" />
+          <h3 className="font-semibold text-foreground">
+            Stability Pipeline — Agent Progression
+          </h3>
+          <Badge className="ml-auto bg-muted text-muted-foreground border-border text-xs">
+            {touchpointData.length} agents
+          </Badge>
+        </div>
+        {touchpointLoading ? (
+          <div className="p-8 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : touchpointData.length === 0 ? (
+          <div className="p-12 text-center" data-ocid="admin.touchpoint_empty">
+            <BarChart3 className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+            <p className="text-muted-foreground text-sm">
+              Touchpoint data builds as the simulation runs
+            </p>
+            <p className="text-muted-foreground/60 text-xs mt-1">
+              Enable Simulation in the Prediction Engine tab to generate data
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Agent ID
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Touchpoints
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Total Saved
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {touchpointData.map((record, i) => (
+                  <tr
+                    key={record.agentId}
+                    className="hover:bg-muted/30 transition-colors"
+                    data-ocid={`admin.touchpoint_row.${i + 1}`}
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      {record.agentId.slice(0, 12)}…
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-0.5">
+                        {Array.from({ length: 7 }, (_, idx) => (
+                          <span
+                            key={`tp-${record.agentId}-${idx}`}
+                            className={`w-3 h-3 rounded-sm ${idx < Number(record.touchpoints) ? "bg-emerald-500" : "bg-muted"}`}
+                          />
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {record.isStabilized ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-900/40 text-emerald-400 border border-emerald-700/40">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Stabilized
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-900/40 text-amber-400 border border-amber-700/40">
+                          <Clock className="w-3 h-3" />
+                          In Progress ({Number(record.touchpoints)}/7)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-emerald-400">
+                      ${record.totalSaved.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Register Provider Panel ───────────────────────────────────────────────────
+
+function RegisterProviderPanel() {
+  const registerProvider = useRegisterProvider();
+  const [form, setForm] = useState({
+    id: "",
+    name: "",
+    lat: "",
+    lng: "",
+    providerType: "MAT Clinic",
+  });
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -475,61 +1742,113 @@ export function AdminPage() {
     }
   };
 
-  const handleToggle = async (id: string, current: boolean) => {
-    try {
-      await toggleLive.mutateAsync({ id, status: !current });
-      toast.success(`Provider ${!current ? "activated" : "deactivated"}`);
-    } catch {
-      toast.error("Toggle failed.");
-    }
-  };
+  return (
+    <div className="bg-card rounded-2xl border border-border p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <Plus className="w-4 h-4 text-live-green" />
+        <h3 className="font-semibold text-foreground">Register New Provider</h3>
+      </div>
+      <form onSubmit={handleRegister} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="reg-id">Provider ID</Label>
+            <Input
+              id="reg-id"
+              value={form.id}
+              onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
+              placeholder="provider-001"
+              className="mt-1 min-h-[44px]"
+              required
+              data-ocid="admin.provider_id_input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="reg-name">Provider Name</Label>
+            <Input
+              id="reg-name"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Brightside Health — Cleveland"
+              className="mt-1 min-h-[44px]"
+              required
+              data-ocid="admin.provider_name_input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="reg-lat">Latitude</Label>
+            <Input
+              id="reg-lat"
+              type="number"
+              step="any"
+              value={form.lat}
+              onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value }))}
+              placeholder="41.48"
+              className="mt-1 min-h-[44px]"
+              required
+              data-ocid="admin.provider_lat_input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="reg-lng">Longitude</Label>
+            <Input
+              id="reg-lng"
+              type="number"
+              step="any"
+              value={form.lng}
+              onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}
+              placeholder="-81.74"
+              className="mt-1 min-h-[44px]"
+              required
+              data-ocid="admin.provider_lng_input"
+            />
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="reg-type">Provider Type</Label>
+          <select
+            id="reg-type"
+            value={form.providerType}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, providerType: e.target.value }))
+            }
+            className="mt-1 w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+            data-ocid="admin.provider_type_select"
+          >
+            <option value="MAT Clinic">MAT Clinic</option>
+            <option value="Narcan Distribution">Narcan Distribution</option>
+            <option value="Emergency Room">Emergency Room</option>
+            <option value="Naloxone Kiosk">Naloxone Kiosk (24/7)</option>
+            <option value="Telehealth MAT">Telehealth MAT</option>
+          </select>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          ⚠ No ZIP code, no PHI stored.
+        </p>
+        <Button
+          type="submit"
+          disabled={registerProvider.isPending}
+          className="w-full min-h-[44px] bg-live-green hover:bg-live-green/90 text-navy font-semibold"
+          data-ocid="admin.register_provider_submit"
+        >
+          {registerProvider.isPending ? "Registering…" : "Register Provider"}
+        </Button>
+      </form>
+    </div>
+  );
+}
 
-  const handleSeedDemoData = async () => {
-    if (!actor) return;
-    setSeedProgress({
-      running: true,
-      done: 0,
-      total: SEED_PROVIDERS.length,
-      errors: [],
-    });
-    const errors: string[] = [];
-    let done = 0;
+// ─── Main AdminPage ───────────────────────────────────────────────────────────
 
-    for (const p of SEED_PROVIDERS) {
-      try {
-        await (actor as any).registerProvider(
-          p.id,
-          p.name,
-          p.lat,
-          p.lng,
-          p.providerType,
-        );
-        await (actor as any).toggleLive(p.id, true);
-        done++;
-        setSeedProgress((prev) => ({ ...prev, done }));
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`${p.name}: ${msg}`);
-        setSeedProgress((prev) => ({
-          ...prev,
-          errors: [...prev.errors, `${p.name}: ${msg}`],
-        }));
-      }
-    }
+export function AdminPage() {
+  const { login, loginStatus, identity, clear } = useInternetIdentity();
+  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
+  const { data: providers = [] } = useAllProviders();
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
 
-    setSeedProgress((prev) => ({ ...prev, running: false }));
-    if (errors.length === 0) {
-      toast.success(
-        `All ${SEED_PROVIDERS.length} Ohio providers seeded successfully!`,
-      );
-    } else {
-      toast.warning(
-        `Seeded ${done} of ${SEED_PROVIDERS.length} providers. ${errors.length} errors.`,
-      );
-    }
-  };
+  const principalText = identity?.getPrincipal().toText() ?? "";
 
-  // Show spinner only while actively logging in
+  // ── Auth states ──────────────────────────────────────────────────────────
+
   if (loginStatus === "logging-in") {
     return (
       <div
@@ -544,12 +1863,10 @@ export function AdminPage() {
     );
   }
 
-  // Not signed in → show sign-in gate (do NOT block with adminLoading)
   if (loginStatus !== "success") {
     return (
       <main className="min-h-screen" data-ocid="admin.page">
-        {/* Dark hero header — always visible */}
-        <section className="bg-navy px-4 py-16">
+        <section className="bg-card border-b border-border px-4 py-16">
           <div className="max-w-5xl mx-auto">
             <div className="flex items-center gap-2 mb-3">
               <Settings className="w-5 h-5 text-live-green" />
@@ -557,78 +1874,59 @@ export function AdminPage() {
                 Admin
               </p>
             </div>
-            <h1 className="text-4xl font-bold text-white mb-3">
-              Admin <span className="text-live-green">Panel</span>
+            <h1 className="text-4xl font-bold text-foreground mb-3">
+              Admin <span className="text-live-green">Dashboard</span>
             </h1>
-            <p className="text-on-dark">
-              Provider verification, seeding, and system controls.
+            <p className="text-muted-foreground">
+              Provider verification, reporting, fiscal analytics, and system
+              controls.
             </p>
           </div>
         </section>
-
         <div className="max-w-5xl mx-auto px-4 py-16 flex flex-col items-center gap-6">
-          <Lock className="w-12 h-12 text-muted-foreground" />
-          <div className="text-center">
-            <h2 className="text-xl font-bold text-foreground mb-2">
-              Admin Access Required
-            </h2>
-            <p className="text-muted-foreground text-sm max-w-sm">
-              Sign in with Internet Identity to access provider verification,
-              seed data, and system controls.
-            </p>
-          </div>
-          <Button
-            onClick={() => login()}
-            className="min-h-[44px] bg-primary hover:bg-primary/90 text-white font-semibold px-8"
-            data-ocid="admin.primary_button"
+          <div
+            className="w-full max-w-md rounded-2xl p-8 text-center flex flex-col items-center gap-5"
+            style={{
+              background: "oklch(0.18 0.012 218 / 0.5)",
+              border: "2px solid oklch(0.68 0.1 218 / 0.6)",
+              boxShadow: "0 0 32px oklch(0.68 0.1 218 / 0.15)",
+            }}
           >
-            Sign In with Internet Identity
-          </Button>
-          {loginStatus === "loginError" && (
-            <p className="text-sm text-destructive text-center max-w-xs">
-              Sign in failed. Make sure popups are allowed for this site, then
-              try again.
-            </p>
-          )}
-        </div>
-      </main>
-    );
-  }
-
-  // Signed in but not admin — show a clear message
-  if (!adminLoading && !isAdmin) {
-    return (
-      <main className="min-h-screen" data-ocid="admin.page">
-        <section className="bg-navy px-4 py-16">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex items-center gap-2 mb-3">
-              <Settings className="w-5 h-5 text-live-green" />
-              <p className="text-xs font-bold uppercase tracking-widest text-live-green">
-                Admin
+            <Lock
+              className="w-10 h-10"
+              style={{ color: "oklch(0.68 0.1 218)" }}
+            />
+            <div>
+              <h2 className="text-xl font-bold text-foreground mb-2">
+                Sign in to continue
+              </h2>
+              <p className="text-muted-foreground text-sm max-w-sm">
+                Authenticate with Internet Identity to access the admin
+                dashboard. Make sure popups are allowed in your browser.
               </p>
             </div>
-            <h1 className="text-4xl font-bold text-white mb-3">
-              Admin <span className="text-live-green">Panel</span>
-            </h1>
-          </div>
-        </section>
-        <div className="max-w-5xl mx-auto px-4 py-16 flex flex-col items-center gap-6">
-          <Lock className="w-12 h-12 text-muted-foreground" />
-          <div className="text-center">
-            <h2 className="text-xl font-bold text-foreground mb-2">
-              Not Authorized
-            </h2>
-            <p className="text-muted-foreground text-sm max-w-sm">
-              Your Internet Identity does not have admin privileges. Contact the
-              platform administrator.
-            </p>
+            <Button
+              onClick={() => login()}
+              className="min-h-[48px] w-full font-semibold text-base px-8"
+              style={{
+                background: "oklch(0.68 0.1 218)",
+                color: "oklch(0.14 0.008 240)",
+              }}
+              data-ocid="admin.primary_button"
+            >
+              Sign In with Internet Identity
+            </Button>
+            {loginStatus === "loginError" && (
+              <p className="text-sm text-destructive text-center max-w-xs">
+                Sign in failed. Make sure popups are allowed, then try again.
+              </p>
+            )}
           </div>
         </div>
       </main>
     );
   }
 
-  // Signed in, still checking admin status
   if (adminLoading) {
     return (
       <div
@@ -645,661 +1943,146 @@ export function AdminPage() {
     );
   }
 
-  const seedDone =
-    seedProgress.done === SEED_PROVIDERS.length &&
-    !seedProgress.running &&
-    seedProgress.done > 0;
-  const seedPercent = Math.round(
-    (seedProgress.done / seedProgress.total) * 100,
-  );
-
-  // ER providers for emergency availability section (type-aware)
-  const erProviders = providers.filter((p) =>
-    isERProvider({ name: p.name, providerType: (p as any).providerType }),
-  );
-
-  return (
-    <main className="min-h-screen" data-ocid="admin.page">
-      {/* Dark hero header */}
-      <section className="bg-navy px-4 py-16">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 mb-3">
-            <Settings className="w-5 h-5 text-live-green" />
-            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
-              Admin
-            </p>
+  if (!isAdmin) {
+    return (
+      <main className="min-h-screen" data-ocid="admin.page">
+        <section className="bg-card border-b border-border px-4 py-16">
+          <div className="max-w-5xl mx-auto">
+            <h1 className="text-4xl font-bold text-foreground mb-3">
+              Admin <span className="text-live-green">Dashboard</span>
+            </h1>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3">
-            Admin <span className="text-live-green">Panel</span>
-          </h1>
-          <p className="text-on-dark">
-            Provider verification, seeding, and system controls.
-          </p>
-        </div>
-      </section>
-
-      <div className="max-w-5xl mx-auto px-4 py-10">
-        {/* High-Risk Window */}
-        {canisterState?.high_risk_window_active && (
+        </section>
+        <div className="max-w-5xl mx-auto px-4 py-16 flex flex-col items-center gap-6">
           <div
-            className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3"
-            data-ocid="admin.error_state"
-          >
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-            <div>
-              <p className="font-bold text-amber-800">
-                High-Risk Window Active
-              </p>
-              <p className="text-sm text-amber-700">
-                Risk score above threshold for one or more providers.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Pending Verification */}
-        <div className="bg-card rounded-2xl shadow-card border border-border p-6 mb-8">
-          <div className="flex items-center gap-2 mb-5">
-            <ShieldCheck className="w-5 h-5 text-live-green" />
-            <h2 className="font-bold text-navy">Pending Verification</h2>
-            {pendingProviders.length > 0 && (
-              <Badge className="ml-auto bg-amber-100 text-amber-800 border-amber-200">
-                {pendingProviders.length} pending
-              </Badge>
-            )}
-          </div>
-          {pendingProviders.length === 0 ? (
-            <div
-              className="flex flex-col items-center gap-3 py-8 text-center"
-              data-ocid="admin.empty_state"
-            >
-              <CheckCircle2 className="w-8 h-8 text-live" />
-              <p className="text-sm text-muted-foreground">
-                No providers pending approval
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border" data-ocid="admin.list">
-              {pendingProviders.map((p, i) => {
-                const pAny = p as any;
-                const typeLabel =
-                  PROVIDER_TYPE_LABELS[pAny.providerType] ||
-                  pAny.providerType ||
-                  "Unknown";
-                const isApproving = approvingIds.has(p.id);
-                return (
-                  <div
-                    key={p.id}
-                    className="py-4 flex flex-col sm:flex-row sm:items-center gap-3"
-                    data-ocid={`admin.item.${i + 1}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-navy truncate">
-                        {p.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        NPI: {p.id}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="text-xs self-start sm:self-auto"
-                    >
-                      {typeLabel}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      disabled={isApproving}
-                      onClick={() => handleApprove(p.id)}
-                      className="min-h-[36px] bg-live-green hover:bg-live-green/90 text-navy font-semibold self-start sm:self-auto"
-                      data-ocid={`admin.confirm_button.${i + 1}`}
-                    >
-                      {isApproving ? (
-                        <>
-                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          Approving…
-                        </>
-                      ) : (
-                        "Approve"
-                      )}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* 72-Hour Bridge Active — ER-specific emergency availability */}
-        <div
-          className="rounded-2xl border p-6 mb-8"
-          style={{
-            background: "oklch(0.13 0.03 240)",
-            borderColor: "oklch(0.24 0.05 240)",
-          }}
-          data-ocid="admin.panel"
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <BedDouble className="w-5 h-5" style={{ color: "#fbbf24" }} />
-            <h2 className="font-bold" style={{ color: "oklch(0.90 0.01 200)" }}>
-              72-Hour Bridge &amp; ER Availability
-            </h2>
-            <Badge
-              variant="outline"
-              className="ml-auto text-[10px] font-bold border-amber-500/30 text-amber-400"
-            >
-              Emergency Rooms Only
-            </Badge>
-          </div>
-          <p className="text-sm mb-2" style={{ color: "oklch(0.55 0.03 220)" }}>
-            Under federal law, an ER physician can administer buprenorphine for
-            up to{" "}
-            <strong style={{ color: "#fbbf24" }}>
-              72 hours without a DEA waiver
-            </strong>{" "}
-            to bridge a patient to ongoing MAT treatment. Signal which ERs are
-            actively participating tonight.
-          </p>
-          <p className="text-xs mb-4" style={{ color: "oklch(0.42 0.03 220)" }}>
-            Bridge status is stored on-chain and auto-expires after 72 hours.
-            Map pins will show a gold glow when bridge is active.
-          </p>
-
-          {/* Global backend bridge toggle */}
-          <div
-            className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl px-4 py-3 mb-6"
+            className="w-full max-w-md rounded-2xl p-6 text-center flex flex-col items-center gap-4"
             style={{
-              background: bridgeStatus?.isActive
-                ? "oklch(0.75 0.18 70 / 0.10)"
-                : "oklch(0.18 0.04 240)",
-              border: bridgeStatus?.isActive
-                ? "1px solid rgba(251,191,36,0.35)"
-                : "1px solid oklch(0.26 0.05 240)",
+              background: "oklch(0.18 0.012 218 / 0.5)",
+              border: "2px solid oklch(0.68 0.1 218 / 0.6)",
+              boxShadow: "0 0 24px oklch(0.68 0.1 218 / 0.12)",
             }}
           >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-sm font-semibold"
-                  style={{
-                    color: bridgeStatus?.isActive
-                      ? "#fbbf24"
-                      : "oklch(0.70 0.04 220)",
-                  }}
-                >
-                  {bridgeLoading
-                    ? "Checking on-chain status…"
-                    : bridgeStatus?.isActive
-                      ? "72-Hr Bridge ACTIVE on-chain"
-                      : "72-Hr Bridge inactive"}
-                </span>
-                {bridgeStatus?.isActive && (
-                  <span
-                    className="inline-block w-2 h-2 rounded-full animate-pulse"
-                    style={{ background: "#fbbf24" }}
-                  />
-                )}
-              </div>
-              {bridgeStatus?.isActive && bridgeActivatedAtMs && (
-                <p
-                  className="text-[11px] mt-0.5"
-                  style={{ color: "oklch(0.50 0.03 220)" }}
-                >
-                  {formatCountdown(bridgeActivatedAtMs)} ·{" "}
-                  {bridgeStatus.activatedBy
-                    ? `by ${bridgeStatus.activatedBy.slice(0, 12)}…`
-                    : ""}
+            <Lock
+              className="w-10 h-10"
+              style={{ color: "oklch(0.68 0.1 218)" }}
+            />
+            <div>
+              <h2 className="text-xl font-bold text-foreground mb-2">
+                Not Authorized
+              </h2>
+              <p className="text-muted-foreground text-sm max-w-sm">
+                Your Internet Identity does not have admin privileges. If you
+                believe this is an error, ensure you are signed in with the
+                correct identity.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => clear()}
+              className="min-h-[40px]"
+              style={{
+                borderColor: "oklch(0.68 0.1 218 / 0.5)",
+                color: "oklch(0.68 0.1 218)",
+              }}
+            >
+              Sign Out &amp; Try Again
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Authorized admin view ────────────────────────────────────────────────
+
+  return (
+    <main className="min-h-screen bg-background" data-ocid="admin.page">
+      {/* Header */}
+      <section className="bg-card border-b border-border px-4 py-6 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-live-green/10 border border-live-green/30 flex items-center justify-center">
+              <Settings className="w-4 h-4 text-live-green" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-foreground leading-tight">
+                Admin Dashboard
+              </h1>
+              {principalText && (
+                <p className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]">
+                  {principalText.slice(0, 20)}…
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {bridgeStatus?.isActive ? (
-                <button
-                  type="button"
-                  onClick={() => handleGlobalBridgeToggle(false)}
-                  disabled={bridgeActing}
-                  className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5"
-                  style={{
-                    background: "oklch(0.20 0.04 240)",
-                    border: "1px solid rgba(251,191,36,0.25)",
-                    color: "#fbbf24",
-                  }}
-                  data-ocid="admin.toggle"
-                >
-                  {bridgeActing ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <X className="w-3.5 h-3.5" />
-                  )}
-                  Deactivate Bridge
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleGlobalBridgeToggle(true)}
-                  disabled={bridgeActing || bridgeLoading}
-                  className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5"
-                  style={{
-                    background: "oklch(0.75 0.18 70 / 0.15)",
-                    border: "1px solid rgba(251,191,36,0.35)",
-                    color: "#fbbf24",
-                  }}
-                  data-ocid="admin.toggle"
-                >
-                  {bridgeActing ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Clock className="w-3.5 h-3.5" />
-                  )}
-                  Activate 72-Hr Bridge
-                </button>
-              )}
-            </div>
           </div>
-
-          {erProviders.length === 0 ? (
-            <div className="py-8 text-center" data-ocid="admin.empty_state">
-              <AlertTriangle
-                className="w-8 h-8 mx-auto mb-2"
-                style={{ color: "oklch(0.40 0.05 220)" }}
-              />
-              <p className="text-sm" style={{ color: "oklch(0.50 0.03 220)" }}>
-                No ER providers found. Seed demo providers to populate this
-                list.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3" data-ocid="admin.list">
-              {erProviders.map((p, i) => {
-                const emergData = emergencyStatuses[p.id];
-                const currentStatus = emergData?.status ?? null;
-                return (
-                  <div
-                    key={p.id}
-                    className="rounded-xl p-4"
-                    style={{
-                      background: "oklch(0.16 0.03 240)",
-                      border:
-                        currentStatus === "72hr_bridge"
-                          ? "1px solid rgba(251,191,36,0.3)"
-                          : currentStatus === "open_bed"
-                            ? "1px solid oklch(0.82 0.18 145 / 0.25)"
-                            : "1px solid oklch(0.22 0.05 240)",
-                    }}
-                    data-ocid={`admin.item.${i + 1}`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p
-                            className="font-semibold text-sm truncate"
-                            style={{ color: "oklch(0.88 0.08 195)" }}
-                          >
-                            {p.name}
-                          </p>
-                          {currentStatus && (
-                            <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                              style={{
-                                background:
-                                  currentStatus === "open_bed"
-                                    ? "oklch(0.55 0.18 145 / 0.15)"
-                                    : "oklch(0.75 0.18 70 / 0.15)",
-                                color:
-                                  currentStatus === "open_bed"
-                                    ? "#4ade80"
-                                    : "#fbbf24",
-                                border: `1px solid ${currentStatus === "open_bed" ? "#4ade8040" : "#fbbf2440"}`,
-                              }}
-                            >
-                              {currentStatus === "open_bed" ? (
-                                <BedDouble className="w-3 h-3" />
-                              ) : (
-                                <Clock className="w-3 h-3" />
-                              )}
-                              {currentStatus === "open_bed"
-                                ? "ACTIVE: Open Bed"
-                                : "ACTIVE: 72-Hr Bridge"}
-                            </span>
-                          )}
-                        </div>
-                        {emergData && (
-                          <p
-                            className="text-[11px] mt-0.5"
-                            style={{ color: "oklch(0.45 0.03 220)" }}
-                          >
-                            {formatCountdown(emergData.setAt)}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleEmergencyToggle(p.id, "open_bed")
-                          }
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px]"
-                          style={{
-                            background:
-                              currentStatus === "open_bed"
-                                ? "oklch(0.55 0.18 145 / 0.25)"
-                                : "oklch(0.20 0.04 240)",
-                            border: `1px solid ${currentStatus === "open_bed" ? "#4ade8040" : "oklch(0.28 0.05 240)"}`,
-                            color:
-                              currentStatus === "open_bed"
-                                ? "#4ade80"
-                                : "oklch(0.60 0.04 220)",
-                          }}
-                          data-ocid={`admin.toggle.${i + 1}`}
-                        >
-                          Open Bed
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleEmergencyToggle(p.id, "72hr_bridge")
-                          }
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px]"
-                          style={{
-                            background:
-                              currentStatus === "72hr_bridge"
-                                ? "oklch(0.75 0.18 70 / 0.20)"
-                                : "oklch(0.20 0.04 240)",
-                            border: `1px solid ${currentStatus === "72hr_bridge" ? "#fbbf2440" : "oklch(0.28 0.05 240)"}`,
-                            color:
-                              currentStatus === "72hr_bridge"
-                                ? "#fbbf24"
-                                : "oklch(0.60 0.04 220)",
-                          }}
-                          data-ocid={`admin.toggle.${i + 1}`}
-                        >
-                          72-Hr Bridge
-                        </button>
-                        {currentStatus && (
-                          <button
-                            type="button"
-                            onClick={() => handleEmergencyToggle(p.id, null)}
-                            className="p-1.5 rounded-lg transition-all min-h-[36px] min-w-[36px] flex items-center justify-center"
-                            style={{
-                              background: "oklch(0.20 0.04 240)",
-                              border: "1px solid oklch(0.28 0.05 240)",
-                              color: "oklch(0.50 0.03 220)",
-                            }}
-                            aria-label="Clear emergency status"
-                            data-ocid={`admin.cancel_button.${i + 1}`}
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Seed Demo Providers */}
-        <div className="bg-card rounded-2xl shadow-card border border-border p-6 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Database className="w-5 h-5 text-live-green" />
-            <h2 className="font-bold text-navy">Seed Demo Providers</h2>
-          </div>
-          <p className="text-sm text-muted-foreground mb-5">
-            Populate the map with verified Ohio providers for demo and pitch
-            purposes. Includes MAT clinics, Narcan distribution, ERs, naloxone
-            kiosks, and telehealth providers — {SEED_PROVIDERS.length} total.
-          </p>
-          {seedDone ? (
-            <div
-              className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200"
-              data-ocid="admin.success_state"
+          <div className="flex items-center gap-2">
+            <Badge className="bg-emerald-900/40 text-emerald-400 border-emerald-700/40 text-xs hidden sm:flex">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
+              Admin
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => clear()}
+              className="min-h-[36px] text-xs"
+              data-ocid="admin.sign_out"
             >
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <p className="text-sm font-medium text-emerald-800">
-                All {SEED_PROVIDERS.length} providers seeded successfully
-              </p>
-            </div>
-          ) : (
-            <>
-              <Button
-                onClick={handleSeedDemoData}
-                disabled={seedProgress.running || !actor}
-                className="min-h-[44px] bg-live-green hover:bg-live-green/90 text-navy font-semibold"
-                data-ocid="admin.primary_button"
-              >
-                {seedProgress.running ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Seeding… {seedProgress.done} / {seedProgress.total}
-                  </>
-                ) : (
-                  `Seed ${SEED_PROVIDERS.length} Ohio Providers`
-                )}
-              </Button>
-              {seedProgress.running && (
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>
-                      {seedProgress.done} / {seedProgress.total} seeded
-                    </span>
-                    <span>{seedPercent}%</span>
-                  </div>
-                  <div className="bg-muted rounded-full h-2 w-full overflow-hidden">
-                    <div
-                      className="bg-live-green h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${seedPercent}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-          {seedProgress.errors.length > 0 && (
-            <div className="mt-4 space-y-1" data-ocid="admin.error_state">
-              <p className="text-xs font-semibold text-destructive">
-                {seedProgress.errors.length} error
-                {seedProgress.errors.length > 1 ? "s" : ""}:
-              </p>
-              <ul className="text-xs text-destructive/80 space-y-0.5 list-disc list-inside">
-                {seedProgress.errors.map((err) => (
-                  <li key={err}>{err}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Register provider */}
-          <div className="bg-card rounded-2xl shadow-card border border-border p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <Plus className="w-5 h-5 text-live-green" />
-              <h2 className="font-bold text-navy">Register Provider</h2>
-            </div>
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <Label htmlFor="reg-id">Provider ID</Label>
-                <Input
-                  id="reg-id"
-                  value={form.id}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, id: e.target.value }))
-                  }
-                  placeholder="provider-001"
-                  className="mt-1 min-h-[44px]"
-                  required
-                  data-ocid="admin.input"
-                />
-              </div>
-              <div>
-                <Label htmlFor="reg-name">Provider Name</Label>
-                <Input
-                  id="reg-name"
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                  placeholder="Brightside Health — Cleveland"
-                  className="mt-1 min-h-[44px]"
-                  required
-                  data-ocid="admin.input"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="reg-lat">Latitude</Label>
-                  <Input
-                    id="reg-lat"
-                    type="number"
-                    step="any"
-                    value={form.lat}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, lat: e.target.value }))
-                    }
-                    placeholder="41.48"
-                    className="mt-1 min-h-[44px]"
-                    required
-                    data-ocid="admin.input"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="reg-lng">Longitude</Label>
-                  <Input
-                    id="reg-lng"
-                    type="number"
-                    step="any"
-                    value={form.lng}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, lng: e.target.value }))
-                    }
-                    placeholder="-81.74"
-                    className="mt-1 min-h-[44px]"
-                    required
-                    data-ocid="admin.input"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="reg-type">Provider Type</Label>
-                <select
-                  id="reg-type"
-                  value={form.providerType}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, providerType: e.target.value }))
-                  }
-                  className="mt-1 w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  data-ocid="admin.input"
-                >
-                  <option value="MAT Clinic">MAT Clinic</option>
-                  <option value="Narcan Distribution">
-                    Narcan Distribution
-                  </option>
-                  <option value="Emergency Room">Emergency Room</option>
-                  <option value="Naloxone Kiosk">Naloxone Kiosk (24/7)</option>
-                  <option value="Telehealth MAT">Telehealth MAT</option>
-                </select>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                ⚠ No ZIP code, no PHI stored.
-              </p>
-              <Button
-                type="submit"
-                disabled={registerProvider.isPending}
-                className="w-full min-h-[44px] bg-live-green hover:bg-live-green/90 text-navy font-semibold"
-                data-ocid="admin.submit_button"
-              >
-                {registerProvider.isPending
-                  ? "Registering…"
-                  : "Register Provider"}
-              </Button>
-            </form>
-          </div>
-
-          {/* Provider toggles */}
-          <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
-            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
-              <Users className="w-4 h-4 text-live-green" />
-              <h2 className="font-bold text-navy">Provider Controls</h2>
-            </div>
-            {providers.length === 0 ? (
-              <div
-                className="p-8 text-center text-muted-foreground"
-                data-ocid="admin.empty_state"
-              >
-                No providers yet.
-              </div>
-            ) : (
-              <div className="divide-y divide-border max-h-96 overflow-y-auto">
-                {providers.map((p, i) => (
-                  <div
-                    key={p.id}
-                    className="px-5 py-3 flex items-center gap-3"
-                    data-ocid={`admin.item.${i + 1}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-navy truncate">
-                        {p.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {isProviderStale(p.lastVerified)
-                          ? "stale"
-                          : statusLabel(p.status)}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {p.isLive ? "Live" : "Offline"}
-                    </Badge>
-                    <Switch
-                      checked={p.isLive}
-                      onCheckedChange={() => handleToggle(p.id, p.isLive)}
-                      data-ocid={`admin.toggle.${i + 1}`}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+              Sign Out
+            </Button>
           </div>
         </div>
+      </section>
 
-        {/* Admin Panel Tabs — Health Monitor & Prediction Engine */}
-        <div className="mt-8">
-          {/* Tab Bar */}
-          <div className="flex border-b border-border mb-6">
-            <button
-              type="button"
-              onClick={() => setAdminTab("health")}
-              className={`px-5 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                adminTab === "health"
-                  ? "text-live-green border-b-2 border-live-green -mb-px"
-                  : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"
-              }`}
-              data-ocid="admin.tab_health_monitor"
-            >
-              Health Monitor
-            </button>
-            <button
-              type="button"
-              onClick={() => setAdminTab("prediction")}
-              className={`px-5 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                adminTab === "prediction"
-                  ? "text-live-green border-b-2 border-live-green -mb-px"
-                  : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"
-              }`}
-              data-ocid="admin.tab_prediction_engine"
-            >
-              Prediction Engine
-            </button>
+      {/* Tab bar */}
+      <div className="bg-card border-b border-border sticky top-[73px] z-20">
+        <div className="max-w-7xl mx-auto px-4">
+          <div
+            className="flex overflow-x-auto scrollbar-hide gap-1 py-1"
+            role="tablist"
+            aria-label="Admin sections"
+          >
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+                  ${
+                    activeTab === tab.id
+                      ? "bg-live-green/10 text-live-green border border-live-green/30"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  }
+                `}
+                data-ocid={`admin.tab_${tab.id}`}
+              >
+                {tab.icon}
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
           </div>
-
-          {/* Tab Content */}
-          {adminTab === "health" ? (
-            <HealthMonitor />
-          ) : (
-            <PredictionEnginePanel />
-          )}
         </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {activeTab === "overview" && (
+          <OverviewTab providers={providers} setTab={setActiveTab} />
+        )}
+        {activeTab === "providers" && (
+          <div className="space-y-8">
+            <ProvidersTab providers={providers} />
+            <RegisterProviderPanel />
+          </div>
+        )}
+        {activeTab === "reports" && <CitizenReportsTab />}
+        {activeTab === "testimonials" && <TestimonialsTab />}
+        {activeTab === "helpers" && <HelpersTab />}
+        {activeTab === "fiscal" && <FiscalImpactTab />}
+        {activeTab === "health" && <HealthMonitor />}
+        {activeTab === "prediction" && <PredictionEnginePanel />}
       </div>
     </main>
   );

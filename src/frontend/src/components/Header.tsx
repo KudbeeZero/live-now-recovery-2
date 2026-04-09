@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Link } from "@tanstack/react-router";
-import { Heart, Loader2, Menu, Phone, Users, X } from "lucide-react";
+import { Heart, Loader2, Menu, Phone, Radio, Users, X } from "lucide-react";
 import { useState } from "react";
 import { useGetRecoveryProfile } from "../hooks/useQueries";
 
@@ -22,9 +22,9 @@ export function Header() {
   const navLinks = [
     { to: "/", label: "Home" },
     { to: "/mission", label: "Mission" },
+    { to: "/resources", label: "Resources" },
     { to: "/blog", label: "Blog" },
     { to: "/about", label: "About" },
-    { to: "/sitemap", label: "Sitemap" },
   ];
 
   const handleLogin = async () => {
@@ -79,8 +79,17 @@ export function Header() {
               </Link>
             ))}
             <Link
-              to="/helper"
+              to="/citizens"
               className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center gap-1.5 px-3 rounded-md text-teal-light hover:text-white hover:bg-white/5"
+              activeProps={{ className: "text-teal-light font-semibold" }}
+              data-ocid="nav.link"
+            >
+              <Radio className="w-3.5 h-3.5" />
+              Citizens Hub
+            </Link>
+            <Link
+              to="/helper"
+              className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center gap-1.5 px-3 rounded-md text-on-dark hover:text-white hover:bg-white/5"
               data-ocid="nav.link"
             >
               <Users className="w-3.5 h-3.5" />
@@ -128,7 +137,12 @@ export function Header() {
                   className="bg-card border-border text-foreground"
                 >
                   <DropdownMenuItem asChild>
-                    <Link to="/admin">Admin Panel</Link>
+                    <Link
+                      to="/admin"
+                      className="flex items-center gap-2 text-teal-light font-semibold"
+                    >
+                      Admin Dashboard
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => clear()}
@@ -200,6 +214,16 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              to="/citizens"
+              className="py-2.5 landscape:py-1.5 px-2 text-sm font-medium min-h-[44px] landscape:min-h-[36px] flex items-center gap-1.5 rounded-md text-teal-light hover:bg-white/5"
+              activeProps={{ className: "text-teal-light font-semibold" }}
+              onClick={() => setMenuOpen(false)}
+              data-ocid="nav.link"
+            >
+              <Radio className="w-3.5 h-3.5" />
+              Citizens Hub
+            </Link>
             <Link
               to="/helper"
               className="py-2.5 landscape:py-1.5 px-2 text-sm font-medium min-h-[44px] landscape:min-h-[36px] flex items-center gap-1.5 rounded-md text-teal-light hover:bg-white/5"

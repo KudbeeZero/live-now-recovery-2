@@ -46,6 +46,7 @@ export function Footer() {
             <ul className="space-y-2">
               {[
                 { to: "/", label: "Live Map" },
+                { to: "/citizens", label: "Citizens Hub" },
                 { to: "/verify", label: "Verify Handoff" },
                 { to: "/helper", label: "Helper Guide" },
                 { to: "/integration", label: "AI Integration" },

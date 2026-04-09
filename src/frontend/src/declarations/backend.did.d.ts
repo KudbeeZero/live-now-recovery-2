@@ -78,6 +78,8 @@ export interface RecoveryProfile {
   'createdAt' : bigint,
   'favoriteProviders' : Array<string>,
 }
+export type Result = { 'ok' : string } |
+  { 'err' : string };
 export interface RiskEvent {
   'id' : string,
   'multiplier' : number,
@@ -94,6 +96,16 @@ export interface RiskPacket {
   'last_update_time' : bigint,
   'provider_id' : string,
   'risk_score' : bigint,
+}
+export interface Testimonial {
+  'id' : string,
+  'isApproved' : boolean,
+  'content' : string,
+  'authorId' : string,
+  'createdAt' : bigint,
+  'zipCode' : string,
+  'isHidden' : boolean,
+  'authorDisplayName' : string,
 }
 export interface TouchpointRecord {
   'touchpoints' : bigint,
@@ -114,12 +126,17 @@ export interface _SERVICE {
   'addFavoriteProvider' : ActorMethod<[string], boolean>,
   'addProviderPost' : ActorMethod<[string, string, [] | [string]], string>,
   'addRiskEvent' : ActorMethod<[RiskEvent], string>,
+  'approveTestimonial' : ActorMethod<[string], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createRecoveryProfile' : ActorMethod<[string, string], string>,
+  'flagCitizenReport' : ActorMethod<[string], boolean>,
   'generateHandoffToken' : ActorMethod<[string], string>,
+  'getActiveRiskBoosts' : ActorMethod<[], Array<[string, number]>>,
   'getAllHelpers' : ActorMethod<[], Array<Helper>>,
   'getAllProviders' : ActorMethod<[], Array<ProviderWithStatus>>,
   'getAllReports' : ActorMethod<[], Array<CitizenReport>>,
+  'getAllTestimonialsAdmin' : ActorMethod<[], Array<Testimonial>>,
+  'getApprovedTestimonials' : ActorMethod<[], Array<Testimonial>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCanisterState' : ActorMethod<[], CanisterStateSummary>,
@@ -141,6 +158,7 @@ export interface _SERVICE {
     }
   >,
   'getHandoffCountsByZip' : ActorMethod<[], Array<[string, bigint]>>,
+  'getHelperCount' : ActorMethod<[], bigint>,
   'getMarketplaceGeoJSON' : ActorMethod<[], string>,
   'getPredictionEngineState' : ActorMethod<[], PredictionEngineState>,
   'getProviderPosts' : ActorMethod<[string], Array<ProviderPost>>,
@@ -157,12 +175,14 @@ export interface _SERVICE {
     }
   >,
   'getSocialStressBaseline' : ActorMethod<[], Array<[string, number]>>,
+  'getTestimonialCount' : ActorMethod<[], bigint>,
   'getTotalCostPlusReferrals' : ActorMethod<[], bigint>,
   'getTotalHandoffs' : ActorMethod<[], bigint>,
   'getTouchpointData' : ActorMethod<[], Array<TouchpointRecord>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getWeatherAlerts' : ActorMethod<[], string>,
   'getWeatherRisk' : ActorMethod<[], number>,
+  'hideTestimonial' : ActorMethod<[string], boolean>,
   'incrementSimulationStats' : ActorMethod<[bigint, bigint], undefined>,
   'initSimulationTime' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
@@ -187,6 +207,7 @@ export interface _SERVICE {
   'setPredictionEngineState' : ActorMethod<[PredictionEngineState], undefined>,
   'setProviderActiveStatus' : ActorMethod<[string, boolean], undefined>,
   'setSimulationVolunteers' : ActorMethod<[bigint], undefined>,
+  'storeTestimonial' : ActorMethod<[string, string, string], Result>,
   'submitCitizenReport' : ActorMethod<
     [string, string, string, [] | [number], [] | [number]],
     string

@@ -18,6 +18,7 @@ import { AboutPage } from "./pages/AboutPage";
 import { AdminPage } from "./pages/AdminPage";
 import { BlogPage } from "./pages/BlogPage";
 import { BlogPostPage } from "./pages/BlogPostPage";
+import { CitizensPage } from "./pages/CitizensPage";
 import { ContactPage } from "./pages/ContactPage";
 import { CookiesPage } from "./pages/CookiesPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -278,6 +279,11 @@ const myRecoveryRoute = createRoute({
   path: "/my-recovery",
   component: RecoveryAccountPage,
 });
+const citizensRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/citizens",
+  component: CitizensPage,
+});
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -321,6 +327,7 @@ const routeTree = rootRoute.addChildren([
   medinaRoute,
   sitemapRoute,
   myRecoveryRoute,
+  citizensRoute,
 ]);
 
 const router = createRouter({ routeTree });

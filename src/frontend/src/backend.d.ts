@@ -68,19 +68,26 @@ export interface RecoveryProfile {
     createdAt: bigint;
     favoriteProviders: Array<string>;
 }
-export interface ProviderPost {
-    id: string;
-    content: string;
-    createdAt: bigint;
-    imageUrl?: string;
-    providerId: string;
-}
+export type Result = {
+    __kind__: "ok";
+    ok: string;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export interface RiskPacket {
     status: boolean;
     data_source: string;
     last_update_time: bigint;
     provider_id: string;
     risk_score: bigint;
+}
+export interface ProviderPost {
+    id: string;
+    content: string;
+    createdAt: bigint;
+    imageUrl?: string;
+    providerId: string;
 }
 export interface CanisterStateSummary {
     active_providers: Array<[string, bigint, boolean]>;
@@ -111,6 +118,16 @@ export interface PredictionEngineState {
 export interface UserProfile {
     name: string;
 }
+export interface Testimonial {
+    id: string;
+    isApproved: boolean;
+    content: string;
+    authorId: string;
+    createdAt: bigint;
+    zipCode: string;
+    isHidden: boolean;
+    authorDisplayName: string;
+}
 export enum ProviderStatus {
     Live = "Live",
     Offline = "Offline",
@@ -125,12 +142,17 @@ export interface backendInterface {
     addFavoriteProvider(providerId: string): Promise<boolean>;
     addProviderPost(providerId: string, content: string, imageUrl: string | null): Promise<string>;
     addRiskEvent(event: RiskEvent): Promise<string>;
+    approveTestimonial(id: string): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createRecoveryProfile(displayName: string, zip: string): Promise<string>;
+    flagCitizenReport(id: string): Promise<boolean>;
     generateHandoffToken(zipCode: string): Promise<string>;
+    getActiveRiskBoosts(): Promise<Array<[string, number]>>;
     getAllHelpers(): Promise<Array<Helper>>;
     getAllProviders(): Promise<Array<ProviderWithStatus>>;
     getAllReports(): Promise<Array<CitizenReport>>;
+    getAllTestimonialsAdmin(): Promise<Array<Testimonial>>;
+    getApprovedTestimonials(): Promise<Array<Testimonial>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCanisterState(): Promise<CanisterStateSummary>;
@@ -150,6 +172,7 @@ export interface backendInterface {
         dollarsSaved: number;
     }>;
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
+    getHelperCount(): Promise<bigint>;
     getMarketplaceGeoJSON(): Promise<string>;
     getPredictionEngineState(): Promise<PredictionEngineState>;
     getProviderPosts(providerId: string): Promise<Array<ProviderPost>>;
@@ -163,12 +186,14 @@ export interface backendInterface {
         simulationStartTime: bigint;
     }>;
     getSocialStressBaseline(): Promise<Array<[string, number]>>;
+    getTestimonialCount(): Promise<bigint>;
     getTotalCostPlusReferrals(): Promise<bigint>;
     getTotalHandoffs(): Promise<bigint>;
     getTouchpointData(): Promise<Array<TouchpointRecord>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getWeatherAlerts(): Promise<string>;
     getWeatherRisk(): Promise<number>;
+    hideTestimonial(id: string): Promise<boolean>;
     incrementSimulationStats(handoffs: bigint, scans: bigint): Promise<void>;
     initSimulationTime(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
@@ -187,6 +212,7 @@ export interface backendInterface {
     setPredictionEngineState(state: PredictionEngineState): Promise<void>;
     setProviderActiveStatus(id: string, status: boolean): Promise<void>;
     setSimulationVolunteers(count: bigint): Promise<void>;
+    storeTestimonial(displayName: string, zipCode: string, content: string): Promise<Result>;
     submitCitizenReport(zipCode: string, activityType: string, content: string, lat: number | null, lng: number | null): Promise<string>;
     toggleLive(id: string, status: boolean): Promise<void>;
     updateInventory(id: string, newInventory: string): Promise<void>;

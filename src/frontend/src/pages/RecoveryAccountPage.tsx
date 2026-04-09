@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { Link } from "@tanstack/react-router";
 import {
   Bookmark,
@@ -10,18 +11,24 @@ import {
   Heart,
   Info,
   MapPin,
+  MessageCircleHeart,
+  Send,
   ShieldCheck,
   Square,
   Trash2,
   User,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import {
   useAddFavoriteProvider,
   useAllProviders,
   useCreateRecoveryProfile,
+  useGetApprovedTestimonials,
   useGetRecoveryProfile,
+  useStoreTestimonial,
 } from "../hooks/useQueries";
+import type { Testimonial } from "../types/community";
 
 // ─── Resource categories the user can mark as explored ───────────────────────
 
@@ -281,6 +288,287 @@ function ResourcesExploredSection({
   );
 }
 
+// ─── Testimonial card ─────────────────────────────────────────────────────────
+
+function TestimonialCard({ t }: { t: Testimonial }) {
+  const date = new Date(Number(t.createdAt) / 1_000_000).toLocaleDateString(
+    "en-US",
+    { month: "short", day: "numeric", year: "numeric" },
+  );
+  const preview =
+    t.content.length > 180
+      ? `${t.content.slice(0, 180).trimEnd()}…`
+      : t.content;
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 shadow-card space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <User className="w-3.5 h-3.5 text-primary" />
+          </div>
+          <span className="text-sm font-semibold text-foreground truncate">
+            {t.authorDisplayName}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            {t.zipCode}
+          </span>
+          <span className="text-xs text-muted-foreground">{date}</span>
+        </div>
+      </div>
+      <p className="text-sm text-muted-foreground leading-relaxed">{preview}</p>
+    </div>
+  );
+}
+
+// ─── Share My Story section ───────────────────────────────────────────────────
+
+function ShareMyStorySection({
+  displayName,
+  zip,
+}: {
+  displayName: string;
+  zip: string;
+}) {
+  const [content, setContent] = useState("");
+  const [authorName, setAuthorName] = useState(displayName);
+  const [authorZip, setAuthorZip] = useState(zip);
+  const [submitted, setSubmitted] = useState(false);
+  const [validationError, setValidationError] = useState("");
+
+  const storeTestimonial = useStoreTestimonial();
+  const { data: testimonials = [], isLoading: loadingTestimonials } =
+    useGetApprovedTestimonials();
+
+  const recent = testimonials.slice(0, 6);
+  const MAX = 500;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setValidationError("");
+
+    if (!content.trim()) {
+      setValidationError("Please write something before submitting.");
+      return;
+    }
+    if (content.length > MAX) {
+      setValidationError(`Your story must be ${MAX} characters or fewer.`);
+      return;
+    }
+
+    storeTestimonial.mutate(
+      {
+        authorDisplayName: authorName.trim() || displayName,
+        zipCode: authorZip.trim() || zip,
+        content: content.trim(),
+      },
+      {
+        onSuccess: () => {
+          setSubmitted(true);
+          setContent("");
+        },
+        onError: () => {
+          setValidationError("Something went wrong. Please try again.");
+        },
+      },
+    );
+  };
+
+  return (
+    <section data-ocid="recovery.share-story.section" className="space-y-6">
+      {/* Section header */}
+      <div className="flex items-center gap-2">
+        <MessageCircleHeart className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-bold text-foreground">Share My Story</h2>
+      </div>
+      <p className="text-muted-foreground text-sm -mt-3">
+        Your recovery journey could help someone else take the first step.
+      </p>
+
+      {/* Submission form */}
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-card space-y-4">
+        {submitted ? (
+          <div
+            className="flex flex-col items-center text-center py-6 gap-3"
+            data-ocid="recovery.story.success"
+          >
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Heart className="w-6 h-6 text-primary" />
+            </div>
+            <p className="font-semibold text-foreground">
+              Thank you for sharing.
+            </p>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Your story has been submitted for review. Once approved, it will
+              appear in the community feed.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border mt-1"
+              onClick={() => setSubmitted(false)}
+            >
+              Share another story
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* NO-PHI reminder */}
+            <div className="flex items-start gap-2.5 bg-primary/5 border border-primary/20 rounded-xl p-3">
+              <ShieldCheck className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-semibold text-foreground">
+                  No medical details, please.
+                </span>{" "}
+                Share your experience and hope — not diagnoses, medications, or
+                personal health information.
+              </p>
+            </div>
+
+            {/* Story textarea */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="story-content"
+                className="text-sm font-medium text-foreground"
+              >
+                Your story
+              </Label>
+              <Textarea
+                id="story-content"
+                placeholder="e.g. 'I wasn't sure if recovery was possible for me, but finding a clinic through this app changed everything…'"
+                value={content}
+                onChange={(e) => {
+                  setContent(e.target.value);
+                  if (validationError) setValidationError("");
+                }}
+                rows={5}
+                maxLength={MAX + 10}
+                className="resize-none"
+                data-ocid="recovery.story.textarea"
+              />
+              <div className="flex justify-between items-center">
+                {validationError ? (
+                  <p className="text-xs text-destructive">{validationError}</p>
+                ) : (
+                  <span />
+                )}
+                <span
+                  className={`text-xs ml-auto ${
+                    content.length > MAX
+                      ? "text-destructive font-medium"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {content.length}/{MAX}
+                </span>
+              </div>
+            </div>
+
+            {/* Display name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="story-name"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Display name{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (alias)
+                  </span>
+                </Label>
+                <Input
+                  id="story-name"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  maxLength={40}
+                  placeholder="Your alias"
+                  data-ocid="recovery.story.name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="story-zip"
+                  className="text-sm font-medium text-foreground"
+                >
+                  ZIP Code
+                </Label>
+                <Input
+                  id="story-zip"
+                  value={authorZip}
+                  onChange={(e) => setAuthorZip(e.target.value)}
+                  maxLength={5}
+                  pattern="[0-9]{5}"
+                  placeholder="44105"
+                  data-ocid="recovery.story.zip"
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full min-h-[44px] font-semibold gap-2"
+              disabled={
+                !content.trim() ||
+                content.length > MAX ||
+                storeTestimonial.isPending
+              }
+              data-ocid="recovery.story.submit"
+            >
+              <Send className="w-4 h-4" />
+              {storeTestimonial.isPending ? "Submitting…" : "Submit My Story"}
+            </Button>
+          </form>
+        )}
+      </div>
+
+      {/* Community Stories */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="w-4 h-4 text-primary" />
+          <h3 className="text-base font-semibold text-foreground">
+            Community Stories
+          </h3>
+          {testimonials.length > 0 && (
+            <Badge className="ml-auto bg-primary/10 text-primary border-0 text-xs hover:bg-primary/10">
+              {testimonials.length} shared
+            </Badge>
+          )}
+        </div>
+
+        {loadingTestimonials ? (
+          <div className="space-y-3" data-ocid="recovery.stories.loading">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-xl" />
+            ))}
+          </div>
+        ) : recent.length === 0 ? (
+          <div
+            className="border border-dashed border-border rounded-xl p-8 text-center"
+            data-ocid="recovery.stories.empty"
+          >
+            <MessageCircleHeart className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-40" />
+            <p className="text-foreground font-medium mb-1">
+              No stories yet — be the first
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Approved stories from the community will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3" data-ocid="recovery.stories.feed">
+            {recent.map((t) => (
+              <TestimonialCard key={t.id} t={t} />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function RecoveryAccountPage() {
@@ -314,7 +602,27 @@ export function RecoveryAccountPage() {
             <Skeleton className="h-32 rounded-xl" />
           </div>
         ) : !profile ? (
-          <CreateProfileCard />
+          <div className="space-y-10">
+            <CreateProfileCard />
+            {/* Soft prompt for Share My Story when no profile */}
+            <div
+              className="bg-muted/40 border border-border rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+              data-ocid="recovery.story.no-profile-prompt"
+            >
+              <div className="flex items-start gap-3">
+                <MessageCircleHeart className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-foreground text-sm">
+                    Share your story with the community
+                  </p>
+                  <p className="text-muted-foreground text-xs mt-0.5">
+                    Create a recovery account to share your story and access the
+                    full community.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="space-y-10">
             {/* Welcome bar */}
@@ -381,6 +689,12 @@ export function RecoveryAccountPage() {
                 </Button>
               </Link>
             </div>
+
+            {/* Share My Story */}
+            <ShareMyStorySection
+              displayName={profile.displayName}
+              zip={profile.zip}
+            />
           </div>
         )}
       </div>

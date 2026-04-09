@@ -8,12 +8,18 @@ const sections = [
       { to: "/", label: "Home" },
       { to: "/dashboard", label: "Recovery Intelligence Dashboard" },
       { to: "/videos", label: "Video Library" },
-      { to: "/helper", label: "Helper Guide" },
       { to: "/verify", label: "Verify Handoff" },
       { to: "/register", label: "Register as Provider" },
-      { to: "/signup", label: "Sign Up" },
-      { to: "/my-recovery", label: "My Recovery Account" },
       { to: "/admin", label: "Admin Panel" },
+    ],
+  },
+  {
+    title: "Community",
+    links: [
+      { to: "/citizens", label: "Citizens Hub" },
+      { to: "/helper", label: "Be a Helper" },
+      { to: "/my-recovery", label: "My Recovery Account" },
+      { to: "/signup", label: "Sign Up" },
     ],
   },
   {

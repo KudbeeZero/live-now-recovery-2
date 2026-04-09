@@ -1,27 +1,29 @@
 {
-  "overview": "Live Now Recovery is a privacy-first, real-time marketplace for Medication-Assisted Treatment (MAT) provider availability, piloted in Ohio Region 13. Built on the Internet Computer Protocol (ICP), it features real-time provider status, a Sentinel Prediction Engine, Fiscal Impact Dashboard, IMAX-style video experience with peer support documentaries, and a comprehensive mobile-first UI/UX.",
+  "overview": "Live Now Recovery is a privacy-first, real-time marketplace for Medication-Assisted Treatment (MAT) provider availability in Ohio. Built on ICP with a Motoko backend and React/TypeScript/Tailwind frontend, it features real-time provider status, Sentinel risk prediction, a community citizen reporting layer, peer support testimonials, and a comprehensive admin dashboard for health system analytics.",
   "features": [
-    "Real-time MAT provider map with MapLibre GL JS and clustering",
-    "Sentinel Prediction Engine with NWS weather, Census ACS social stress, payday logic",
-    "Fiscal Impact Engine with 7-Attempts model and live Impact Odometer",
-    "IMAX-style video experience with peer support documentaries",
-    "Recovery Intelligence Dashboard with PDF export",
-    "ElevenLabs accessibility integration (text-to-speech, ambient music, multilingual)",
-    "Admin workflow with provider verification, emergency bridge toggle, and Prediction Engine panel",
-    "NO-PHI policy — no patient data ever stored or transmitted",
-    "Provider profiles with Cost Plus Drugs Rx Router and QR code referrals",
-    "Cookie consent, privacy policy, terms of service pages"
+    "Real-time MAT provider map with MapLibre GL JS clustering and heatmap",
+    "Sentinel Prediction Engine with NWS weather, Census ACS social stress, payday cycle logic",
+    "Citizen community reporting — live map layer boosting Sentinel risk scores",
+    "Share My Story peer support testimonials on recovery account pages",
+    "Full citizens community hub page with live feed, embedded map, and stats",
+    "Comprehensive admin dashboard with 8 tabs including provider management, report moderation, testimonials, and fiscal impact odometer",
+    "ElevenLabs accessibility integration — text-to-speech, ambient music, language selector",
+    "Fiscal Impact Engine with 7-Attempts model and live healthcare savings odometer",
+    "Recovery Intelligence Dashboard with B2B analytics at /dashboard",
+    "Cost Plus Rx referral tracking with QR codes on provider pages"
   ],
   "category": "health-wellness",
   "tags": [
-    "mat",
-    "opioid-recovery",
-    "harm-reduction",
-    "ohio",
     "healthcare",
-    "telehealth",
-    "provider-directory",
-    "public-health"
+    "recovery",
+    "mat-treatment",
+    "opioid-crisis",
+    "ohio",
+    "real-time",
+    "community",
+    "icp",
+    "public-health",
+    "nonprofit"
   ],
-  "last_updated": "2026-04-09T15:56:02.170Z"
+  "last_updated": "2026-04-09T19:25:55.549Z"
 }

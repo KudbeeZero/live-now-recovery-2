@@ -19,6 +19,17 @@ type TouchpointRecord =
    totalSaved: float64;
    touchpoints: nat;
  };
+type Testimonial = 
+ record {
+   authorDisplayName: text;
+   authorId: text;
+   content: text;
+   createdAt: int;
+   id: text;
+   isApproved: bool;
+   isHidden: bool;
+   zipCode: text;
+ };
 type RiskPacket = 
  record {
    data_source: text;
@@ -37,6 +48,11 @@ type RiskEvent =
    multiplier: float64;
    name: text;
    startDate: int;
+ };
+type Result = 
+ variant {
+   err: text;
+   ok: text;
  };
 type RecoveryProfile = 
  record {
@@ -126,12 +142,20 @@ service : {
   addProviderPost: (providerId: text, content: text, imageUrl: opt text) ->
    (text);
   addRiskEvent: (event: RiskEvent) -> (text);
+  approveTestimonial: (id: text) -> (bool);
   assignCallerUserRole: (user: principal, role: UserRole) -> ();
   createRecoveryProfile: (displayName: text, zip: text) -> (text);
+  flagCitizenReport: (id: text) -> (bool);
   generateHandoffToken: (zipCode: text) -> (text);
+  getActiveRiskBoosts: () -> (vec record {
+                                    text;
+                                    float64;
+                                  });
   getAllHelpers: () -> (vec Helper) query;
   getAllProviders: () -> (vec ProviderWithStatus) query;
   getAllReports: () -> (vec CitizenReport) query;
+  getAllTestimonialsAdmin: () -> (vec Testimonial) query;
+  getApprovedTestimonials: () -> (vec Testimonial) query;
   getCallerUserProfile: () -> (opt UserProfile) query;
   getCallerUserRole: () -> (UserRole) query;
   getCanisterState: () -> (CanisterStateSummary) query;
@@ -156,6 +180,7 @@ service : {
                                       text;
                                       nat;
                                     }) query;
+  getHelperCount: () -> (nat) query;
   getMarketplaceGeoJSON: () -> (text) query;
   getPredictionEngineState: () -> (PredictionEngineState) query;
   getProviderPosts: (providerId: text) -> (vec ProviderPost) query;
@@ -173,12 +198,14 @@ service : {
                                         text;
                                         float64;
                                       });
+  getTestimonialCount: () -> (nat) query;
   getTotalCostPlusReferrals: () -> (nat) query;
   getTotalHandoffs: () -> (nat) query;
   getTouchpointData: () -> (vec TouchpointRecord) query;
   getUserProfile: (user: principal) -> (opt UserProfile) query;
   getWeatherAlerts: () -> (text);
   getWeatherRisk: () -> (float64);
+  hideTestimonial: (id: text) -> (bool);
   incrementSimulationStats: (handoffs: nat, scans: nat) -> ();
   initSimulationTime: () -> ();
   isCallerAdmin: () -> (bool) query;
@@ -199,6 +226,8 @@ service : {
   setPredictionEngineState: (state: PredictionEngineState) -> ();
   setProviderActiveStatus: (id: text, status: bool) -> ();
   setSimulationVolunteers: (count: nat) -> ();
+  storeTestimonial: (displayName: text, zipCode: text, content: text) ->
+   (Result);
   submitCitizenReport: (zipCode: text, activityType: text, content: text,
    lat: opt float64, lng: opt float64) -> (text);
   toggleLive: (id: text, status: bool) -> ();

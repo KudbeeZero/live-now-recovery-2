@@ -7,6 +7,7 @@ import Nat "mo:core/Nat";
 import Float "mo:core/Float";
 import Order "mo:core/Order";
 import Int "mo:core/Int";
+import CoreTypes "mo:core/Types";
 import AccessControl "mo:caffeineai-authorization/access-control";
 import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
 
@@ -592,6 +593,14 @@ actor {
   let citizenReports = Map.empty<Text, CitizenReport>();
   let recoveryProfiles = Map.empty<Principal, RecoveryProfile>();
 
+  // ── Testimonials & Citizen Risk Boost State ───────────────────────────────────
+  // testimonials: array of (id, Testimonial) tuples — consistent with riskEvents/touchpointData patterns
+  var testimonials : [(Text, Testimonial)] = [];
+  // flaggedReports: list of flagged report IDs (separate from CitizenReport type to avoid schema change)
+  var flaggedReports : [Text] = [];
+  // citizenReportRiskBoosts: (zipCode, boostAmount, expiresAtNanoSecs)
+  var citizenReportRiskBoosts : [(Text, Float, Int)] = [];
+
   // ── Fiscal Impact Functions ───────────────────────────────────────────────────
 
   // recordTouchpoint — public update (no PHI), implements 7-Attempts model
@@ -728,6 +737,18 @@ actor {
     createdAt : Int;
   };
 
+  // Testimonial: peer support content; NO-PHI — displayName is alias, not real name
+  public type Testimonial = {
+    id : Text;
+    authorId : Text;
+    authorDisplayName : Text;
+    zipCode : Text;
+    content : Text; // max 500 chars enforced in storeTestimonial
+    isApproved : Bool;
+    isHidden : Bool;
+    createdAt : Int;
+  };
+
   // ── Prediction Engine Types ──────────────────────────────────────────────────
 
   public type RiskEvent = {
@@ -806,6 +827,62 @@ actor {
             reputationScore = 85;
           },
         );
+      };
+    };
+
+    // Seed dummy Ohio community helpers if none exist
+    if (helpers.isEmpty()) {
+      let seedHelpers : [(Text, Text, Text, Text, Text, Text, Text)] = [
+        ("h-01", "Marcus", "Johnson", "mjohnson@recoveryohio.org", "44101", "216-555-0142", "Peer Support Specialist"),
+        ("h-02", "Tamara", "Williams", "t.williams@cuyahogahealth.org", "44105", "216-555-0287", "Community Health Worker"),
+        ("h-03", "Derek", "Okonkwo", "derek.o@volunteerrides.org", "44115", "216-555-0319", "Transportation Volunteer"),
+        ("h-04", "Lisa", "Hernandez", "lhernandez@narcanohio.org", "44202", "330-555-0461", "Naloxone Distributor"),
+        ("h-05", "James", "Carter", "jcarter@recoverycoachnetwork.org", "43201", "614-555-0573", "Recovery Coach"),
+        ("h-06", "Angela", "Moss", "angela.moss@familysupport.org", "45201", "513-555-0694", "Family Support Advocate"),
+        ("h-07", "Kevin", "Patel", "kpatel@warmhandoffs.org", "44135", "216-555-0718", "Warm Handoff Coordinator"),
+        ("h-08", "Renee", "Thompson", "rthompson@outreachohio.org", "43235", "614-555-0832", "Volunteer Outreach Worker"),
+      ];
+      var helperIdx : Nat = 0;
+      for ((id, firstName, lastName, email, zip, phone, helpType) in seedHelpers.vals()) {
+        helpers.add(id, {
+          id;
+          firstName;
+          lastName;
+          email;
+          zip;
+          phone;
+          helpType;
+          consent = true;
+          note = "";
+          createdAt = Time.now() - (helperIdx * 86_400_000_000_000);
+        });
+        helperIdx += 1;
+      };
+    };
+
+    // Seed demo citizen reports if none exist
+    if (citizenReports.isEmpty()) {
+      let seedReports : [(Text, Text, Text, Text, Float, Float)] = [
+        ("report-seed-01", "44101", "narcan-used", "Narcan administered near West Side Market. Person responsive.", 41.4842, -81.7022),
+        ("report-seed-02", "44105", "check-in", "Community outreach team active on W. 25th. Resources available.", 41.4645, -81.7157),
+        ("report-seed-03", "44115", "narcan-used", "Two kits distributed at laundromat on E. 55th. All safe.", 41.4937, -81.6601),
+        ("report-seed-04", "44202", "area-concern", "Increased activity near Rt. 82 corridor. Peers checking in.", 41.2706, -81.3399),
+        ("report-seed-05", "43201", "resource-found", "New drop-in hours at Columbus Recovery Center. Open weekends.", 39.9784, -82.9989),
+        ("report-seed-06", "45201", "narcan-used", "Narcan kit from vending machine used successfully downtown.", 39.1031, -84.5120),
+      ];
+      var reportIdx : Nat = 0;
+      for ((id, zipCode, activityType, content, lat, lng) in seedReports.vals()) {
+        citizenReports.add(id, {
+          id;
+          zipCode;
+          activityType;
+          content;
+          upvotes = 0;
+          lat = ?lat;
+          lng = ?lng;
+          createdAt = Time.now() - (reportIdx * 3_600_000_000_000);
+        });
+        reportIdx += 1;
       };
     };
   };
@@ -1167,6 +1244,18 @@ actor {
       createdAt = Time.now();
     };
     citizenReports.add(id, report);
+    // Add a risk boost entry for this report's ZIP based on activity type
+    let boostAmount : Float = if (activityType == "overdose" or activityType == "bad-batch") {
+      0.5;
+    } else if (activityType == "narcan-used") {
+      0.3;
+    } else if (activityType == "area-concern") {
+      0.2;
+    } else {
+      0.1; // check-in, resource-found, etc.
+    };
+    let expiresAt : Int = Time.now() + 86_400_000_000_000; // 24h in nanoseconds
+    citizenReportRiskBoosts := citizenReportRiskBoosts.concat([(zipCode, boostAmount, expiresAt)]);
     id;
   };
 
@@ -1297,5 +1386,139 @@ actor {
         };
       };
     };
+  };
+
+  // ── Testimonials ──────────────────────────────────────────────────────────────
+
+  // storeTestimonial — anonymous callers allowed; displayName is alias, not real name (NO-PHI)
+  public shared ({ caller }) func storeTestimonial(displayName : Text, zipCode : Text, content : Text) : async CoreTypes.Result<Text, Text> {
+    if (content.size() > 500) {
+      return #err("Content exceeds 500 character limit");
+    };
+    if (displayName.size() == 0) {
+      return #err("Display name is required");
+    };
+    if (zipCode.size() == 0) {
+      return #err("ZIP code is required");
+    };
+    let id = "testimonial-" # Time.now().toText();
+    let authorId = if (caller.isAnonymous()) { "anon-" # id } else { caller.toText() };
+    let t : Testimonial = {
+      id;
+      authorId;
+      authorDisplayName = displayName;
+      zipCode;
+      content;
+      isApproved = false;
+      isHidden = false;
+      createdAt = Time.now();
+    };
+    testimonials := testimonials.concat([(id, t)]);
+    #ok(id);
+  };
+
+  // getApprovedTestimonials — public query; returns only approved and not hidden
+  public query func getApprovedTestimonials() : async [Testimonial] {
+    testimonials
+      .filter(func((_, t) : (Text, Testimonial)) : Bool { t.isApproved and not t.isHidden })
+      .map(func((_, t) : (Text, Testimonial)) : Testimonial { t });
+  };
+
+  // getAllTestimonialsAdmin — admin-only query; returns all testimonials
+  public query ({ caller }) func getAllTestimonialsAdmin() : async [Testimonial] {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can view all testimonials");
+    };
+    testimonials.map(func((_, t) : (Text, Testimonial)) : Testimonial { t });
+  };
+
+  // approveTestimonial — admin-only; sets isApproved=true
+  public shared ({ caller }) func approveTestimonial(id : Text) : async Bool {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can approve testimonials");
+    };
+    var found = false;
+    testimonials := testimonials.map<(Text, Testimonial), (Text, Testimonial)>(func((tid, t) : (Text, Testimonial)) : (Text, Testimonial) {
+      if (tid == id) {
+        found := true;
+        (tid, { t with isApproved = true });
+      } else {
+        (tid, t);
+      }
+    });
+    found;
+  };
+
+  // hideTestimonial — admin-only; sets isHidden=true
+  public shared ({ caller }) func hideTestimonial(id : Text) : async Bool {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can hide testimonials");
+    };
+    var found = false;
+    testimonials := testimonials.map<(Text, Testimonial), (Text, Testimonial)>(func((tid, t) : (Text, Testimonial)) : (Text, Testimonial) {
+      if (tid == id) {
+        found := true;
+        (tid, { t with isHidden = true });
+      } else {
+        (tid, t);
+      }
+    });
+    found;
+  };
+
+  // getTestimonialCount — public query; returns total count of all testimonials
+  public query func getTestimonialCount() : async Nat {
+    testimonials.size();
+  };
+
+  // ── Citizen Report Risk Boosts ────────────────────────────────────────────────
+
+  // getActiveRiskBoosts — public query; returns (zipCode, boostAmount) for non-expired boosts
+  // Expired entries are pruned on each call
+  public shared func getActiveRiskBoosts() : async [(Text, Float)] {
+    let now = Time.now();
+    // Prune expired entries
+    citizenReportRiskBoosts := citizenReportRiskBoosts.filter(
+      func((_, _, expiresAt) : (Text, Float, Int)) : Bool { expiresAt > now }
+    );
+    // Return (zipCode, boostAmount) pairs, aggregating by ZIP
+    let boostMap = Map.empty<Text, Float>();
+    for ((zip, boost, _) in citizenReportRiskBoosts.vals()) {
+      let current = switch (boostMap.get(zip)) {
+        case null { 0.0 };
+        case (?v) { v };
+      };
+      boostMap.add(zip, current + boost);
+    };
+    boostMap.entries().toArray();
+  };
+
+  // flagCitizenReport — admin-only; adds report ID to flaggedReports list
+  public shared ({ caller }) func flagCitizenReport(id : Text) : async Bool {
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can flag reports");
+    };
+    // Check report exists
+    switch (citizenReports.get(id)) {
+      case null { false };
+      case (?_) {
+        // Idempotent: only add if not already flagged
+        let alreadyFlagged = flaggedReports.find(func(fid : Text) : Bool { fid == id });
+        switch (alreadyFlagged) {
+          case (?_) { true };
+          case null {
+            flaggedReports := flaggedReports.concat([id]);
+            true;
+          };
+        };
+      };
+    };
+  };
+
+  // ── Admin Overview Helpers ────────────────────────────────────────────────────
+
+  // getHelperCount — public query; returns total number of helper signups
+  public query func getHelperCount() : async Nat {
+    helpers.size();
   };
 }

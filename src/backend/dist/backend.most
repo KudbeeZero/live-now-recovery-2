@@ -96,6 +96,17 @@ type RiskPacket__983375089 =
     risk_score : Nat;
     status : Bool
   };
+type Testimonial__393323594 =
+  {
+    authorDisplayName : Text;
+    authorId : Text;
+    content : Text;
+    createdAt : Int;
+    id : Text;
+    isApproved : Bool;
+    isHidden : Bool;
+    zipCode : Text
+  };
 type TouchpointRecord__549151585 =
   {
     agentId : Text;
@@ -118,6 +129,7 @@ actor {
   stable var cachedAlertsText : Text;
   stable var cachedSocialStress : [(Text, Float)];
   stable var cachedWeatherRisk : Float;
+  stable var citizenReportRiskBoosts : [(Text, Float, Int)];
   stable citizenReports :
     {
       var root : Node__46230540<Text, CitizenReport__786071060>;
@@ -128,6 +140,7 @@ actor {
   stable var dollarsSaved : Float;
   stable var emergencyBridgeStatus :
     {activatedAt : Int; activatedBy : Principal; isActive : Bool};
+  stable var flaggedReports : [Text];
   stable handoffs :
     {
       var root : Node__46230540<Text, Handoff__23152836>;
@@ -214,6 +227,7 @@ actor {
     };
   stable var simulationStartTime : Int;
   stable var stabilizedAgents : Nat;
+  stable var testimonials : [(Text, Testimonial__393323594)];
   stable var tokenNonce : Nat;
   stable tokens :
     {
