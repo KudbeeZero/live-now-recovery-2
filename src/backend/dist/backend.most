@@ -6,9 +6,13 @@ type HandoffToken__969534999 =
 type Handoff__23152836 = {timestamp : Int; tokenId : Text; zipCode : Text};
 type Helper__207691655 =
   {
+    consent : Bool;
     createdAt : Int;
+    email : Text;
     firstName : Text;
+    helpType : Text;
     id : Text;
+    lastName : Text;
     note : Text;
     phone : Text;
     zip : Text
@@ -27,11 +31,16 @@ type Node__46230540<K, V> =
 type Provider__999103737 =
   {
     id : Text;
+    inventory : Text;
     isLive : Bool;
+    is_active : Bool;
+    is_verified : Bool;
     lastVerified : Int;
     lat : Float;
     lng : Float;
-    name : Text
+    name : Text;
+    providerType : Text;
+    reputationScore : Nat
   };
 type RiskPacketHistory__898629859 =
   {
@@ -59,32 +68,31 @@ actor {
       var adminAssigned : Bool;
       userRoles : Map__605269027<Principal, UserRole__1054455867>
     };
-  stable var adminPrincipals : [Principal];
-  stable var handoffEntries : [(Text, Handoff__23152836)];
+  stable adminPrincipals : [Principal];
+  stable costPlusReferrals :
+    {var root : Node__46230540<Text, Nat>; var size : Nat__490723111};
+  stable var emergencyBridgeStatus :
+    {activatedAt : Int; activatedBy : Principal; isActive : Bool};
   stable handoffs :
     {
       var root : Node__46230540<Text, Handoff__23152836>;
       var size : Nat__490723111
     };
-  stable var helperEntries : [(Text, Helper__207691655)];
   stable helpers :
     {
       var root : Node__46230540<Text, Helper__207691655>;
       var size : Nat__490723111
     };
-  stable var providerEntries : [(Text, Provider__999103737)];
   stable providers :
     {
       var root : Node__46230540<Text, Provider__999103737>;
       var size : Nat__490723111
     };
-  stable var riskPacketEntries : [(Text, RiskPacketHistory__898629859)];
   stable riskPackets :
     {
       var root : Node__46230540<Text, RiskPacketHistory__898629859>;
       var size : Nat__490723111
     };
-  stable var tokenEntries : [(Text, HandoffToken__969534999)];
   stable var tokenNonce : Nat;
   stable tokens :
     {
@@ -96,7 +104,6 @@ actor {
       var root : Node__46230540<Principal, UserProfile__491224006>;
       var size : Nat__490723111
     };
-  stable var zipCountEntries : [(Text, Nat)];
   stable zipCounts :
     {var root : Node__46230540<Text, Nat>; var size : Nat__490723111}
 };

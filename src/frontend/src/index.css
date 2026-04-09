@@ -72,8 +72,7 @@
 
   .leaflet-container {
     @apply rounded-xl;
-    /* z-index intentionally omitted — setting it to 0 created a stacking
-       context that trapped popup panes below sibling UI overlays */
+    z-index: 0;
     background: oklch(0.14 0.008 240) !important;
   }
   .leaflet-popup-content-wrapper {
@@ -88,14 +87,6 @@
   }
   .leaflet-popup-close-button {
     color: oklch(var(--muted-foreground)) !important;
-  }
-  /* Leaflet popup pane must sit above DopplerMap's z-[1000] UI overlays */
-  .leaflet-pane.leaflet-popup-pane {
-    z-index: 1100 !important;
-  }
-  /* MapLibre GL popup must sit above EnhancedRecoveryMap's z-10 UI overlays */
-  .maplibregl-popup {
-    z-index: 20 !important;
   }
 }
 

@@ -18,9 +18,13 @@ export interface CanisterStateSummary {
 export interface Helper {
   'id' : string,
   'zip' : string,
+  'consent' : boolean,
   'note' : string,
   'createdAt' : bigint,
+  'email' : string,
+  'helpType' : string,
   'phone' : string,
+  'lastName' : string,
   'firstName' : string,
 }
 export type ProviderStatus = { 'Live' : null } |
@@ -31,12 +35,14 @@ export interface ProviderWithStatus {
   'lat' : number,
   'lng' : number,
   'status' : ProviderStatus,
+  'reputationScore' : bigint,
+  'inventory' : string,
   'name' : string,
   'isLive' : boolean,
   'lastVerified' : bigint,
+  'is_verified' : boolean,
   'providerType' : string,
-  'isVerified' : boolean,
-  'reputationScore' : number,
+  'is_active' : boolean,
 }
 export interface RiskPacket {
   'status' : boolean,
@@ -62,18 +68,34 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCanisterState' : ActorMethod<[], CanisterStateSummary>,
+  'getCostPlusReferralCount' : ActorMethod<[string], bigint>,
   'getEmergencyActive' : ActorMethod<[], Array<ProviderWithStatus>>,
+  'getEmergencyBridgeStatus' : ActorMethod<
+    [],
+    { 'activatedAt' : bigint, 'activatedBy' : string, 'isActive' : boolean }
+  >,
   'getHandoffCountsByZip' : ActorMethod<[], Array<[string, bigint]>>,
   'getMarketplaceGeoJSON' : ActorMethod<[], string>,
+  'getTotalCostPlusReferrals' : ActorMethod<[], bigint>,
   'getTotalHandoffs' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'heartbeat' : ActorMethod<[], Array<string>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'receiveRiskPacket' : ActorMethod<[RiskPacket], undefined>,
-  'registerHelper' : ActorMethod<[string, string, string, string], undefined>,
-  'registerProvider' : ActorMethod<[string, string, number, number], undefined>,
+  'recordCostPlusReferral' : ActorMethod<[string], undefined>,
+  'registerHelper' : ActorMethod<
+    [string, string, string, string, string, string, boolean, string],
+    undefined
+  >,
+  'registerProvider' : ActorMethod<
+    [string, string, number, number, string],
+    undefined
+  >,
+  'runHeartbeat' : ActorMethod<[], Array<string>>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setEmergencyActive' : ActorMethod<[boolean], undefined>,
+  'setProviderActiveStatus' : ActorMethod<[string, boolean], undefined>,
   'toggleLive' : ActorMethod<[string, boolean], undefined>,
+  'updateInventory' : ActorMethod<[string, string], undefined>,
   'verifyHandoff' : ActorMethod<[string], VerifyResult>,
   'verifyProvider' : ActorMethod<[string], undefined>,
 }

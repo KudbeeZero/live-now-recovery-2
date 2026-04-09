@@ -1,0 +1,29 @@
+{
+  "overview": "Live Now Recovery is a privacy-first, real-time marketplace for Medication-Assisted Treatment (MAT) provider availability in Ohio. Built on the Internet Computer Protocol (ICP), it connects people in recovery with nearby providers — MAT clinics, Narcan distribution sites, emergency rooms offering 72-hour bridge prescriptions, naloxone kiosks, and telehealth MAT providers — with zero patient data stored. The platform features real-time provider status, geospatial mapping, a volunteer helper network, Cost Plus Drugs medication pricing integration, and a B2B analytics dashboard for counties and health systems.",
+  "features": [
+    "Real-time provider map with 5 provider types (MAT Clinic, Narcan Distribution, ER, Naloxone Kiosk, Telehealth MAT)",
+    "NO-PHI policy — zero patient data stored or processed",
+    "Cost Plus Rx Router — trackable Cost Plus Drugs referrals with QR codes on every provider page",
+    "Recovery Intelligence Dashboard — B2B analytics for counties and health systems with Recharts",
+    "Admin verification workflow for provider approval",
+    "Volunteer helper signup and management system",
+    "72-hour bridge ER emergency toggle for real-time bed availability signaling",
+    "Sentinel AI chat assistant with intent-driven quick replies and live provider cards",
+    "15 Ohio city location pages with provider card grids",
+    "Health Monitor tab with visual site flow map and smoke testing"
+  ],
+  "category": "healthcare",
+  "tags": [
+    "recovery",
+    "mat",
+    "opioid",
+    "ohio",
+    "healthcare",
+    "icp",
+    "real-time",
+    "provider-directory",
+    "harm-reduction",
+    "b2b-analytics"
+  ],
+  "last_updated": "2026-04-09T12:23:05.634Z"
+}

@@ -128,9 +128,10 @@ export function PriceComparisonCard() {
         </div>
       </div>
 
+      {/* Primary CTA */}
       <Button
         asChild
-        className="w-full min-h-[44px] font-semibold transition-all"
+        className="w-full min-h-[44px] font-semibold transition-all mb-4"
         style={{
           background: "oklch(0.78 0.14 195)",
           color: "oklch(0.10 0.02 240)",
@@ -138,10 +139,54 @@ export function PriceComparisonCard() {
         }}
         data-ocid="price.primary_button"
       >
-        <a href="https://costplusdrugs.com" target="_blank" rel="noreferrer">
-          Transfer Script to Cost Plus <ExternalLink className="ml-2 w-4 h-4" />
+        <a
+          href="https://costplusdrugs.com/medications/categories/opioid-dependence/index.html"
+          target="_blank"
+          rel="noreferrer"
+        >
+          View Opioid Formulary <ExternalLink className="ml-2 w-4 h-4" />
         </a>
       </Button>
+
+      {/* Policy links row */}
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mb-4">
+        {[
+          {
+            label: "Privacy Policy",
+            href: "https://www.costplusdrugs.com/privacy/",
+          },
+          {
+            label: "HIPAA Policy",
+            href: "https://costplusdrugs.com/hipaa/index.html",
+          },
+          {
+            label: "Provider Info",
+            href: "https://www.costplusdrugs.com/providers/",
+          },
+        ].map(({ label, href }) => (
+          <a
+            key={label}
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs underline underline-offset-2 hover:opacity-80 transition-opacity inline-flex items-center gap-1"
+            style={{ color: "oklch(0.65 0.08 195)" }}
+          >
+            {label}
+            <ExternalLink className="w-2.5 h-2.5" />
+          </a>
+        ))}
+      </div>
+
+      {/* Disclaimer */}
+      <p
+        className="text-[10px] leading-relaxed text-center"
+        style={{ color: "oklch(0.42 0.03 220)" }}
+      >
+        Pricing and policies above are provided by Mark Cuban Cost Plus Drugs.
+        Live Now Recovery does not store or process any patient health
+        information.
+      </p>
     </div>
   );
 }

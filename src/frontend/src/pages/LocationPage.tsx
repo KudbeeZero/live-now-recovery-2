@@ -73,11 +73,28 @@ const TYPE_CONFIG: Record<
     bg: "rgba(248,113,113,0.10)",
     border: "rgba(248,113,113,0.30)",
   },
+  "Naloxone Kiosk": {
+    label: "Naloxone Kiosk",
+    color: "#c084fc",
+    bg: "rgba(192,132,252,0.10)",
+    border: "rgba(192,132,252,0.30)",
+  },
+  "Telehealth MAT": {
+    label: "Telehealth MAT",
+    color: "#818cf8",
+    bg: "rgba(129,140,248,0.10)",
+    border: "rgba(129,140,248,0.30)",
+  },
 };
 
 function typeCfg(raw: string) {
+  // Exact match first
+  if (TYPE_CONFIG[raw]) return TYPE_CONFIG[raw];
+  // Fuzzy fallback
   if (/^mat/i.test(raw)) return TYPE_CONFIG.MAT;
+  if (/narcan|naloxone kiosk/i.test(raw)) return TYPE_CONFIG["Naloxone Kiosk"];
   if (/narcan/i.test(raw)) return TYPE_CONFIG.Narcan;
+  if (/telehealth/i.test(raw)) return TYPE_CONFIG["Telehealth MAT"];
   if (/er$|emergency/i.test(raw)) return TYPE_CONFIG.ER;
   return {
     label: raw || "Provider",
@@ -184,7 +201,9 @@ export function LocationPage({ townOverride }: { townOverride?: string }) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {nearbyProviders.map((p) => {
-                const cfg = typeCfg((p as any).providerType ?? "");
+                const cfg = typeCfg(
+                  (p as { providerType?: string }).providerType ?? "",
+                );
                 return (
                   <div
                     key={p.id}

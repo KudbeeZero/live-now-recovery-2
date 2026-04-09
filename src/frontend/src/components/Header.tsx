@@ -7,13 +7,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Link } from "@tanstack/react-router";
-import { Heart, Menu, Phone, Users, X } from "lucide-react";
+import { Heart, Loader2, Menu, Phone, Users, X } from "lucide-react";
 import { useState } from "react";
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const { login, clear, loginStatus, identity } = useInternetIdentity();
   const isLoggedIn = loginStatus === "success" && !!identity;
+  const isLoggingIn = loginStatus === "logging-in";
 
   const navLinks = [
     { to: "/", label: "Home" },
@@ -22,6 +24,19 @@ export function Header() {
     { to: "/about", label: "About" },
     { to: "/sitemap", label: "Sitemap" },
   ];
+
+  const handleLogin = async () => {
+    setLoginError(null);
+    try {
+      await login();
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Sign in failed. Please try again.";
+      setLoginError(msg);
+    }
+  };
 
   return (
     <header
@@ -111,15 +126,30 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button
-                variant="default"
-                size="sm"
-                className="hidden md:inline-flex min-h-[44px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => login()}
-                data-ocid="nav.button"
-              >
-                Sign In
-              </Button>
+              <div className="hidden md:flex flex-col items-end gap-0.5">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="min-h-[44px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={handleLogin}
+                  disabled={isLoggingIn}
+                  data-ocid="nav.button"
+                >
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      Signing in…
+                    </>
+                  ) : (
+                    "Sign In"
+                  )}
+                </Button>
+                {loginStatus === "loginError" || loginError ? (
+                  <p className="text-[10px] text-destructive font-medium max-w-[140px] text-right leading-tight">
+                    {loginError ?? "Sign in failed. Try again."}
+                  </p>
+                ) : null}
+              </div>
             )}
 
             {/* Mobile menu toggle */}
@@ -179,17 +209,39 @@ export function Header() {
               <span>Call 833-234-6343</span>
             </a>
             {!isLoggedIn && (
-              <Button
-                size="sm"
-                className="min-h-[44px] landscape:min-h-[40px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 landscape:flex-1"
-                onClick={() => {
-                  login();
-                  setMenuOpen(false);
-                }}
-                data-ocid="nav.button"
-              >
-                Sign In
-              </Button>
+              <div className="landscape:flex-1 flex flex-col gap-1">
+                <Button
+                  size="sm"
+                  className="min-h-[44px] landscape:min-h-[40px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 w-full"
+                  disabled={isLoggingIn}
+                  onClick={async () => {
+                    setLoginError(null);
+                    try {
+                      await login();
+                      setMenuOpen(false);
+                    } catch (err) {
+                      setLoginError(
+                        err instanceof Error ? err.message : "Sign in failed.",
+                      );
+                    }
+                  }}
+                  data-ocid="nav.button"
+                >
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      Signing in…
+                    </>
+                  ) : (
+                    "Sign In"
+                  )}
+                </Button>
+                {(loginStatus === "loginError" || loginError) && (
+                  <p className="text-[10px] text-destructive font-medium text-center">
+                    {loginError ?? "Sign in failed. Try again."}
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>

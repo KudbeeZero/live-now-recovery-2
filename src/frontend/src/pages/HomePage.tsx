@@ -7,17 +7,20 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  BedDouble,
   ChevronDown,
   ChevronUp,
+  Clock,
   MapPin,
   Radio,
   Search,
   Server,
   Shield,
   Users,
+  X,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ProviderStatus } from "../backend";
 import { EnhancedRecoveryMap } from "../components/EnhancedRecoveryMap";
@@ -32,14 +35,72 @@ import {
 } from "../hooks/useQueries";
 import { isProviderStale, statusLabel } from "../utils/providerUtils";
 
-type FilterType = "all" | "mat" | "narcan" | "er";
+type FilterType = "all" | "mat" | "narcan" | "er" | "kiosk" | "telehealth";
 
 const filterLabels: { key: FilterType; label: string; color: string }[] = [
   { key: "all", label: "All Providers", color: "#6ee7d0" },
   { key: "mat", label: "MAT", color: "#00ff88" },
   { key: "narcan", label: "Narcan", color: "#fbbf24" },
-  { key: "er", label: "Emergency Rooms", color: "#f87171" },
+  { key: "er", label: "ER", color: "#f87171" },
+  { key: "kiosk", label: "Kiosk", color: "#c084fc" },
+  { key: "telehealth", label: "Telehealth", color: "#818cf8" },
 ];
+
+type EmergencyStatus = "open_bed" | "72hr_bridge" | null;
+
+function getEmergencyStatus(id: string): EmergencyStatus {
+  try {
+    const raw = localStorage.getItem(`emergency_status_${id}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      status: EmergencyStatus;
+      setAt: number;
+    };
+    // Expire after 72 hours
+    if (Date.now() - parsed.setAt > 72 * 60 * 60 * 1000) {
+      localStorage.removeItem(`emergency_status_${id}`);
+      return null;
+    }
+    return parsed.status;
+  } catch {
+    return null;
+  }
+}
+
+// Local self-reported live state
+function getSelfReported(id: string): { live: boolean; setAt: number } | null {
+  try {
+    const raw = localStorage.getItem(`self_live_${id}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { live: boolean; setAt: number };
+    // Expire after 4 hours
+    if (Date.now() - parsed.setAt > 4 * 60 * 60 * 1000) {
+      localStorage.removeItem(`self_live_${id}`);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setSelfReported(id: string, live: boolean) {
+  localStorage.setItem(
+    `self_live_${id}`,
+    JSON.stringify({ live, setAt: Date.now() }),
+  );
+}
+
+function clearSelfReported(id: string) {
+  localStorage.removeItem(`self_live_${id}`);
+}
+
+function formatMinutesAgo(setAt: number): string {
+  const minutes = Math.floor((Date.now() - setAt) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  return `${Math.floor(minutes / 60)}h ago`;
+}
 
 export function HomePage() {
   const { data: providers = [], isLoading } = useAllProviders();
@@ -51,13 +112,47 @@ export function HomePage() {
   const { loginStatus, identity } = useInternetIdentity();
   const isLoggedIn = loginStatus === "success" && !!identity;
 
-  const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [show3dBuildings, setShow3dBuildings] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showWeather, setShowWeather] = useState(false);
   const [showAllCities, setShowAllCities] = useState(false);
   const [adminDrawerOpen, setAdminDrawerOpen] = useState(false);
+
+  // Provider self-service toggle state
+  const [selfLiveState, setSelfLiveState] = useState<{
+    live: boolean;
+    setAt: number;
+  } | null>(null);
+  const [selfToggleModal, setSelfToggleModal] = useState(false);
+  const [selfProviderId, setSelfProviderId] = useState<string | null>(null);
+
+  // Emergency status badges (read from localStorage, refreshed)
+  const [emergencyStatuses, setEmergencyStatuses] = useState<
+    Record<string, EmergencyStatus>
+  >({});
+
+  // Load emergency statuses from localStorage when providers load
+  useEffect(() => {
+    if (providers.length === 0) return;
+    const map: Record<string, EmergencyStatus> = {};
+    for (const p of providers) {
+      map[p.id] = getEmergencyStatus(p.id);
+    }
+    setEmergencyStatuses(map);
+  }, [providers]);
+
+  // Find this user's provider (by identity principal — best effort: first provider if logged in non-admin)
+  const myProvider = isLoggedIn && !isAdmin ? (providers[0] ?? null) : null;
+
+  // Load self-reported state for my provider
+  useEffect(() => {
+    if (!myProvider) return;
+    const saved = getSelfReported(myProvider.id);
+    setSelfLiveState(saved);
+    setSelfProviderId(myProvider.id);
+  }, [myProvider]);
 
   const liveProviders = providers.filter(
     (p) => p.status === ProviderStatus.Live && !isProviderStale(p.lastVerified),
@@ -66,35 +161,52 @@ export function HomePage() {
   const liveCount = liveProviders.length;
 
   const filteredBySearch = providers.filter((p) => {
-    if (!search.trim()) return true;
-    return p.name.toLowerCase().includes(search.toLowerCase());
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const pType = (
+      (p as unknown as { providerType?: string }).providerType ?? ""
+    ).toLowerCase();
+    // Search across name, providerType, and any address/city fields
+    return p.name.toLowerCase().includes(q) || pType.includes(q);
   });
 
   const filteredByType = providers.filter((p) => {
     if (activeFilter === "all") return true;
     const name = p.name.toLowerCase();
+    const pType = (
+      (p as unknown as { providerType?: string }).providerType ?? ""
+    ).toLowerCase();
     if (activeFilter === "mat")
       return (
+        pType === "mat" ||
+        pType === "mat clinic" ||
         name.includes("mat") ||
         name.includes("brightside") ||
         name.includes("buprenorphine")
       );
     if (activeFilter === "narcan")
       return (
+        pType === "narcan" ||
+        pType === "narcan distribution" ||
         name.includes("narcan") ||
         name.includes("naloxone") ||
         name.includes("pharmacy")
       );
     if (activeFilter === "er")
       return (
+        pType === "er" ||
+        pType === "emergency room" ||
         name.includes("er") ||
         name.includes("emergency") ||
         name.includes("hospital")
       );
+    if (activeFilter === "kiosk")
+      return pType === "naloxone kiosk" || name.includes("kiosk");
+    if (activeFilter === "telehealth")
+      return pType === "telehealth mat" || name.includes("telehealth");
     return true;
   });
 
-  // Combine search + type filter
   const filtered = filteredBySearch.filter((p) =>
     filteredByType.some((fp) => fp.id === p.id),
   );
@@ -106,6 +218,30 @@ export function HomePage() {
     } catch {
       toast.error("Failed to update status. Login required.");
     }
+  };
+
+  // Self-service toggle: open confirmation modal
+  const handleSelfToggleRequest = () => {
+    setSelfToggleModal(true);
+  };
+
+  // Self-service toggle: confirm
+  const handleSelfToggleConfirm = () => {
+    if (!selfProviderId) return;
+    const newLive = !selfLiveState?.live;
+    if (newLive) {
+      const state = { live: true, setAt: Date.now() };
+      setSelfReported(selfProviderId, true);
+      setSelfLiveState(state);
+      toast.success(
+        "You are now self-reporting as Live. Status expires in 4 hours.",
+      );
+    } else {
+      clearSelfReported(selfProviderId);
+      setSelfLiveState(null);
+      toast.success("Self-reported status cleared.");
+    }
+    setSelfToggleModal(false);
   };
 
   function providerStatusInfo(p: (typeof providers)[0]) {
@@ -170,9 +306,9 @@ export function HomePage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search by provider name or city…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, city, or type…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-14 pl-10 pr-4 rounded-xl shadow-lg bg-white text-gray-900 placeholder-gray-500 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
                 data-ocid="home.search_input"
               />
@@ -205,7 +341,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ── High-Risk Alert (authenticated users) ── */}
+      {/* ── High-Risk Alert ── */}
       {isLoggedIn && canisterState?.high_risk_window_active && (
         <div className="w-full px-4 pt-4">
           <div className="max-w-7xl mx-auto">
@@ -253,7 +389,6 @@ export function HomePage() {
       >
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-3 gap-3 sm:gap-5">
-            {/* Volunteers */}
             <div
               className="flex flex-col items-center justify-center px-2 py-3 sm:py-4 rounded-xl"
               style={{
@@ -283,7 +418,6 @@ export function HomePage() {
               </span>
             </div>
 
-            {/* Total Handoffs */}
             <div
               className="flex flex-col items-center justify-center px-2 py-3 sm:py-4 rounded-xl"
               style={{
@@ -322,7 +456,6 @@ export function HomePage() {
               </span>
             </div>
 
-            {/* Active Providers */}
             <div
               className="flex flex-col items-center justify-center px-2 py-3 sm:py-4 rounded-xl"
               style={{
@@ -373,7 +506,6 @@ export function HomePage() {
             {/* Map — 60% */}
             <div className="lg:col-span-3">
               <div className="flex flex-col rounded-xl overflow-hidden shadow-card">
-                {/* Map */}
                 <div className="h-[340px] lg:h-[520px]">
                   <EnhancedRecoveryMap
                     height="100%"
@@ -386,7 +518,7 @@ export function HomePage() {
                   />
                 </div>
 
-                {/* Docked filter bar — flush below map */}
+                {/* Docked filter bar */}
                 <div
                   className="flex items-center gap-1.5 px-3 py-2 flex-wrap"
                   style={{
@@ -394,7 +526,6 @@ export function HomePage() {
                     borderTop: "1px solid rgba(255,255,255,0.07)",
                   }}
                 >
-                  {/* Type filter chips */}
                   {filterLabels.map(({ key, label, color }) => (
                     <button
                       key={key}
@@ -406,11 +537,7 @@ export function HomePage() {
                           activeFilter === key
                             ? `${color}22`
                             : "rgba(255,255,255,0.05)",
-                        border: `1px solid ${
-                          activeFilter === key
-                            ? `${color}55`
-                            : "rgba(255,255,255,0.1)"
-                        }`,
+                        border: `1px solid ${activeFilter === key ? `${color}55` : "rgba(255,255,255,0.1)"}`,
                         color:
                           activeFilter === key ? color : "oklch(0.55 0.03 220)",
                       }}
@@ -419,14 +546,10 @@ export function HomePage() {
                       {label}
                     </button>
                   ))}
-
-                  {/* Divider */}
                   <div
                     className="w-px h-4 mx-1"
                     style={{ background: "rgba(255,255,255,0.1)" }}
                   />
-
-                  {/* Layer toggles */}
                   <button
                     type="button"
                     onClick={() => setShow3dBuildings((v) => !v)}
@@ -435,11 +558,7 @@ export function HomePage() {
                       background: show3dBuildings
                         ? "rgba(107,114,128,0.2)"
                         : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${
-                        show3dBuildings
-                          ? "rgba(107,114,128,0.5)"
-                          : "rgba(255,255,255,0.1)"
-                      }`,
+                      border: `1px solid ${show3dBuildings ? "rgba(107,114,128,0.5)" : "rgba(255,255,255,0.1)"}`,
                       color: show3dBuildings
                         ? "#9ca3af"
                         : "oklch(0.45 0.03 220)",
@@ -456,11 +575,7 @@ export function HomePage() {
                       background: showHeatmap
                         ? "rgba(0,200,180,0.15)"
                         : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${
-                        showHeatmap
-                          ? "rgba(0,200,180,0.4)"
-                          : "rgba(255,255,255,0.1)"
-                      }`,
+                      border: `1px solid ${showHeatmap ? "rgba(0,200,180,0.4)" : "rgba(255,255,255,0.1)"}`,
                       color: showHeatmap ? "#6ee7d0" : "oklch(0.45 0.03 220)",
                     }}
                     data-ocid="home.toggle"
@@ -479,11 +594,7 @@ export function HomePage() {
                       background: showWeather
                         ? "rgba(147,197,253,0.15)"
                         : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${
-                        showWeather
-                          ? "rgba(147,197,253,0.45)"
-                          : "rgba(255,255,255,0.1)"
-                      }`,
+                      border: `1px solid ${showWeather ? "rgba(147,197,253,0.45)" : "rgba(255,255,255,0.1)"}`,
                       color: showWeather ? "#93c5fd" : "oklch(0.45 0.03 220)",
                     }}
                     data-ocid="home.toggle"
@@ -496,6 +607,27 @@ export function HomePage() {
 
             {/* Provider list — 40% */}
             <div className="lg:col-span-2">
+              {/* Unified search bar */}
+              <div className="relative mb-3">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                  style={{ color: "oklch(0.50 0.03 220)" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search by name, city, or type…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                  style={{
+                    background: "oklch(0.18 0.035 225)",
+                    border: "1px solid oklch(0.28 0.04 225)",
+                    color: "oklch(0.90 0.02 200)",
+                  }}
+                  data-ocid="home.provider_search"
+                />
+              </div>
+
               <div className="flex items-center gap-2 mb-3">
                 <Shield className="w-4 h-4 text-foreground/60" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/60">
@@ -533,6 +665,7 @@ export function HomePage() {
                 <div className="max-h-[400px] lg:max-h-[480px] overflow-y-auto space-y-3 pr-1">
                   {filtered.map((provider, idx) => {
                     const info = providerStatusInfo(provider);
+                    const emergencyStatus = emergencyStatuses[provider.id];
                     return (
                       <Link
                         key={provider.id}
@@ -544,7 +677,7 @@ export function HomePage() {
                         <div className="group bg-card rounded-xl p-4 shadow-card border border-border hover:border-primary/40 transition-colors">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span
                                   className={`w-2 h-2 rounded-full shrink-0 ${info.dotClass}`}
                                 />
@@ -553,6 +686,16 @@ export function HomePage() {
                                 >
                                   {info.label}
                                 </span>
+                                {emergencyStatus === "open_bed" && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                    <BedDouble className="w-3 h-3" /> OPEN BED
+                                  </span>
+                                )}
+                                {emergencyStatus === "72hr_bridge" && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                    <Clock className="w-3 h-3" /> 72HR BRIDGE
+                                  </span>
+                                )}
                               </div>
                               <p className="font-semibold text-sm text-foreground leading-snug truncate">
                                 {provider.name}
@@ -581,7 +724,6 @@ export function HomePage() {
           data-ocid="home.section"
         >
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* Section header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Radio
@@ -618,7 +760,6 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Main layout: table + side panel */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               {/* Provider Status Table — 2/3 */}
               <div className="xl:col-span-2">
@@ -690,6 +831,7 @@ export function HomePage() {
                       {filteredByType.map((p, i) => {
                         const stale = isProviderStale(p.lastVerified);
                         const live = p.status === ProviderStatus.Live && !stale;
+                        const emergencyStatus = emergencyStatuses[p.id];
                         return (
                           <div
                             key={p.id}
@@ -697,9 +839,7 @@ export function HomePage() {
                             data-ocid={`home.item.${i + 1}`}
                           >
                             <span
-                              className={`w-2.5 h-2.5 rounded-full block shrink-0 ${
-                                live ? "animate-pulse" : ""
-                              }`}
+                              className={`w-2.5 h-2.5 rounded-full block shrink-0 ${live ? "animate-pulse" : ""}`}
                               style={{
                                 background: live
                                   ? "#00ff88"
@@ -712,12 +852,24 @@ export function HomePage() {
                               }}
                             />
                             <div className="flex-1 min-w-0">
-                              <p
-                                className="font-medium truncate text-sm"
-                                style={{ color: "oklch(0.88 0.08 195)" }}
-                              >
-                                {p.name}
-                              </p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p
+                                  className="font-medium truncate text-sm"
+                                  style={{ color: "oklch(0.88 0.08 195)" }}
+                                >
+                                  {p.name}
+                                </p>
+                                {emergencyStatus === "open_bed" && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    <BedDouble className="w-3 h-3" /> OPEN BED
+                                  </span>
+                                )}
+                                {emergencyStatus === "72hr_bridge" && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                    <Clock className="w-3 h-3" /> 72HR BRIDGE
+                                  </span>
+                                )}
+                              </div>
                               <p
                                 className="text-xs font-mono"
                                 style={{ color: "oklch(0.45 0.03 220)" }}
@@ -740,14 +892,16 @@ export function HomePage() {
                             >
                               {statusLabel(p.status)}
                             </Badge>
-                            <Switch
-                              checked={p.isLive}
-                              onCheckedChange={() =>
-                                handleToggle(p.id, p.isLive)
-                              }
-                              className="shrink-0"
-                              data-ocid={`home.toggle.${i + 1}`}
-                            />
+                            {isAdmin && (
+                              <Switch
+                                checked={p.isLive}
+                                onCheckedChange={() =>
+                                  handleToggle(p.id, p.isLive)
+                                }
+                                className="shrink-0"
+                                data-ocid={`home.toggle.${i + 1}`}
+                              />
+                            )}
                           </div>
                         );
                       })}
@@ -891,9 +1045,7 @@ export function HomePage() {
                     {adminDrawerOpen && canisterState && (
                       <div
                         className="px-5 pb-5 space-y-4"
-                        style={{
-                          borderTop: "1px solid oklch(0.20 0.04 240)",
-                        }}
+                        style={{ borderTop: "1px solid oklch(0.20 0.04 240)" }}
                         data-ocid="home.panel"
                       >
                         <div className="pt-4 space-y-2 text-sm">
@@ -933,7 +1085,6 @@ export function HomePage() {
                             </span>
                           </div>
                         </div>
-
                         {canisterState.active_providers.length > 0 && (
                           <div>
                             <p
@@ -968,9 +1119,7 @@ export function HomePage() {
                                     </span>
                                     {hr && (
                                       <span
-                                        style={{
-                                          color: "oklch(0.82 0.15 60)",
-                                        }}
+                                        style={{ color: "oklch(0.82 0.15 60)" }}
                                       >
                                         ⚠
                                       </span>
@@ -986,58 +1135,184 @@ export function HomePage() {
                   </div>
                 )}
 
-                {/* Provider view: their own Live Toggle */}
-                {!isAdmin && (
+                {/* Provider self-service live toggle — non-admin providers only */}
+                {!isAdmin && myProvider && (
                   <div
                     className="rounded-2xl p-5"
                     style={{
                       background: "oklch(0.13 0.03 240)",
-                      border: "1px solid oklch(0.22 0.05 240)",
+                      border: selfLiveState?.live
+                        ? "1px solid oklch(0.82 0.18 145 / 0.35)"
+                        : "1px solid oklch(0.22 0.05 240)",
                     }}
+                    data-ocid="home.panel"
                   >
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-1">
                       <Activity
                         className="w-4 h-4"
-                        style={{ color: "#00ff88" }}
+                        style={{
+                          color: selfLiveState?.live
+                            ? "#00ff88"
+                            : "oklch(0.55 0.03 220)",
+                        }}
                       />
                       <h3
                         className="font-bold text-sm"
                         style={{ color: "oklch(0.90 0.01 200)" }}
                       >
-                        Your Status
+                        My Live Status
                       </h3>
+                      {selfLiveState?.live && (
+                        <span
+                          className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded"
+                          style={{
+                            background: "oklch(0.82 0.18 145 / 0.15)",
+                            color: "#00ff88",
+                          }}
+                        >
+                          SELF-REPORTED
+                        </span>
+                      )}
                     </div>
                     <p
                       className="text-xs mb-4"
-                      style={{ color: "oklch(0.55 0.03 220)" }}
+                      style={{ color: "oklch(0.50 0.03 220)" }}
                     >
-                      Toggle your availability. Status auto-expires after 4
-                      hours.
+                      {selfLiveState?.live
+                        ? `Reporting as live since ${formatMinutesAgo(selfLiveState.setAt)}. Auto-expires in 4 hours.`
+                        : "Toggle your availability. Status auto-expires after 4 hours."}
                     </p>
-                    {providers.slice(0, 1).map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center justify-between gap-4"
-                      >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
                         <span
-                          className="text-sm font-medium truncate"
+                          className="text-sm font-medium truncate block"
                           style={{ color: "oklch(0.85 0.08 195)" }}
                         >
-                          {p.name}
+                          {myProvider.name}
                         </span>
-                        <Switch
-                          checked={p.isLive}
-                          onCheckedChange={() => handleToggle(p.id, p.isLive)}
-                          data-ocid="home.toggle.1"
-                        />
+                        <span
+                          className="text-xs"
+                          style={{ color: "oklch(0.45 0.03 220)" }}
+                        >
+                          {selfLiveState?.live
+                            ? "Live (self-reported)"
+                            : "Offline"}
+                        </span>
                       </div>
-                    ))}
+                      <Switch
+                        checked={!!selfLiveState?.live}
+                        onCheckedChange={handleSelfToggleRequest}
+                        data-ocid="home.toggle.1"
+                      />
+                    </div>
+                    <p
+                      className="text-[10px] mt-3"
+                      style={{ color: "oklch(0.40 0.03 220)" }}
+                    >
+                      ⓘ Self-reported status is visible to your patients. Admin
+                      verification required for official live status.
+                    </p>
                   </div>
                 )}
               </div>
             </div>
           </div>
         </section>
+      )}
+
+      {/* ── Self-Service Toggle Confirmation Modal ── */}
+      {selfToggleModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          data-ocid="home.modal"
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+            style={{
+              background: "oklch(0.16 0.03 240)",
+              border: "1px solid oklch(0.28 0.06 240)",
+            }}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <h3
+                className="font-bold text-lg"
+                style={{ color: "oklch(0.90 0.01 200)" }}
+              >
+                {selfLiveState?.live ? "Go Offline?" : "Go Live?"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSelfToggleModal(false)}
+                className="p-1 rounded-lg hover:bg-white/10 transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+                aria-label="Close"
+              >
+                <X
+                  className="w-4 h-4"
+                  style={{ color: "oklch(0.55 0.03 220)" }}
+                />
+              </button>
+            </div>
+
+            {!selfLiveState?.live ? (
+              <>
+                <p
+                  className="text-sm mb-2"
+                  style={{ color: "oklch(0.75 0.04 220)" }}
+                >
+                  Going live tells patients you are currently accepting
+                  walk-ins.
+                </p>
+                <div
+                  className="flex items-center gap-2 p-3 rounded-xl mb-5 text-sm"
+                  style={{
+                    background: "oklch(0.82 0.18 145 / 0.08)",
+                    border: "1px solid oklch(0.82 0.18 145 / 0.2)",
+                  }}
+                >
+                  <Clock
+                    className="w-4 h-4 shrink-0"
+                    style={{ color: "#00ff88" }}
+                  />
+                  <span style={{ color: "oklch(0.75 0.08 185)" }}>
+                    Your status will automatically expire in 4 hours.
+                  </span>
+                </div>
+              </>
+            ) : (
+              <p
+                className="text-sm mb-5"
+                style={{ color: "oklch(0.75 0.04 220)" }}
+              >
+                This will clear your self-reported live status. Patients will
+                see you as offline.
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 min-h-[44px] border-white/20 text-white hover:bg-white/10"
+                onClick={() => setSelfToggleModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 min-h-[44px] font-semibold"
+                style={{
+                  background: selfLiveState?.live
+                    ? "oklch(0.40 0.08 220)"
+                    : "#00ff88",
+                  color: selfLiveState?.live ? "white" : "#0a1628",
+                }}
+                onClick={handleSelfToggleConfirm}
+                data-ocid="home.confirm_button"
+              >
+                {selfLiveState?.live ? "Go Offline" : "Go Live"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Mission ── */}

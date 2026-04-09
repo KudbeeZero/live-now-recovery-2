@@ -4,19 +4,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  BedDouble,
   CheckCircle2,
+  Clock,
   Database,
   Loader2,
   Lock,
   Plus,
   Settings,
   ShieldCheck,
+  Users,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createActor } from "../backend";
+import { HealthMonitor } from "../components/HealthMonitor";
 import {
   useAllProviders,
   useCanisterState,
@@ -31,7 +37,83 @@ const PROVIDER_TYPE_LABELS: Record<string, string> = {
   MAT: "MAT Clinic",
   Narcan: "Narcan Distribution",
   ER: "Emergency Room",
+  "Naloxone Kiosk": "Naloxone Kiosk",
+  "Telehealth MAT": "Telehealth MAT",
+  "MAT Clinic": "MAT Clinic",
+  "Narcan Distribution": "Narcan Distribution",
+  "Emergency Room": "Emergency Room",
 };
+
+type EmergencyStatus = "open_bed" | "72hr_bridge" | null;
+
+function getEmergencyStatus(
+  id: string,
+): { status: EmergencyStatus; setAt: number } | null {
+  try {
+    // Check the bridge_active key first (new), then fall back to emergency_status (legacy)
+    const bridgeRaw = localStorage.getItem(`bridge_active_${id}`);
+    if (bridgeRaw) {
+      const parsed = JSON.parse(bridgeRaw) as { expiresAt: number };
+      if (Date.now() > parsed.expiresAt) {
+        localStorage.removeItem(`bridge_active_${id}`);
+        return null;
+      }
+      return { status: "72hr_bridge", setAt: parsed.expiresAt - 72 * 3600000 };
+    }
+    const raw = localStorage.getItem(`emergency_status_${id}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      status: EmergencyStatus;
+      setAt: number;
+    };
+    if (Date.now() - parsed.setAt > 72 * 60 * 60 * 1000) {
+      localStorage.removeItem(`emergency_status_${id}`);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setEmergencyStatus(id: string, status: EmergencyStatus) {
+  if (!status) {
+    localStorage.removeItem(`emergency_status_${id}`);
+    localStorage.removeItem(`bridge_active_${id}`);
+  } else if (status === "72hr_bridge") {
+    // Use the bridge_active key with an expiry timestamp
+    localStorage.setItem(
+      `bridge_active_${id}`,
+      JSON.stringify({ expiresAt: Date.now() + 72 * 3600000 }),
+    );
+  } else {
+    localStorage.setItem(
+      `emergency_status_${id}`,
+      JSON.stringify({ status, setAt: Date.now() }),
+    );
+  }
+}
+
+function isERProvider(p: { name: string; providerType?: string }): boolean {
+  const type = (p as { providerType?: string }).providerType ?? "";
+  if (type === "ER" || type === "Emergency Room") return true;
+  const lower = p.name.toLowerCase();
+  return (
+    lower.includes(" er") ||
+    lower.includes("emergency") ||
+    lower.includes("hospital") ||
+    lower.includes("bridge")
+  );
+}
+
+function formatCountdown(setAt: number): string {
+  const elapsed = Date.now() - setAt;
+  const remaining = 72 * 60 * 60 * 1000 - elapsed;
+  if (remaining <= 0) return "Expired";
+  const hours = Math.floor(remaining / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  return `${hours}h ${minutes}m remaining`;
+}
 
 const SEED_PROVIDERS = [
   // MAT Clinics
@@ -41,8 +123,6 @@ const SEED_PROVIDERS = [
     lat: 41.4849,
     lng: -81.7984,
     providerType: "MAT",
-    inventory:
-      "Buprenorphine/naloxone (Suboxone), Vivitrol injections, intake appointments available same week",
   },
   {
     id: "seed-mat-002",
@@ -50,8 +130,6 @@ const SEED_PROVIDERS = [
     lat: 41.4578,
     lng: -81.6645,
     providerType: "MAT",
-    inventory:
-      "Suboxone, Subutex, sliding scale fees, walk-ins accepted Mon–Fri",
   },
   {
     id: "seed-mat-003",
@@ -59,8 +137,6 @@ const SEED_PROVIDERS = [
     lat: 41.0814,
     lng: -81.519,
     providerType: "MAT",
-    inventory:
-      "Buprenorphine, methadone, residential and outpatient MAT, peer support specialists on staff",
   },
   {
     id: "seed-mat-004",
@@ -68,7 +144,6 @@ const SEED_PROVIDERS = [
     lat: 41.057,
     lng: -81.5544,
     providerType: "MAT",
-    inventory: "Suboxone, Vivitrol, telehealth MAT available, accepts Medicaid",
   },
   {
     id: "seed-mat-005",
@@ -76,8 +151,6 @@ const SEED_PROVIDERS = [
     lat: 41.0891,
     lng: -80.6551,
     providerType: "MAT",
-    inventory:
-      "Buprenorphine/naloxone, outpatient MAT, behavioral health integration",
   },
   {
     id: "seed-mat-006",
@@ -85,8 +158,6 @@ const SEED_PROVIDERS = [
     lat: 41.3683,
     lng: -82.1077,
     providerType: "MAT",
-    inventory:
-      "Suboxone, Vivitrol, same-day assessments, accepts most insurance and Medicaid",
   },
   // Narcan Distribution
   {
@@ -95,8 +166,6 @@ const SEED_PROVIDERS = [
     lat: 41.5078,
     lng: -81.6621,
     providerType: "Narcan",
-    inventory:
-      "Naloxone kits available at no cost, no prescription required, overdose response training offered",
   },
   {
     id: "seed-narcan-002",
@@ -104,8 +173,6 @@ const SEED_PROVIDERS = [
     lat: 41.08,
     lng: -81.4967,
     providerType: "Narcan",
-    inventory:
-      "Free naloxone kits, sharps disposal, harm reduction supplies, peer navigator on site",
   },
   {
     id: "seed-narcan-003",
@@ -113,8 +180,6 @@ const SEED_PROVIDERS = [
     lat: 41.1119,
     lng: -80.728,
     providerType: "Narcan",
-    inventory:
-      "Naloxone kits (2-dose), fentanyl test strips, overdose education, walk-in hours Mon–Fri",
   },
   {
     id: "seed-narcan-004",
@@ -122,8 +187,6 @@ const SEED_PROVIDERS = [
     lat: 40.8756,
     lng: -81.4234,
     providerType: "Narcan",
-    inventory:
-      "Free Narcan distribution, training classes weekly, no ID required",
   },
   {
     id: "seed-narcan-005",
@@ -131,8 +194,6 @@ const SEED_PROVIDERS = [
     lat: 41.4534,
     lng: -82.1824,
     providerType: "Narcan",
-    inventory:
-      "Naloxone kits, harm reduction counseling, referrals to MAT providers",
   },
   {
     id: "seed-narcan-006",
@@ -140,8 +201,6 @@ const SEED_PROVIDERS = [
     lat: 40.7735,
     lng: -81.3859,
     providerType: "Narcan",
-    inventory:
-      "Naloxone kits, recovery coaching, warm handoff to MAT available on request",
   },
   // Emergency Rooms
   {
@@ -150,8 +209,6 @@ const SEED_PROVIDERS = [
     lat: 41.4714,
     lng: -81.6997,
     providerType: "ER",
-    inventory:
-      "Naloxone administration, bridge buprenorphine prescription, warm handoff to MAT coordinator",
   },
   {
     id: "seed-er-002",
@@ -159,8 +216,6 @@ const SEED_PROVIDERS = [
     lat: 41.5036,
     lng: -81.6203,
     providerType: "ER",
-    inventory:
-      "Overdose intervention, naloxone, ED-initiated buprenorphine, behavioral health consult",
   },
   {
     id: "seed-er-003",
@@ -168,8 +223,6 @@ const SEED_PROVIDERS = [
     lat: 41.0839,
     lng: -81.5063,
     providerType: "ER",
-    inventory:
-      "Naloxone administration, bridge prescription, peer recovery specialist on duty",
   },
   {
     id: "seed-er-004",
@@ -177,8 +230,6 @@ const SEED_PROVIDERS = [
     lat: 41.1064,
     lng: -80.6639,
     providerType: "ER",
-    inventory:
-      "Overdose treatment, ED-initiated MAT, 72-hour bridge prescriptions available",
   },
   {
     id: "seed-er-005",
@@ -186,8 +237,6 @@ const SEED_PROVIDERS = [
     lat: 40.782,
     lng: -81.4191,
     providerType: "ER",
-    inventory:
-      "Naloxone, withdrawal management, warm handoff to Stark County MAT providers",
   },
   {
     id: "seed-er-006",
@@ -195,8 +244,64 @@ const SEED_PROVIDERS = [
     lat: 41.37,
     lng: -82.1035,
     providerType: "ER",
-    inventory:
-      "Overdose intervention, bridge buprenorphine, referral to Signature Health Elyria",
+  },
+  // Naloxone Kiosks (24/7 — always live)
+  {
+    id: "seed-kiosk-001",
+    name: "The Centers Ohio Kiosk – Payne Ave Cleveland",
+    lat: 41.508,
+    lng: -81.6537,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-002",
+    name: "The Centers Ohio Kiosk – Superior Ave Cleveland",
+    lat: 41.5312,
+    lng: -81.6218,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-003",
+    name: "The Centers Ohio Kiosk – 1641 Payne Ave Cleveland",
+    lat: 41.508,
+    lng: -81.6537,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-004",
+    name: "The Centers Ohio Kiosk – Sherman Ave Akron",
+    lat: 41.0754,
+    lng: -81.5124,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-005",
+    name: "Massillon Police Dept Naloxone Kiosk",
+    lat: 40.7962,
+    lng: -81.5218,
+    providerType: "Naloxone Kiosk",
+  },
+  {
+    id: "seed-kiosk-006",
+    name: "Jackson Township Police Naloxone Kiosk",
+    lat: 40.8329,
+    lng: -81.5457,
+    providerType: "Naloxone Kiosk",
+  },
+  // Telehealth MAT (extended hours)
+  {
+    id: "seed-telehealth-001",
+    name: "Spero Health Ohio – Telehealth",
+    lat: 41.4993,
+    lng: -81.6944,
+    providerType: "Telehealth MAT",
+  },
+  {
+    id: "seed-telehealth-002",
+    name: "Eagle HealthWorks – Telehealth MAT",
+    lat: 41.0534,
+    lng: -81.519,
+    providerType: "Telehealth MAT",
   },
 ];
 
@@ -208,19 +313,125 @@ export function AdminPage() {
   const registerProvider = useRegisterProvider();
   const toggleLive = useToggleLive();
   const verifyProvider = useVerifyProvider();
-  const { actor } = useActor(createActor);
+  const { actor, isFetching: actorFetching } = useActor(createActor);
+  const qc = useQueryClient();
 
-  const [form, setForm] = useState({ id: "", name: "", lat: "", lng: "" });
+  const [form, setForm] = useState({
+    id: "",
+    name: "",
+    lat: "",
+    lng: "",
+    providerType: "MAT Clinic",
+  });
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const [seedProgress, setSeedProgress] = useState<{
     running: boolean;
     done: number;
     total: number;
     errors: string[];
-  }>({ running: false, done: 0, total: 18, errors: [] });
+  }>({ running: false, done: 0, total: SEED_PROVIDERS.length, errors: [] });
 
-  // Option 4 workaround: is_verified not on backend yet; use !isLive as proxy
-  // Only show newly registered providers (not yet toggled live by admin)
+  // === Backend-backed global bridge status ===
+  const { data: bridgeStatus, isLoading: bridgeLoading } = useQuery({
+    queryKey: ["emergencyBridgeStatus"],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getEmergencyBridgeStatus();
+    },
+    enabled: !!actor && !actorFetching,
+    refetchInterval: 30_000,
+  });
+  const [bridgeActing, setBridgeActing] = useState(false);
+
+  // Derive the activatedAt in ms from backend bigint nanoseconds
+  const bridgeActivatedAtMs =
+    bridgeStatus?.isActive && bridgeStatus.activatedAt
+      ? Number(bridgeStatus.activatedAt) / 1_000_000
+      : null;
+
+  const handleGlobalBridgeToggle = async (activate: boolean) => {
+    if (!actor) return;
+    setBridgeActing(true);
+    try {
+      await actor.setEmergencyActive(activate);
+      // Also mirror to localStorage as a cache for quick reads elsewhere
+      if (activate) {
+        localStorage.setItem(
+          "bridge_active_global",
+          JSON.stringify({ expiresAt: Date.now() + 72 * 3_600_000 }),
+        );
+      } else {
+        localStorage.removeItem("bridge_active_global");
+      }
+      await qc.invalidateQueries({ queryKey: ["emergencyBridgeStatus"] });
+      toast.success(
+        activate
+          ? "72-Hour Bridge status activated on-chain."
+          : "Bridge status cleared on-chain.",
+      );
+    } catch {
+      toast.error("Failed to update bridge status. Admin access required.");
+    } finally {
+      setBridgeActing(false);
+    }
+  };
+
+  // Per-ER legacy open_bed toggle (localStorage only, no backend for individual ER status)
+  // Emergency availability state
+  const [emergencyStatuses, setEmergencyStatuses] = useState<
+    Record<string, { status: EmergencyStatus; setAt: number } | null>
+  >({});
+
+  useEffect(() => {
+    const map: Record<
+      string,
+      { status: EmergencyStatus; setAt: number } | null
+    > = {};
+    for (const p of providers) {
+      map[p.id] = getEmergencyStatus(p.id);
+    }
+    // Sync 72hr_bridge status from backend if active
+    if (bridgeStatus?.isActive && bridgeActivatedAtMs) {
+      for (const p of providers) {
+        if (isERProvider({ name: p.name, providerType: p.providerType })) {
+          // If backend bridge is active and no local open_bed override, show bridge
+          if (!map[p.id] || map[p.id]?.status !== "open_bed") {
+            map[p.id] = { status: "72hr_bridge", setAt: bridgeActivatedAtMs };
+          }
+        }
+      }
+    }
+    setEmergencyStatuses(map);
+  }, [providers, bridgeStatus, bridgeActivatedAtMs]);
+
+  const handleEmergencyToggle = async (id: string, status: EmergencyStatus) => {
+    const current = emergencyStatuses[id]?.status;
+    const next = current === status ? null : status;
+
+    // For 72hr_bridge toggles, wire to backend
+    if (
+      status === "72hr_bridge" ||
+      (next === null && current === "72hr_bridge")
+    ) {
+      await handleGlobalBridgeToggle(next === "72hr_bridge");
+      return;
+    }
+
+    // For open_bed, keep localStorage-only
+    setEmergencyStatus(id, next);
+    setEmergencyStatuses((prev) => ({
+      ...prev,
+      [id]: next ? { status: next, setAt: Date.now() } : null,
+    }));
+    if (next) {
+      toast.success(
+        `${status === "open_bed" ? "Open Bed" : "72-Hour Bridge"} status set for this ER.`,
+      );
+    } else {
+      toast.success("Emergency status cleared.");
+    }
+  };
+
   const pendingProviders = providers.filter((p) => !p.isLive);
 
   const handleApprove = async (id: string) => {
@@ -247,9 +458,16 @@ export function AdminPage() {
         name: form.name,
         lat: Number.parseFloat(form.lat),
         lng: Number.parseFloat(form.lng),
+        providerType: form.providerType,
       });
       toast.success("Provider registered!");
-      setForm({ id: "", name: "", lat: "", lng: "" });
+      setForm({
+        id: "",
+        name: "",
+        lat: "",
+        lng: "",
+        providerType: "MAT Clinic",
+      });
     } catch {
       toast.error("Registration failed. Admin access required.");
     }
@@ -277,10 +495,13 @@ export function AdminPage() {
 
     for (const p of SEED_PROVIDERS) {
       try {
-        // Option 4: use 4-arg registerProvider (current backend schema)
-        // verifyProvider and updateInventory not yet on canister
-        await (actor as any).registerProvider(p.id, p.name, p.lat, p.lng);
-        // After registering, toggle live so provider appears on map
+        await (actor as any).registerProvider(
+          p.id,
+          p.name,
+          p.lat,
+          p.lng,
+          p.providerType,
+        );
         await (actor as any).toggleLive(p.id, true);
         done++;
         setSeedProgress((prev) => ({ ...prev, done }));
@@ -296,7 +517,9 @@ export function AdminPage() {
 
     setSeedProgress((prev) => ({ ...prev, running: false }));
     if (errors.length === 0) {
-      toast.success("All 18 Ohio providers seeded successfully!");
+      toast.success(
+        `All ${SEED_PROVIDERS.length} Ohio providers seeded successfully!`,
+      );
     } else {
       toast.warning(
         `Seeded ${done} of ${SEED_PROVIDERS.length} providers. ${errors.length} errors.`,
@@ -304,7 +527,8 @@ export function AdminPage() {
     }
   };
 
-  if (adminLoading || loginStatus === "logging-in") {
+  // Show spinner only while actively logging in
+  if (loginStatus === "logging-in") {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -312,34 +536,109 @@ export function AdminPage() {
       >
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">Signing in…</p>
         </div>
       </div>
     );
   }
 
-  if (loginStatus !== "success" || !isAdmin) {
+  // Not signed in → show sign-in gate (do NOT block with adminLoading)
+  if (loginStatus !== "success") {
+    return (
+      <main className="min-h-screen" data-ocid="admin.page">
+        {/* Dark hero header — always visible */}
+        <section className="bg-navy px-4 py-16">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <Settings className="w-5 h-5 text-live-green" />
+              <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+                Admin
+              </p>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3">
+              Admin <span className="text-live-green">Panel</span>
+            </h1>
+            <p className="text-on-dark">
+              Provider verification, seeding, and system controls.
+            </p>
+          </div>
+        </section>
+
+        <div className="max-w-5xl mx-auto px-4 py-16 flex flex-col items-center gap-6">
+          <Lock className="w-12 h-12 text-muted-foreground" />
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-foreground mb-2">
+              Admin Access Required
+            </h2>
+            <p className="text-muted-foreground text-sm max-w-sm">
+              Sign in with Internet Identity to access provider verification,
+              seed data, and system controls.
+            </p>
+          </div>
+          <Button
+            onClick={() => login()}
+            className="min-h-[44px] bg-primary hover:bg-primary/90 text-white font-semibold px-8"
+            data-ocid="admin.primary_button"
+          >
+            Sign In with Internet Identity
+          </Button>
+          {loginStatus === "loginError" && (
+            <p className="text-sm text-destructive text-center max-w-xs">
+              Sign in failed. Make sure popups are allowed for this site, then
+              try again.
+            </p>
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  // Signed in but not admin — show a clear message
+  if (!adminLoading && !isAdmin) {
+    return (
+      <main className="min-h-screen" data-ocid="admin.page">
+        <section className="bg-navy px-4 py-16">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <Settings className="w-5 h-5 text-live-green" />
+              <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+                Admin
+              </p>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3">
+              Admin <span className="text-live-green">Panel</span>
+            </h1>
+          </div>
+        </section>
+        <div className="max-w-5xl mx-auto px-4 py-16 flex flex-col items-center gap-6">
+          <Lock className="w-12 h-12 text-muted-foreground" />
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-foreground mb-2">
+              Not Authorized
+            </h2>
+            <p className="text-muted-foreground text-sm max-w-sm">
+              Your Internet Identity does not have admin privileges. Contact the
+              platform administrator.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Signed in, still checking admin status
+  if (adminLoading) {
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center gap-6 px-4"
-        data-ocid="admin.page"
+        className="min-h-screen flex items-center justify-center"
+        data-ocid="admin.loading_state"
       >
-        <Lock className="w-12 h-12 text-muted-foreground" />
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-navy mb-2">
-            Admin Access Required
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Sign in with Internet Identity to access admin controls.
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">
+            Verifying admin access…
           </p>
         </div>
-        <Button
-          onClick={() => login()}
-          className="min-h-[44px] bg-action-blue hover:bg-action-blue/90 text-white"
-          data-ocid="admin.primary_button"
-        >
-          Sign In
-        </Button>
       </div>
     );
   }
@@ -350,6 +649,11 @@ export function AdminPage() {
     seedProgress.done > 0;
   const seedPercent = Math.round(
     (seedProgress.done / seedProgress.total) * 100,
+  );
+
+  // ER providers for emergency availability section (type-aware)
+  const erProviders = providers.filter((p) =>
+    isERProvider({ name: p.name, providerType: (p as any).providerType }),
   );
 
   return (
@@ -402,7 +706,6 @@ export function AdminPage() {
               </Badge>
             )}
           </div>
-
           {pendingProviders.length === 0 ? (
             <div
               className="flex flex-col items-center gap-3 py-8 text-center"
@@ -465,6 +768,276 @@ export function AdminPage() {
           )}
         </div>
 
+        {/* 72-Hour Bridge Active — ER-specific emergency availability */}
+        <div
+          className="rounded-2xl border p-6 mb-8"
+          style={{
+            background: "oklch(0.13 0.03 240)",
+            borderColor: "oklch(0.24 0.05 240)",
+          }}
+          data-ocid="admin.panel"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <BedDouble className="w-5 h-5" style={{ color: "#fbbf24" }} />
+            <h2 className="font-bold" style={{ color: "oklch(0.90 0.01 200)" }}>
+              72-Hour Bridge &amp; ER Availability
+            </h2>
+            <Badge
+              variant="outline"
+              className="ml-auto text-[10px] font-bold border-amber-500/30 text-amber-400"
+            >
+              Emergency Rooms Only
+            </Badge>
+          </div>
+          <p className="text-sm mb-2" style={{ color: "oklch(0.55 0.03 220)" }}>
+            Under federal law, an ER physician can administer buprenorphine for
+            up to{" "}
+            <strong style={{ color: "#fbbf24" }}>
+              72 hours without a DEA waiver
+            </strong>{" "}
+            to bridge a patient to ongoing MAT treatment. Signal which ERs are
+            actively participating tonight.
+          </p>
+          <p className="text-xs mb-4" style={{ color: "oklch(0.42 0.03 220)" }}>
+            Bridge status is stored on-chain and auto-expires after 72 hours.
+            Map pins will show a gold glow when bridge is active.
+          </p>
+
+          {/* Global backend bridge toggle */}
+          <div
+            className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl px-4 py-3 mb-6"
+            style={{
+              background: bridgeStatus?.isActive
+                ? "oklch(0.75 0.18 70 / 0.10)"
+                : "oklch(0.18 0.04 240)",
+              border: bridgeStatus?.isActive
+                ? "1px solid rgba(251,191,36,0.35)"
+                : "1px solid oklch(0.26 0.05 240)",
+            }}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-sm font-semibold"
+                  style={{
+                    color: bridgeStatus?.isActive
+                      ? "#fbbf24"
+                      : "oklch(0.70 0.04 220)",
+                  }}
+                >
+                  {bridgeLoading
+                    ? "Checking on-chain status…"
+                    : bridgeStatus?.isActive
+                      ? "72-Hr Bridge ACTIVE on-chain"
+                      : "72-Hr Bridge inactive"}
+                </span>
+                {bridgeStatus?.isActive && (
+                  <span
+                    className="inline-block w-2 h-2 rounded-full animate-pulse"
+                    style={{ background: "#fbbf24" }}
+                  />
+                )}
+              </div>
+              {bridgeStatus?.isActive && bridgeActivatedAtMs && (
+                <p
+                  className="text-[11px] mt-0.5"
+                  style={{ color: "oklch(0.50 0.03 220)" }}
+                >
+                  {formatCountdown(bridgeActivatedAtMs)} ·{" "}
+                  {bridgeStatus.activatedBy
+                    ? `by ${bridgeStatus.activatedBy.slice(0, 12)}…`
+                    : ""}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {bridgeStatus?.isActive ? (
+                <button
+                  type="button"
+                  onClick={() => handleGlobalBridgeToggle(false)}
+                  disabled={bridgeActing}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5"
+                  style={{
+                    background: "oklch(0.20 0.04 240)",
+                    border: "1px solid rgba(251,191,36,0.25)",
+                    color: "#fbbf24",
+                  }}
+                  data-ocid="admin.toggle"
+                >
+                  {bridgeActing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <X className="w-3.5 h-3.5" />
+                  )}
+                  Deactivate Bridge
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleGlobalBridgeToggle(true)}
+                  disabled={bridgeActing || bridgeLoading}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5"
+                  style={{
+                    background: "oklch(0.75 0.18 70 / 0.15)",
+                    border: "1px solid rgba(251,191,36,0.35)",
+                    color: "#fbbf24",
+                  }}
+                  data-ocid="admin.toggle"
+                >
+                  {bridgeActing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Clock className="w-3.5 h-3.5" />
+                  )}
+                  Activate 72-Hr Bridge
+                </button>
+              )}
+            </div>
+          </div>
+
+          {erProviders.length === 0 ? (
+            <div className="py-8 text-center" data-ocid="admin.empty_state">
+              <AlertTriangle
+                className="w-8 h-8 mx-auto mb-2"
+                style={{ color: "oklch(0.40 0.05 220)" }}
+              />
+              <p className="text-sm" style={{ color: "oklch(0.50 0.03 220)" }}>
+                No ER providers found. Seed demo providers to populate this
+                list.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3" data-ocid="admin.list">
+              {erProviders.map((p, i) => {
+                const emergData = emergencyStatuses[p.id];
+                const currentStatus = emergData?.status ?? null;
+                return (
+                  <div
+                    key={p.id}
+                    className="rounded-xl p-4"
+                    style={{
+                      background: "oklch(0.16 0.03 240)",
+                      border:
+                        currentStatus === "72hr_bridge"
+                          ? "1px solid rgba(251,191,36,0.3)"
+                          : currentStatus === "open_bed"
+                            ? "1px solid oklch(0.82 0.18 145 / 0.25)"
+                            : "1px solid oklch(0.22 0.05 240)",
+                    }}
+                    data-ocid={`admin.item.${i + 1}`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p
+                            className="font-semibold text-sm truncate"
+                            style={{ color: "oklch(0.88 0.08 195)" }}
+                          >
+                            {p.name}
+                          </p>
+                          {currentStatus && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              style={{
+                                background:
+                                  currentStatus === "open_bed"
+                                    ? "oklch(0.55 0.18 145 / 0.15)"
+                                    : "oklch(0.75 0.18 70 / 0.15)",
+                                color:
+                                  currentStatus === "open_bed"
+                                    ? "#4ade80"
+                                    : "#fbbf24",
+                                border: `1px solid ${currentStatus === "open_bed" ? "#4ade8040" : "#fbbf2440"}`,
+                              }}
+                            >
+                              {currentStatus === "open_bed" ? (
+                                <BedDouble className="w-3 h-3" />
+                              ) : (
+                                <Clock className="w-3 h-3" />
+                              )}
+                              {currentStatus === "open_bed"
+                                ? "ACTIVE: Open Bed"
+                                : "ACTIVE: 72-Hr Bridge"}
+                            </span>
+                          )}
+                        </div>
+                        {emergData && (
+                          <p
+                            className="text-[11px] mt-0.5"
+                            style={{ color: "oklch(0.45 0.03 220)" }}
+                          >
+                            {formatCountdown(emergData.setAt)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleEmergencyToggle(p.id, "open_bed")
+                          }
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px]"
+                          style={{
+                            background:
+                              currentStatus === "open_bed"
+                                ? "oklch(0.55 0.18 145 / 0.25)"
+                                : "oklch(0.20 0.04 240)",
+                            border: `1px solid ${currentStatus === "open_bed" ? "#4ade8040" : "oklch(0.28 0.05 240)"}`,
+                            color:
+                              currentStatus === "open_bed"
+                                ? "#4ade80"
+                                : "oklch(0.60 0.04 220)",
+                          }}
+                          data-ocid={`admin.toggle.${i + 1}`}
+                        >
+                          Open Bed
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleEmergencyToggle(p.id, "72hr_bridge")
+                          }
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px]"
+                          style={{
+                            background:
+                              currentStatus === "72hr_bridge"
+                                ? "oklch(0.75 0.18 70 / 0.20)"
+                                : "oklch(0.20 0.04 240)",
+                            border: `1px solid ${currentStatus === "72hr_bridge" ? "#fbbf2440" : "oklch(0.28 0.05 240)"}`,
+                            color:
+                              currentStatus === "72hr_bridge"
+                                ? "#fbbf24"
+                                : "oklch(0.60 0.04 220)",
+                          }}
+                          data-ocid={`admin.toggle.${i + 1}`}
+                        >
+                          72-Hr Bridge
+                        </button>
+                        {currentStatus && (
+                          <button
+                            type="button"
+                            onClick={() => handleEmergencyToggle(p.id, null)}
+                            className="p-1.5 rounded-lg transition-all min-h-[36px] min-w-[36px] flex items-center justify-center"
+                            style={{
+                              background: "oklch(0.20 0.04 240)",
+                              border: "1px solid oklch(0.28 0.05 240)",
+                              color: "oklch(0.50 0.03 220)",
+                            }}
+                            aria-label="Clear emergency status"
+                            data-ocid={`admin.cancel_button.${i + 1}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Seed Demo Providers */}
         <div className="bg-white rounded-2xl shadow-card border border-border p-6 mb-8">
           <div className="flex items-center gap-2 mb-4">
@@ -473,9 +1046,9 @@ export function AdminPage() {
           </div>
           <p className="text-sm text-muted-foreground mb-5">
             Populate the map with verified Ohio providers for demo and pitch
-            purposes.
+            purposes. Includes MAT clinics, Narcan distribution, ERs, naloxone
+            kiosks, and telehealth providers — {SEED_PROVIDERS.length} total.
           </p>
-
           {seedDone ? (
             <div
               className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200"
@@ -483,7 +1056,7 @@ export function AdminPage() {
             >
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
               <p className="text-sm font-medium text-emerald-800">
-                All 18 providers seeded successfully
+                All {SEED_PROVIDERS.length} providers seeded successfully
               </p>
             </div>
           ) : (
@@ -500,10 +1073,9 @@ export function AdminPage() {
                     Seeding… {seedProgress.done} / {seedProgress.total}
                   </>
                 ) : (
-                  "Seed 18 Ohio Providers"
+                  `Seed ${SEED_PROVIDERS.length} Ohio Providers`
                 )}
               </Button>
-
               {seedProgress.running && (
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-xs text-muted-foreground">
@@ -522,7 +1094,6 @@ export function AdminPage() {
               )}
             </>
           )}
-
           {seedProgress.errors.length > 0 && (
             <div className="mt-4 space-y-1" data-ocid="admin.error_state">
               <p className="text-xs font-semibold text-destructive">
@@ -539,7 +1110,7 @@ export function AdminPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Register provider — NO PHI, NO ZIP */}
+          {/* Register provider */}
           <div className="bg-white rounded-2xl shadow-card border border-border p-6">
             <div className="flex items-center gap-2 mb-5">
               <Plus className="w-5 h-5 text-live-green" />
@@ -608,6 +1179,26 @@ export function AdminPage() {
                   />
                 </div>
               </div>
+              <div>
+                <Label htmlFor="reg-type">Provider Type</Label>
+                <select
+                  id="reg-type"
+                  value={form.providerType}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, providerType: e.target.value }))
+                  }
+                  className="mt-1 w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-ocid="admin.input"
+                >
+                  <option value="MAT Clinic">MAT Clinic</option>
+                  <option value="Narcan Distribution">
+                    Narcan Distribution
+                  </option>
+                  <option value="Emergency Room">Emergency Room</option>
+                  <option value="Naloxone Kiosk">Naloxone Kiosk (24/7)</option>
+                  <option value="Telehealth MAT">Telehealth MAT</option>
+                </select>
+              </div>
               <p className="text-xs text-muted-foreground">
                 ⚠ No ZIP code, no PHI stored.
               </p>
@@ -626,7 +1217,8 @@ export function AdminPage() {
 
           {/* Provider toggles */}
           <div className="bg-white rounded-2xl shadow-card border border-border overflow-hidden">
-            <div className="px-5 py-4 border-b border-border">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <Users className="w-4 h-4 text-live-green" />
               <h2 className="font-bold text-navy">Provider Controls</h2>
             </div>
             {providers.length === 0 ? (
@@ -667,6 +1259,11 @@ export function AdminPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Health Monitor */}
+        <div className="mt-8">
+          <HealthMonitor />
         </div>
       </div>
     </main>

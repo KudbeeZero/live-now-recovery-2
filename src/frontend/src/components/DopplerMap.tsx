@@ -14,7 +14,7 @@ const BRIGHTSIDE_COORDS = [
 
 declare global {
   interface Window {
-    // biome-ignore lint/suspicious/noExplicitAny: leaflet global
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     L: any;
   }
 }
@@ -52,7 +52,6 @@ function makeIcon(color: string, glow: string, size = 14): string {
 export function DopplerMap({ height = "500px" }: { height?: string }) {
   const { data: providers = [] } = useAllProviders();
   const mapRef = useRef<HTMLDivElement>(null);
-  // biome-ignore lint/suspicious/noExplicitAny: leaflet map instance
   const mapInstanceRef = useRef<any>(null);
   const [leafletReady, setLeafletReady] = useState(!!window.L);
 
@@ -109,7 +108,6 @@ export function DopplerMap({ height = "500px" }: { height?: string }) {
 
     // Clear old markers
     map.eachLayer((layer: unknown) => {
-      // biome-ignore lint/suspicious/noExplicitAny: leaflet layer
       const l = layer as any;
       if (l._isCaffeineMarker) map.removeLayer(l);
     });

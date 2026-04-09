@@ -1,44 +1,19 @@
-import { useActor } from "@caffeineai/core-infrastructure";
 import type { FeatureCollection, Point } from "geojson";
 import { MapPin } from "lucide-react";
+import maplibregl, {
+  type GeoJSONSource,
+  type Map as MaplibreMap,
+  type Popup as MaplibrePopup,
+} from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { ProviderStatus } from "../backend";
-import { createActor } from "../backend";
 import { useAllProviders, useHandoffCountsByZip } from "../hooks/useQueries";
 import {
   handoffCountsToHeatmapGeoJSON,
   providersToGeoJSON,
 } from "../utils/geoJsonAdapters";
 import { isProviderStale } from "../utils/providerUtils";
-
-// ─── MapLibre GL dynamic loader ───────────────────────────────────────────────
-
-declare global {
-  interface Window {
-    // biome-ignore lint/suspicious/noExplicitAny: maplibre-gl global
-    maplibregl: any;
-  }
-}
-
-function loadMapLibre(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.maplibregl) {
-      resolve();
-      return;
-    }
-
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
-    document.head.appendChild(link);
-
-    const script = document.createElement("script");
-    script.src = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load MapLibre GL"));
-    document.head.appendChild(script);
-  });
-}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -58,16 +33,33 @@ interface Props {
 const TYPE_LABELS: Record<string, string> = {
   MAT: "MAT",
   Narcan: "Narcan",
-  ER: "ER",
+  ER: "Emergency Room",
+  "Emergency Room": "Emergency Room",
+  "Naloxone Kiosk": "Naloxone Kiosk",
+  "Telehealth MAT": "Telehealth MAT",
   Pharmacy: "Pharmacy",
   General: "General",
   unknown: "Other",
+};
+
+// Colour for each provider type on the individual-point layer
+const TYPE_COLORS: Record<string, string> = {
+  MAT: "#22c55e",
+  Narcan: "#fbbf24",
+  ER: "#f87171",
+  "Emergency Room": "#f87171",
+  "Naloxone Kiosk": "#c084fc",
+  "Telehealth MAT": "#818cf8",
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function labelForType(t: string): string {
   return TYPE_LABELS[t] ?? t.replace(/_/g, " ");
+}
+
+function colorForType(t: string): string {
+  return TYPE_COLORS[t] ?? "#22c55e";
 }
 
 function applyProviderTypeFilter(
@@ -77,9 +69,17 @@ function applyProviderTypeFilter(
   if (filter === "all") return data;
   return {
     ...data,
-    features: data.features.filter(
-      (f) => f.properties?.providerType === filter,
-    ),
+    features: data.features.filter((f) => {
+      const pt = (f.properties?.providerType as string) ?? "";
+      if (filter === "mat") return pt === "MAT" || pt === "MAT Clinic";
+      if (filter === "narcan")
+        return pt === "Narcan" || pt === "Narcan Distribution";
+      if (filter === "er") return pt === "ER" || pt === "Emergency Room";
+      if (filter === "kiosk") return pt === "Naloxone Kiosk";
+      if (filter === "telehealth") return pt === "Telehealth MAT";
+      // Exact match fallback
+      return pt === filter;
+    }),
   };
 }
 
@@ -97,22 +97,12 @@ export function EnhancedRecoveryMap({
 }: Props) {
   // ── Refs / state ────────────────────────────────────────────────────────
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
-  const popupRef = useRef<maplibregl.Popup | null>(null);
-  const [maplibreReady, setMaplibreReady] = useState(!!window.maplibregl);
+  const mapInstanceRef = useRef<MaplibreMap | null>(null);
+  const popupRef = useRef<MaplibrePopup | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // ── Load MapLibre GL from CDN if not already available ──────────────────
-  useEffect(() => {
-    if (maplibreReady) return;
-    loadMapLibre()
-      .then(() => setMaplibreReady(true))
-      .catch((e) => setLoadError(String(e)));
-  }, [maplibreReady]);
-
   // ── Marketplace additions ─────────────────────────────────────────────────
-  const { actor } = useActor(createActor);
   // Holds latest full dataset so filter changes don't require a network call
   const marketplaceDataRef = useRef<FeatureCollection | null>(null);
   // Mirror activeFilter for use inside stable map event callbacks
@@ -211,12 +201,12 @@ export function EnhancedRecoveryMap({
     (p) => p.status === ProviderStatus.Live && !isProviderStale(p.lastVerified),
   ).length;
 
-  // ── Map initialisation ────────────────────────────────────────────────────
+  // ── Map initialisation (unchanged) ───────────────────────────────────────
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional init-once
   useEffect(() => {
-    if (!maplibreReady || !mapContainerRef.current || mapInstanceRef.current) return;
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    let map: maplibregl.Map;
+    let map: MaplibreMap;
     try {
       map = new maplibregl.Map({
         container: mapContainerRef.current,
@@ -439,14 +429,14 @@ export function EnhancedRecoveryMap({
         mapInstanceRef.current = null;
       }
     };
-  }, [maplibreReady]);
+  }, []);
 
   // ── Existing data-sync effects (unchanged) ───────────────────────────────
 
   useEffect(() => {
     if (!mapInstanceRef.current || !mapReady) return;
     const source = mapInstanceRef.current.getSource("providers-source") as
-      | maplibregl.GeoJSONSource
+      | GeoJSONSource
       | undefined;
     source?.setData(providersToGeoJSON(providers));
   }, [providers, mapReady]);
@@ -454,7 +444,7 @@ export function EnhancedRecoveryMap({
   useEffect(() => {
     if (!mapInstanceRef.current || !mapReady) return;
     const source = mapInstanceRef.current.getSource("heatmap-source") as
-      | maplibregl.GeoJSONSource
+      | GeoJSONSource
       | undefined;
     source?.setData(handoffCountsToHeatmapGeoJSON(handoffCounts));
   }, [handoffCounts, mapReady]);
@@ -484,47 +474,70 @@ export function EnhancedRecoveryMap({
 
   // ── Marketplace: clustered GeoJSON layer + polling ───────────────────────
   //
-  // Runs once when the map is ready AND the backend actor is available.
+  // Runs once when the map is ready. Providers come from useAllProviders()
+  // which is a PUBLIC QUERY — no auth/actor required.
   // Adds three layers on top of the existing stack:
   //   mp-clusters        — cluster circles (teal, sized by count)
   //   mp-cluster-count   — count labels inside clusters
   //   mp-provider-points — individual verified/unverified points
   //
   useEffect(() => {
-    if (!mapReady || !actor || !mapInstanceRef.current) return;
+    if (!mapReady || !mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
 
     // ── helpers ──────────────────────────────────────────────────────────
     function loadMarketplaceData(): FeatureCollection {
       // Option 4: use getAllProviders (existing endpoint) + convert to GeoJSON
-      // getMarketplaceGeoJSON does not exist on the current canister
       const geoJson = providersToGeoJSON(
         providers,
       ) as unknown as FeatureCollection;
-      // Enrich properties with providerType derived from name for filter compatibility
+      // Enrich properties with providerType and bridge_active flag
       return {
         ...geoJson,
         features: geoJson.features.map((f) => {
           const name = (f.properties?.name as string) ?? "";
           const nameLower = name.toLowerCase();
-          let providerType = "MAT";
-          if (
-            nameLower.includes("narcan") ||
-            nameLower.includes("naloxone") ||
-            nameLower.includes("harm reduction") ||
-            nameLower.includes("health dept") ||
-            nameLower.includes("aids") ||
-            nameLower.includes("taskforce") ||
-            nameLower.includes("community health center")
-          ) {
-            providerType = "Narcan";
-          } else if (
-            nameLower.includes(" er") ||
-            nameLower.includes("emergency") ||
-            nameLower.includes("hospital") ||
-            nameLower.includes("medical center")
-          ) {
-            providerType = "ER";
+          // Use backend providerType if available, otherwise infer from name
+          const backendType = (f.properties as { providerType?: string })
+            ?.providerType;
+          let providerType = backendType ?? "MAT";
+          if (!backendType) {
+            if (nameLower.includes("kiosk") || nameLower.includes("vending")) {
+              providerType = "Naloxone Kiosk";
+            } else if (nameLower.includes("telehealth")) {
+              providerType = "Telehealth MAT";
+            } else if (
+              nameLower.includes("narcan") ||
+              nameLower.includes("naloxone") ||
+              nameLower.includes("harm reduction") ||
+              nameLower.includes("health dept") ||
+              nameLower.includes("aids") ||
+              nameLower.includes("taskforce") ||
+              nameLower.includes("community health center")
+            ) {
+              providerType = "Narcan";
+            } else if (
+              nameLower.includes(" er") ||
+              nameLower.includes("emergency") ||
+              nameLower.includes("hospital") ||
+              nameLower.includes("medical center")
+            ) {
+              providerType = "ER";
+            }
+          }
+          // Check localStorage for bridge-active status on ER providers
+          const id = (f.properties?.id as string) ?? "";
+          let bridgeActive = false;
+          if (providerType === "ER" || providerType === "Emergency Room") {
+            try {
+              const raw = localStorage.getItem(`bridge_active_${id}`);
+              if (raw) {
+                const parsed = JSON.parse(raw) as { expiresAt: number };
+                bridgeActive = Date.now() < parsed.expiresAt;
+              }
+            } catch {
+              /* ignore */
+            }
           }
           return {
             ...f,
@@ -533,6 +546,7 @@ export function EnhancedRecoveryMap({
               providerType,
               is_verified: (f.properties as any)?.isLive ?? false,
               reputationScore: 0,
+              bridgeActive,
             },
           };
         }),
@@ -551,9 +565,9 @@ export function EnhancedRecoveryMap({
 
         // Guard: if source already exists (actor refresh), just update data
         if (map.getSource("marketplace-providers")) {
-          (
-            map.getSource("marketplace-providers") as maplibregl.GeoJSONSource
-          ).setData(filteredData(data));
+          (map.getSource("marketplace-providers") as GeoJSONSource).setData(
+            filteredData(data),
+          );
           return;
         }
 
@@ -618,7 +632,8 @@ export function EnhancedRecoveryMap({
         });
 
         // ── Individual provider points ─────────────────────────────────────
-        // Green = verified, orange = unverified
+        // Type-coloured circles: green=MAT, amber=Narcan, red=ER, purple=Kiosk, indigo=Telehealth
+        // Gold ring for ERs with active 72-hour bridge
         // Only renders when NOT a cluster (zoom > clusterMaxZoom or isolated)
         map.addLayer({
           id: "mp-provider-points",
@@ -633,21 +648,53 @@ export function EnhancedRecoveryMap({
               10,
               5,
               14,
-              8,
+              9,
             ],
             "circle-opacity": 0.92,
             "circle-color": [
-              "case",
-              ["==", ["get", "is_verified"], true],
-              "#22c55e", // verified — green
-              "#f97316", // unverified — orange
+              "match",
+              ["get", "providerType"],
+              "MAT",
+              "#22c55e",
+              "Narcan",
+              "#fbbf24",
+              "ER",
+              "#f87171",
+              "Emergency Room",
+              "#f87171",
+              "Naloxone Kiosk",
+              "#c084fc",
+              "Telehealth MAT",
+              "#818cf8",
+              "#22c55e", // default
             ],
-            "circle-stroke-width": 1.5,
+            "circle-stroke-width": [
+              "case",
+              ["==", ["get", "bridgeActive"], true],
+              4,
+              1.5,
+            ],
             "circle-stroke-color": [
               "case",
-              ["==", ["get", "is_verified"], true],
-              "rgba(34,197,94,0.4)",
-              "rgba(249,115,22,0.4)",
+              ["==", ["get", "bridgeActive"], true],
+              "#fbbf24", // gold ring for bridge-active ERs
+              [
+                "match",
+                ["get", "providerType"],
+                "MAT",
+                "rgba(34,197,94,0.4)",
+                "Narcan",
+                "rgba(251,191,36,0.4)",
+                "ER",
+                "rgba(248,113,113,0.4)",
+                "Emergency Room",
+                "rgba(248,113,113,0.4)",
+                "Naloxone Kiosk",
+                "rgba(192,132,252,0.4)",
+                "Telehealth MAT",
+                "rgba(129,140,248,0.4)",
+                "rgba(34,197,94,0.4)",
+              ],
             ],
           },
         });
@@ -664,7 +711,7 @@ export function EnhancedRecoveryMap({
             number,
           ];
 
-          (map.getSource("marketplace-providers") as maplibregl.GeoJSONSource)
+          (map.getSource("marketplace-providers") as GeoJSONSource)
             .getClusterExpansionZoom(clusterId)
             .then((zoom) => {
               map.easeTo({ center: coords, zoom: zoom ?? 14, duration: 400 });
@@ -697,10 +744,11 @@ export function EnhancedRecoveryMap({
             : `<span style="background:rgba(249,115,22,0.15);color:#f97316;border:1px solid rgba(249,115,22,0.3);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">Unverified</span>`;
 
           const typeLabel = labelForType(p.providerType ?? "unknown");
+          const typeColor = colorForType(p.providerType ?? "unknown");
 
           const html = `
             <div style="background:#0f1923;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;min-width:200px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;">
-              <p style="color:#e2e8f0;font-size:13px;font-weight:700;margin:0 0 6px 0;">${typeLabel}</p>
+              <p style="color:${typeColor};font-size:11px;font-weight:700;margin:0 0 4px 0;text-transform:uppercase;letter-spacing:0.06em;">${typeLabel}</p>
               <div style="margin-bottom:10px;">${verifiedBadge}</div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                 <span style="font-size:11px;color:#718096;">Reputation score</span>
@@ -740,7 +788,7 @@ export function EnhancedRecoveryMap({
         const data = loadMarketplaceData();
         marketplaceDataRef.current = data;
         const source = map.getSource("marketplace-providers") as
-          | maplibregl.GeoJSONSource
+          | GeoJSONSource
           | undefined;
         source?.setData(filteredData(data));
       } catch (err) {
@@ -749,7 +797,7 @@ export function EnhancedRecoveryMap({
     }, 15_000);
 
     return () => clearInterval(intervalId);
-  }, [mapReady, actor, providers]);
+  }, [mapReady, providers]);
 
   // ── Filter effect: instant update, no map reinit ─────────────────────────
   useEffect(() => {
@@ -757,7 +805,7 @@ export function EnhancedRecoveryMap({
     if (!mapReady || !mapInstanceRef.current || !marketplaceDataRef.current)
       return;
     const source = mapInstanceRef.current.getSource("marketplace-providers") as
-      | maplibregl.GeoJSONSource
+      | GeoJSONSource
       | undefined;
     if (!source) return;
     source.setData(
@@ -832,12 +880,16 @@ export function EnhancedRecoveryMap({
         </svg>
       </button>
 
-      {/* Empty state overlay */}
+      {/* Empty state overlay — shown when canister has no providers yet */}
       {mapReady && providers.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 rounded-xl z-10 pointer-events-none">
-          <MapPin className="w-8 h-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground font-medium">
-            No providers found in this area
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50 rounded-xl z-10 pointer-events-none px-6 text-center">
+          <MapPin className="w-8 h-8" style={{ color: "#6ee7d0" }} />
+          <p className="text-sm font-semibold" style={{ color: "#6ee7d0" }}>
+            No providers loaded yet
+          </p>
+          <p className="text-xs" style={{ color: "rgba(110,231,208,0.6)" }}>
+            Admin: go to /admin → Sign In → "Seed Ohio Providers" to populate
+            the map
           </p>
         </div>
       )}

@@ -16,9 +16,13 @@ export const UserRole = IDL.Variant({
 export const Helper = IDL.Record({
   'id' : IDL.Text,
   'zip' : IDL.Text,
+  'consent' : IDL.Bool,
   'note' : IDL.Text,
   'createdAt' : IDL.Int,
+  'email' : IDL.Text,
+  'helpType' : IDL.Text,
   'phone' : IDL.Text,
+  'lastName' : IDL.Text,
   'firstName' : IDL.Text,
 });
 export const ProviderStatus = IDL.Variant({
@@ -31,12 +35,14 @@ export const ProviderWithStatus = IDL.Record({
   'lat' : IDL.Float64,
   'lng' : IDL.Float64,
   'status' : ProviderStatus,
+  'reputationScore' : IDL.Nat,
+  'inventory' : IDL.Text,
   'name' : IDL.Text,
   'isLive' : IDL.Bool,
   'lastVerified' : IDL.Int,
+  'is_verified' : IDL.Bool,
   'providerType' : IDL.Text,
-  'isVerified' : IDL.Bool,
-  'reputationScore' : IDL.Float64,
+  'is_active' : IDL.Bool,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const CanisterStateSummary = IDL.Record({
@@ -67,30 +73,60 @@ export const idlService = IDL.Service({
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCanisterState' : IDL.Func([], [CanisterStateSummary], ['query']),
+  'getCostPlusReferralCount' : IDL.Func([IDL.Text], [IDL.Nat], ['query']),
   'getEmergencyActive' : IDL.Func([], [IDL.Vec(ProviderWithStatus)], ['query']),
+  'getEmergencyBridgeStatus' : IDL.Func(
+      [],
+      [
+        IDL.Record({
+          'activatedAt' : IDL.Int,
+          'activatedBy' : IDL.Text,
+          'isActive' : IDL.Bool,
+        }),
+      ],
+      ['query'],
+    ),
   'getHandoffCountsByZip' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
       ['query'],
     ),
   'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
+  'getTotalCostPlusReferrals' : IDL.Func([], [IDL.Nat], ['query']),
   'getTotalHandoffs' : IDL.Func([], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
-  'heartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
-  'registerHelper' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
+  'recordCostPlusReferral' : IDL.Func([IDL.Text], [], []),
+  'registerHelper' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Bool,
+        IDL.Text,
+      ],
+      [],
+      [],
+    ),
   'registerProvider' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64, IDL.Text],
       [],
       [],
     ),
+  'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setEmergencyActive' : IDL.Func([IDL.Bool], [], []),
+  'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
   'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
+  'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
   'verifyProvider' : IDL.Func([IDL.Text], [], []),
 });
@@ -106,9 +142,13 @@ export const idlFactory = ({ IDL }) => {
   const Helper = IDL.Record({
     'id' : IDL.Text,
     'zip' : IDL.Text,
+    'consent' : IDL.Bool,
     'note' : IDL.Text,
     'createdAt' : IDL.Int,
+    'email' : IDL.Text,
+    'helpType' : IDL.Text,
     'phone' : IDL.Text,
+    'lastName' : IDL.Text,
     'firstName' : IDL.Text,
   });
   const ProviderStatus = IDL.Variant({
@@ -121,12 +161,14 @@ export const idlFactory = ({ IDL }) => {
     'lat' : IDL.Float64,
     'lng' : IDL.Float64,
     'status' : ProviderStatus,
+    'reputationScore' : IDL.Nat,
+    'inventory' : IDL.Text,
     'name' : IDL.Text,
     'isLive' : IDL.Bool,
     'lastVerified' : IDL.Int,
+    'is_verified' : IDL.Bool,
     'providerType' : IDL.Text,
-    'isVerified' : IDL.Bool,
-    'reputationScore' : IDL.Float64,
+    'is_active' : IDL.Bool,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const CanisterStateSummary = IDL.Record({
@@ -147,7 +189,7 @@ export const idlFactory = ({ IDL }) => {
     'Expired' : IDL.Null,
     'AlreadyUsed' : IDL.Null,
   });
-
+  
   return IDL.Service({
     '_initializeAccessControl' : IDL.Func([], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -157,9 +199,21 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCanisterState' : IDL.Func([], [CanisterStateSummary], ['query']),
+    'getCostPlusReferralCount' : IDL.Func([IDL.Text], [IDL.Nat], ['query']),
     'getEmergencyActive' : IDL.Func(
         [],
         [IDL.Vec(ProviderWithStatus)],
+        ['query'],
+      ),
+    'getEmergencyBridgeStatus' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'activatedAt' : IDL.Int,
+            'activatedBy' : IDL.Text,
+            'isActive' : IDL.Bool,
+          }),
+        ],
         ['query'],
       ),
     'getHandoffCountsByZip' : IDL.Func(
@@ -168,17 +222,27 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
+    'getTotalCostPlusReferrals' : IDL.Func([], [IDL.Nat], ['query']),
     'getTotalHandoffs' : IDL.Func([], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
-    'heartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
+    'recordCostPlusReferral' : IDL.Func([IDL.Text], [], []),
     'registerHelper' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Bool,
+          IDL.Text,
+        ],
         [],
         [],
       ),
@@ -187,8 +251,12 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setEmergencyActive' : IDL.Func([IDL.Bool], [], []),
+    'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
     'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
+    'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
     'verifyProvider' : IDL.Func([IDL.Text], [], []),
   });

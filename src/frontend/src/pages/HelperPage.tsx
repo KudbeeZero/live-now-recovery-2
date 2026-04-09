@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   BookOpen,
@@ -10,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { VolunteerHandoff } from "../components/VolunteerHandoff";
+import { useRegisterHelper } from "../hooks/useQueries";
 
 const steps = [
   {
@@ -65,6 +65,8 @@ function VolunteerSignupForm() {
   const [form, setForm] = useState<FormFields>(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const registerHelper = useRegisterHelper();
 
   function validate(): FormErrors {
     const e: FormErrors = {};
@@ -79,14 +81,27 @@ function VolunteerSignupForm() {
     return e;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
     }
-    setSubmitted(true);
+    setSubmitError(null);
+    try {
+      await registerHelper.mutateAsync({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        zip: form.zip,
+        helpType: form.helpType,
+        agreed: form.agreed,
+      });
+      setSubmitted(true);
+    } catch {
+      setSubmitError("Something went wrong. Please try again.");
+    }
   }
 
   function handleReset() {
@@ -343,12 +358,18 @@ function VolunteerSignupForm() {
       </div>
 
       {/* Submit */}
+      {submitError && (
+        <p className="text-destructive text-sm mb-3 text-center">
+          {submitError}
+        </p>
+      )}
       <Button
         type="submit"
-        className="w-full min-h-[48px] rounded-lg font-semibold text-base bg-primary hover:bg-primary/90 text-primary-foreground"
+        disabled={registerHelper.isPending}
+        className="w-full min-h-[48px] rounded-lg font-semibold text-base bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-60"
         data-ocid="helper.form.submit"
       >
-        Sign Up as a Volunteer
+        {registerHelper.isPending ? "Signing up…" : "Sign Up as a Volunteer"}
       </Button>
     </form>
   );

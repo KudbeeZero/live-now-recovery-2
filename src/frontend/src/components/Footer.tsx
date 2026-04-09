@@ -47,6 +47,7 @@ export function Footer() {
                 { to: "/", label: "Live Map" },
                 { to: "/verify", label: "Verify Handoff" },
                 { to: "/helper", label: "Helper Guide" },
+                { to: "/integration", label: "AI Integration" },
                 { to: "/admin", label: "Admin" },
               ].map((l) => (
                 <li key={l.to}>
@@ -133,26 +134,18 @@ export function Footer() {
           </p>
           <div className="flex items-center gap-4">
             {[
-              { href: "#", icon: SiX, label: "X (Twitter)" },
-              {
-                href: "#",
-                icon: SiFacebook,
-                label: "Facebook",
-              },
-              {
-                href: "#",
-                icon: SiInstagram,
-                label: "Instagram",
-              },
-            ].map(({ href, icon: Icon, label }) => (
-              <a
-                key={href}
-                href={href}
-                aria-label={label}
-                className="transition-colors hover:text-foreground text-muted-foreground"
+              { icon: SiX, label: "X (Twitter)" },
+              { icon: SiFacebook, label: "Facebook" },
+              { icon: SiInstagram, label: "Instagram" },
+            ].map(({ icon: Icon, label }) => (
+              <span
+                key={label}
+                title={`${label} — coming soon`}
+                aria-label={`${label} (coming soon)`}
+                className="transition-colors text-muted-foreground/40 cursor-default select-none"
               >
                 <Icon className="w-4 h-4" />
-              </a>
+              </span>
             ))}
           </div>
         </div>

@@ -117,9 +117,13 @@ export interface CanisterStateSummary {
 export interface Helper {
     id: string;
     zip: string;
+    consent: boolean;
     note: string;
     createdAt: bigint;
+    email: string;
+    helpType: string;
     phone: string;
+    lastName: string;
     firstName: string;
 }
 export interface ProviderWithStatus {
@@ -127,12 +131,14 @@ export interface ProviderWithStatus {
     lat: number;
     lng: number;
     status: ProviderStatus;
+    reputationScore: bigint;
+    inventory: string;
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    is_verified: boolean;
     providerType: string;
-    isVerified: boolean;
-    reputationScore: number;
+    is_active: boolean;
 }
 export interface UserProfile {
     name: string;
@@ -156,18 +162,29 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCanisterState(): Promise<CanisterStateSummary>;
+    getCostPlusReferralCount(providerId: string): Promise<bigint>;
     getEmergencyActive(): Promise<Array<ProviderWithStatus>>;
+    getEmergencyBridgeStatus(): Promise<{
+        activatedAt: bigint;
+        activatedBy: string;
+        isActive: boolean;
+    }>;
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
     getMarketplaceGeoJSON(): Promise<string>;
+    getTotalCostPlusReferrals(): Promise<bigint>;
     getTotalHandoffs(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
-    heartbeat(): Promise<Array<string>>;
     isCallerAdmin(): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
-    registerHelper(firstName: string, zip: string, phone: string, note: string): Promise<void>;
-    registerProvider(id: string, name: string, lat: number, lng: number): Promise<void>;
+    recordCostPlusReferral(providerId: string): Promise<void>;
+    registerHelper(firstName: string, lastName: string, email: string, zip: string, phone: string, helpType: string, consent: boolean, note: string): Promise<void>;
+    registerProvider(id: string, name: string, lat: number, lng: number, providerType: string): Promise<void>;
+    runHeartbeat(): Promise<Array<string>>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setEmergencyActive(isActive: boolean): Promise<void>;
+    setProviderActiveStatus(id: string, status: boolean): Promise<void>;
     toggleLive(id: string, status: boolean): Promise<void>;
+    updateInventory(id: string, newInventory: string): Promise<void>;
     verifyHandoff(token: string): Promise<VerifyResult>;
     verifyProvider(id: string): Promise<void>;
 }
@@ -286,6 +303,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getCostPlusReferralCount(arg0: string): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCostPlusReferralCount(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCostPlusReferralCount(arg0);
+            return result;
+        }
+    }
     async getEmergencyActive(): Promise<Array<ProviderWithStatus>> {
         if (this.processError) {
             try {
@@ -298,6 +329,24 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getEmergencyActive();
             return from_candid_vec_n3(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getEmergencyBridgeStatus(): Promise<{
+        activatedAt: bigint;
+        activatedBy: string;
+        isActive: boolean;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getEmergencyBridgeStatus();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getEmergencyBridgeStatus();
+            return result;
         }
     }
     async getHandoffCountsByZip(): Promise<Array<[string, bigint]>> {
@@ -325,6 +374,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getMarketplaceGeoJSON();
+            return result;
+        }
+    }
+    async getTotalCostPlusReferrals(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTotalCostPlusReferrals();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTotalCostPlusReferrals();
             return result;
         }
     }
@@ -356,20 +419,6 @@ export class Backend implements backendInterface {
             return from_candid_opt_n8(this._uploadFile, this._downloadFile, result);
         }
     }
-    async heartbeat(): Promise<Array<string>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.heartbeat();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.heartbeat();
-            return result;
-        }
-    }
     async isCallerAdmin(): Promise<boolean> {
         if (this.processError) {
             try {
@@ -398,21 +447,35 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async registerHelper(arg0: string, arg1: string, arg2: string, arg3: string): Promise<void> {
+    async recordCostPlusReferral(arg0: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3);
+                const result = await this.actor.recordCostPlusReferral(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3);
+            const result = await this.actor.recordCostPlusReferral(arg0);
             return result;
         }
     }
-    async registerProvider(arg0: string, arg1: string, arg2: number, arg3: number): Promise<void> {
+    async registerHelper(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: boolean, arg7: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.registerHelper(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+            return result;
+        }
+    }
+    async registerProvider(arg0: string, arg1: string, arg2: number, arg3: number, arg4: string): Promise<void> {
         if (this.processError) {
             try {
                 const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3, arg4);
@@ -423,6 +486,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.registerProvider(arg0, arg1, arg2, arg3, arg4);
+            return result;
+        }
+    }
+    async runHeartbeat(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.runHeartbeat();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.runHeartbeat();
             return result;
         }
     }
@@ -440,6 +517,34 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async setEmergencyActive(arg0: boolean): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setEmergencyActive(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setEmergencyActive(arg0);
+            return result;
+        }
+    }
+    async setProviderActiveStatus(arg0: string, arg1: boolean): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setProviderActiveStatus(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setProviderActiveStatus(arg0, arg1);
+            return result;
+        }
+    }
     async toggleLive(arg0: string, arg1: boolean): Promise<void> {
         if (this.processError) {
             try {
@@ -451,6 +556,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.toggleLive(arg0, arg1);
+            return result;
+        }
+    }
+    async updateInventory(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateInventory(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateInventory(arg0, arg1);
             return result;
         }
     }
@@ -503,35 +622,41 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
     lat: number;
     lng: number;
     status: _ProviderStatus;
+    reputationScore: bigint;
+    inventory: string;
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    is_verified: boolean;
     providerType: string;
-    isVerified: boolean;
-    reputationScore: number;
+    is_active: boolean;
 }): {
     id: string;
     lat: number;
     lng: number;
     status: ProviderStatus;
+    reputationScore: bigint;
+    inventory: string;
     name: string;
     isLive: boolean;
     lastVerified: bigint;
+    is_verified: boolean;
     providerType: string;
-    isVerified: boolean;
-    reputationScore: number;
+    is_active: boolean;
 } {
     return {
         id: value.id,
         lat: value.lat,
         lng: value.lng,
         status: from_candid_ProviderStatus_n6(_uploadFile, _downloadFile, value.status),
+        reputationScore: value.reputationScore,
+        inventory: value.inventory,
         name: value.name,
         isLive: value.isLive,
         lastVerified: value.lastVerified,
+        is_verified: value.is_verified,
         providerType: value.providerType,
-        isVerified: value.isVerified,
-        reputationScore: value.reputationScore,
+        is_active: value.is_active
     };
 }
 function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
