@@ -163,8 +163,6 @@ function HelperForm({ onBack }: { onBack: () => void }) {
   const [firstName, setFirstName] = useState("");
   const [zip, setZip] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [reason, setReason] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -178,9 +176,6 @@ function HelperForm({ onBack }: { onBack: () => void }) {
     if (!/^\d{5}$/.test(zip.trim()))
       errs.zip = "Please enter a valid 5-digit zip code";
     if (!phone.trim()) errs.phone = "Phone number is required";
-    if (!email.trim()) errs.email = "Email is required";
-    if (password.length < 8)
-      errs.password = "Password must be at least 8 characters";
     return errs;
   }
 
@@ -324,23 +319,6 @@ function HelperForm({ onBack }: { onBack: () => void }) {
           error={errors.phone}
         />
         <Field
-          label="Email"
-          id="helper-email"
-          type="email"
-          value={email}
-          onChange={setEmail}
-          error={errors.email}
-        />
-        <Field
-          label="Password"
-          id="helper-password"
-          type="password"
-          placeholder="Min 8 characters"
-          value={password}
-          onChange={setPassword}
-          error={errors.password}
-        />
-        <Field
           label="Why do you want to volunteer? (optional)"
           id="helper-reason"
           placeholder="Tell us a little about yourself..."
@@ -464,7 +442,7 @@ function ProviderForm({ onBack }: { onBack: () => void }) {
             margin: 0,
           }}
         >
-          You’re listed. Patients in your area will be able to find you soon.
+          Thanks! We’ve received your application and will be in touch shortly.
         </p>
       </div>
     );

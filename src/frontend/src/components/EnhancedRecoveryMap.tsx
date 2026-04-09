@@ -11,6 +11,35 @@ import {
 } from "../utils/geoJsonAdapters";
 import { isProviderStale } from "../utils/providerUtils";
 
+// ─── MapLibre GL dynamic loader ───────────────────────────────────────────────
+
+declare global {
+  interface Window {
+    // biome-ignore lint/suspicious/noExplicitAny: maplibre-gl global
+    maplibregl: any;
+  }
+}
+
+function loadMapLibre(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.maplibregl) {
+      resolve();
+      return;
+    }
+
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+    document.head.appendChild(link);
+
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load MapLibre GL"));
+    document.head.appendChild(script);
+  });
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -70,8 +99,17 @@ export function EnhancedRecoveryMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  const [maplibreReady, setMaplibreReady] = useState(!!window.maplibregl);
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // ── Load MapLibre GL from CDN if not already available ──────────────────
+  useEffect(() => {
+    if (maplibreReady) return;
+    loadMapLibre()
+      .then(() => setMaplibreReady(true))
+      .catch((e) => setLoadError(String(e)));
+  }, [maplibreReady]);
 
   // ── Marketplace additions ─────────────────────────────────────────────────
   const { actor } = useActor(createActor);
@@ -173,10 +211,10 @@ export function EnhancedRecoveryMap({
     (p) => p.status === ProviderStatus.Live && !isProviderStale(p.lastVerified),
   ).length;
 
-  // ── Map initialisation (unchanged) ───────────────────────────────────────
+  // ── Map initialisation ────────────────────────────────────────────────────
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional init-once
   useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    if (!maplibreReady || !mapContainerRef.current || mapInstanceRef.current) return;
 
     let map: maplibregl.Map;
     try {
@@ -401,7 +439,7 @@ export function EnhancedRecoveryMap({
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [maplibreReady]);
 
   // ── Existing data-sync effects (unchanged) ───────────────────────────────
 
