@@ -21,20 +21,20 @@ const FEATURED_VIDEO: VideoItem = {
 
 const PEER_SUPPORT_VIDEOS: VideoItem[] = [
   {
-    id: "m4qKvKdm2OQ",
+    id: "9_PdIJOVFyI",
     title: "How Opioid Addiction Changed a Mother's Life",
     duration: "15 min",
     description: "Tahira's story of founding a recovery home for women.",
   },
   {
-    id: "eZPw1JkCFEE",
+    id: "8CF5rjGQ_Ks",
     title: "Untreated & Unheard: The Addiction Crisis in America",
     duration: "77 min",
     description:
       "Families on the frontline of the opioid crisis, turning toward hope.",
   },
   {
-    id: "pRZ3HZWoqQE",
+    id: "pAbzLCL6gls",
     title: "Cleveland Recovery Voices: Life After Opioid Addiction",
     duration: "22 min",
     badge: "Ohio Story",
@@ -45,21 +45,21 @@ const PEER_SUPPORT_VIDEOS: VideoItem[] = [
 
 const EDUCATION_VIDEOS: VideoItem[] = [
   {
-    id: "YVb8LQzNO7o",
+    id: "YSTxz7RatPo",
     title: "What is Medication-Assisted Treatment (MAT)?",
     duration: "8 min",
     description:
       "An accessible introduction to how MAT works and why it saves lives.",
   },
   {
-    id: "8u_8zqCl-Qs",
+    id: "gkHU7KhHLI0",
     title: "How Buprenorphine Works: The Science Behind MAT",
     duration: "12 min",
     description:
       "A clear look at the science of buprenorphine-naloxone and why it's effective.",
   },
   {
-    id: "xJ1uq5pFHu0",
+    id: "DblVjqtABn4",
     title: "Naloxone (Narcan): Recognizing and Reversing an Overdose",
     duration: "7 min",
     description:
@@ -197,7 +197,7 @@ function Lightbox({ video, onClose }: LightboxProps) {
           <iframe
             src={embedUrl}
             title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             className="absolute inset-0 w-full h-full"
             loading="lazy"

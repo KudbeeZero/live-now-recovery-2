@@ -41,7 +41,7 @@ export function PriceComparisonCard() {
               style={{ color: "oklch(0.72 0.18 25)" }}
             />
             <span
-              className="text-xs font-semibold uppercase tracking-wide"
+              className="text-[10px] font-semibold uppercase tracking-wide"
               style={{ color: "oklch(0.72 0.18 25)" }}
             >
               MAT Retail
@@ -73,7 +73,7 @@ export function PriceComparisonCard() {
               style={{ color: "oklch(0.78 0.14 195)" }}
             />
             <span
-              className="text-xs font-semibold uppercase tracking-wide"
+              className="text-[10px] font-semibold uppercase tracking-wide"
               style={{ color: "oklch(0.78 0.14 195)" }}
             >
               Mark Cuban Cost Plus Drugs

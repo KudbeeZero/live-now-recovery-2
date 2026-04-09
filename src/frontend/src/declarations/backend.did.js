@@ -54,6 +54,16 @@ export const ProviderWithStatus = IDL.Record({
   'providerType' : IDL.Text,
   'is_active' : IDL.Bool,
 });
+export const CitizenReport = IDL.Record({
+  'id' : IDL.Text,
+  'lat' : IDL.Opt(IDL.Float64),
+  'lng' : IDL.Opt(IDL.Float64),
+  'upvotes' : IDL.Nat,
+  'activityType' : IDL.Text,
+  'content' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'zipCode' : IDL.Text,
+});
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const CanisterStateSummary = IDL.Record({
   'active_providers' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat, IDL.Bool)),
@@ -68,6 +78,21 @@ export const PredictionEngineState = IDL.Record({
   'simulationEnabled' : IDL.Bool,
   'stressToggle' : IDL.Bool,
   'paydayToggle' : IDL.Bool,
+});
+export const ProviderPost = IDL.Record({
+  'id' : IDL.Text,
+  'content' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'imageUrl' : IDL.Opt(IDL.Text),
+  'providerId' : IDL.Text,
+});
+export const RecoveryProfile = IDL.Record({
+  'id' : IDL.Text,
+  'zip' : IDL.Text,
+  'resourcesUsed' : IDL.Vec(IDL.Text),
+  'displayName' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'favoriteProviders' : IDL.Vec(IDL.Text),
 });
 export const TouchpointRecord = IDL.Record({
   'touchpoints' : IDL.Nat,
@@ -91,11 +116,19 @@ export const VerifyResult = IDL.Variant({
 
 export const idlService = IDL.Service({
   '_initializeAccessControl' : IDL.Func([], [], []),
+  'addFavoriteProvider' : IDL.Func([IDL.Text], [IDL.Bool], []),
+  'addProviderPost' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+      [IDL.Text],
+      [],
+    ),
   'addRiskEvent' : IDL.Func([RiskEvent], [IDL.Text], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createRecoveryProfile' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
   'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
   'getAllHelpers' : IDL.Func([], [IDL.Vec(Helper)], ['query']),
   'getAllProviders' : IDL.Func([], [IDL.Vec(ProviderWithStatus)], ['query']),
+  'getAllReports' : IDL.Func([], [IDL.Vec(CitizenReport)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCanisterState' : IDL.Func([], [CanisterStateSummary], ['query']),
@@ -133,7 +166,22 @@ export const idlService = IDL.Service({
     ),
   'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
   'getPredictionEngineState' : IDL.Func([], [PredictionEngineState], ['query']),
+  'getProviderPosts' : IDL.Func([IDL.Text], [IDL.Vec(ProviderPost)], ['query']),
+  'getRecoveryProfile' : IDL.Func([], [IDL.Opt(RecoveryProfile)], ['query']),
+  'getReportsByZip' : IDL.Func([IDL.Text], [IDL.Vec(CitizenReport)], ['query']),
   'getRiskEvents' : IDL.Func([], [IDL.Vec(RiskEvent)], ['query']),
+  'getSimulationStats' : IDL.Func(
+      [],
+      [
+        IDL.Record({
+          'totalSimHandoffs' : IDL.Nat,
+          'totalSimScans' : IDL.Nat,
+          'totalSimVolunteers' : IDL.Nat,
+          'simulationStartTime' : IDL.Int,
+        }),
+      ],
+      ['query'],
+    ),
   'getSocialStressBaseline' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Float64))],
@@ -149,7 +197,10 @@ export const idlService = IDL.Service({
     ),
   'getWeatherAlerts' : IDL.Func([], [IDL.Text], []),
   'getWeatherRisk' : IDL.Func([], [IDL.Float64], []),
+  'incrementSimulationStats' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+  'initSimulationTime' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'markResourceUsed' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
   'recordCostPlusReferral' : IDL.Func([IDL.Text], [], []),
   'recordTouchpoint' : IDL.Func([IDL.Text, IDL.Text], [], []),
@@ -172,6 +223,7 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
+  'removeFavoriteProvider' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'removeRiskEvent' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'resetFiscalData' : IDL.Func([], [], []),
   'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
@@ -179,9 +231,22 @@ export const idlService = IDL.Service({
   'setEmergencyActive' : IDL.Func([IDL.Bool], [], []),
   'setPredictionEngineState' : IDL.Func([PredictionEngineState], [], []),
   'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
+  'setSimulationVolunteers' : IDL.Func([IDL.Nat], [], []),
+  'submitCitizenReport' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Opt(IDL.Float64),
+        IDL.Opt(IDL.Float64),
+      ],
+      [IDL.Text],
+      [],
+    ),
   'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
   'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'updateRiskEvent' : IDL.Func([IDL.Text, RiskEvent], [IDL.Bool], []),
+  'upvoteCitizenReport' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
   'verifyProvider' : IDL.Func([IDL.Text], [], []),
 });
@@ -235,6 +300,16 @@ export const idlFactory = ({ IDL }) => {
     'providerType' : IDL.Text,
     'is_active' : IDL.Bool,
   });
+  const CitizenReport = IDL.Record({
+    'id' : IDL.Text,
+    'lat' : IDL.Opt(IDL.Float64),
+    'lng' : IDL.Opt(IDL.Float64),
+    'upvotes' : IDL.Nat,
+    'activityType' : IDL.Text,
+    'content' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'zipCode' : IDL.Text,
+  });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const CanisterStateSummary = IDL.Record({
     'active_providers' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat, IDL.Bool)),
@@ -249,6 +324,21 @@ export const idlFactory = ({ IDL }) => {
     'simulationEnabled' : IDL.Bool,
     'stressToggle' : IDL.Bool,
     'paydayToggle' : IDL.Bool,
+  });
+  const ProviderPost = IDL.Record({
+    'id' : IDL.Text,
+    'content' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'imageUrl' : IDL.Opt(IDL.Text),
+    'providerId' : IDL.Text,
+  });
+  const RecoveryProfile = IDL.Record({
+    'id' : IDL.Text,
+    'zip' : IDL.Text,
+    'resourcesUsed' : IDL.Vec(IDL.Text),
+    'displayName' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'favoriteProviders' : IDL.Vec(IDL.Text),
   });
   const TouchpointRecord = IDL.Record({
     'touchpoints' : IDL.Nat,
@@ -272,11 +362,19 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControl' : IDL.Func([], [], []),
+    'addFavoriteProvider' : IDL.Func([IDL.Text], [IDL.Bool], []),
+    'addProviderPost' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+        [IDL.Text],
+        [],
+      ),
     'addRiskEvent' : IDL.Func([RiskEvent], [IDL.Text], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createRecoveryProfile' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
     'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
     'getAllHelpers' : IDL.Func([], [IDL.Vec(Helper)], ['query']),
     'getAllProviders' : IDL.Func([], [IDL.Vec(ProviderWithStatus)], ['query']),
+    'getAllReports' : IDL.Func([], [IDL.Vec(CitizenReport)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCanisterState' : IDL.Func([], [CanisterStateSummary], ['query']),
@@ -322,7 +420,30 @@ export const idlFactory = ({ IDL }) => {
         [PredictionEngineState],
         ['query'],
       ),
+    'getProviderPosts' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(ProviderPost)],
+        ['query'],
+      ),
+    'getRecoveryProfile' : IDL.Func([], [IDL.Opt(RecoveryProfile)], ['query']),
+    'getReportsByZip' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(CitizenReport)],
+        ['query'],
+      ),
     'getRiskEvents' : IDL.Func([], [IDL.Vec(RiskEvent)], ['query']),
+    'getSimulationStats' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'totalSimHandoffs' : IDL.Nat,
+            'totalSimScans' : IDL.Nat,
+            'totalSimVolunteers' : IDL.Nat,
+            'simulationStartTime' : IDL.Int,
+          }),
+        ],
+        ['query'],
+      ),
     'getSocialStressBaseline' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Float64))],
@@ -338,7 +459,10 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getWeatherAlerts' : IDL.Func([], [IDL.Text], []),
     'getWeatherRisk' : IDL.Func([], [IDL.Float64], []),
+    'incrementSimulationStats' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+    'initSimulationTime' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'markResourceUsed' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'receiveRiskPacket' : IDL.Func([RiskPacket], [], []),
     'recordCostPlusReferral' : IDL.Func([IDL.Text], [], []),
     'recordTouchpoint' : IDL.Func([IDL.Text, IDL.Text], [], []),
@@ -361,6 +485,7 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'removeFavoriteProvider' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'removeRiskEvent' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'resetFiscalData' : IDL.Func([], [], []),
     'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
@@ -368,9 +493,22 @@ export const idlFactory = ({ IDL }) => {
     'setEmergencyActive' : IDL.Func([IDL.Bool], [], []),
     'setPredictionEngineState' : IDL.Func([PredictionEngineState], [], []),
     'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
+    'setSimulationVolunteers' : IDL.Func([IDL.Nat], [], []),
+    'submitCitizenReport' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Opt(IDL.Float64),
+          IDL.Opt(IDL.Float64),
+        ],
+        [IDL.Text],
+        [],
+      ),
     'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
     'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'updateRiskEvent' : IDL.Func([IDL.Text, RiskEvent], [IDL.Bool], []),
+    'upvoteCitizenReport' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'verifyHandoff' : IDL.Func([IDL.Text], [VerifyResult], []),
     'verifyProvider' : IDL.Func([IDL.Text], [], []),
   });

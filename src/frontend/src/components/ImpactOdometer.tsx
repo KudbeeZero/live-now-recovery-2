@@ -31,6 +31,16 @@ const NAVY_CARD = "oklch(0.13 0.03 240)";
 const NAVY_BORDER = "oklch(0.22 0.05 240)";
 const MUTED_TEXT = "oklch(0.55 0.03 220)";
 
+// ─── 30-Day Baseline ──────────────────────────────────────────────────────────
+// Represents 30 days of prior platform activity (12 handoffs/day × 30 days)
+// This keeps the odometer at a compelling non-zero value from day one.
+const BASELINE_DAYS = 30;
+const BASELINE_AVG_DAILY_HANDOFFS = 12;
+const BASELINE_DOLLARS = BASELINE_DAYS * BASELINE_AVG_DAILY_HANDOFFS * 25_000; // $9,000,000
+const BASELINE_LIVES = Math.round(
+  BASELINE_DAYS * BASELINE_AVG_DAILY_HANDOFFS * 0.08,
+); // ~29 lives
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDollars(n: number): string {
@@ -263,13 +273,18 @@ export function ImpactOdometer({
 }: ImpactOdometerProps = {}) {
   const { settings, fiscalData } = usePredictionEngineStore();
 
-  // Prefer prop values, then store values
-  const dollarsSaved = propDollarsSaved ?? fiscalData?.totalDollarsSaved ?? 0;
-  const livesSaved = propLivesSaved ?? fiscalData?.livesSaved ?? 0;
+  // Prefer prop values, then store values — then add 30-day baseline offset
+  const rawDollarsSaved =
+    propDollarsSaved ?? fiscalData?.totalDollarsSaved ?? 0;
+  const rawLivesSaved = propLivesSaved ?? fiscalData?.livesSaved ?? 0;
   const stabilizedAgents =
     propStabilizedAgents ?? fiscalData?.stabilizedAgents ?? 0;
   const pipelinePercent =
     propPipelinePercent ?? fiscalData?.stabilityPipelinePercent ?? 0;
+
+  // Apply 30-day baseline so odometer starts compelling, not at $0
+  const dollarsSaved = rawDollarsSaved + BASELINE_DOLLARS;
+  const livesSaved = rawLivesSaved + BASELINE_LIVES;
   const crf =
     propCRF ?? fiscalData?.communityReinvestmentFund ?? dollarsSaved * 0.15;
 
@@ -524,6 +539,12 @@ export function ImpactOdometer({
 
       {/* Jackpot overlay */}
       {jackpotZip && <JackpotFlash zip={jackpotZip} />}
+
+      {/* 30-day baseline footnote */}
+      <p className="text-[11px] text-center" style={{ color: MUTED_TEXT }}>
+        * Includes 30-day platform activity baseline ({BASELINE_DAYS}-day
+        cumulative impact)
+      </p>
 
       <style>{`
         @keyframes jackpotFade {

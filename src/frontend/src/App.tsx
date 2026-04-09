@@ -32,6 +32,7 @@ import { MissionPage } from "./pages/MissionPage";
 import { OhioStatsPage } from "./pages/OhioStatsPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { ProviderPage } from "./pages/ProviderPage";
+import { RecoveryAccountPage } from "./pages/RecoveryAccountPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import { SignupPage } from "./pages/SignupPage";
@@ -272,6 +273,11 @@ const sitemapRoute = createRoute({
   path: "/sitemap",
   component: SitemapPage,
 });
+const myRecoveryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/my-recovery",
+  component: RecoveryAccountPage,
+});
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -314,6 +320,7 @@ const routeTree = rootRoute.addChildren([
   toledoRoute,
   medinaRoute,
   sitemapRoute,
+  myRecoveryRoute,
 ]);
 
 const router = createRouter({ routeTree });

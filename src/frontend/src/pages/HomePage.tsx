@@ -24,12 +24,13 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ProviderStatus } from "../backend";
 import { EnhancedRecoveryMap } from "../components/EnhancedRecoveryMap";
 import { HandoffImpact } from "../components/HandoffImpact";
 import { PriceComparisonCard } from "../components/PriceComparisonCard";
+import { useActivitySimulation } from "../hooks/useActivitySimulation";
 import {
   useAllProviders,
   useCanisterState,
@@ -116,6 +117,13 @@ export function HomePage() {
   const { loginStatus, identity } = useInternetIdentity();
   const isLoggedIn = loginStatus === "success" && !!identity;
 
+  // Activity simulation — runs globally, provides session + backend handoff counts
+  const {
+    currentSessionHandoffs,
+    backendTotalHandoffs,
+    backendTotalVolunteers,
+  } = useActivitySimulation();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [show3dBuildings, setShow3dBuildings] = useState(true);
@@ -124,10 +132,12 @@ export function HomePage() {
   const [showAllCities, setShowAllCities] = useState(false);
   const [adminDrawerOpen, setAdminDrawerOpen] = useState(false);
 
-  // Volunteer count animation (0 → 47)
+  // Animate volunteer count up from 0 to backendTotalVolunteers (or 47 default)
+  const targetVolunteers =
+    backendTotalVolunteers > 0 ? backendTotalVolunteers : 47;
   const [volunteerCount, setVolunteerCount] = useState(0);
   useEffect(() => {
-    const target = 47;
+    const target = targetVolunteers;
     const duration = 1500;
     const startTime = performance.now();
     let rafId: number;
@@ -149,7 +159,13 @@ export function HomePage() {
       clearTimeout(timerId);
       cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [targetVolunteers]);
+
+  // Compute combined handoff count (backend real + simulation backend + session)
+  const combinedHandoffs = useMemo(() => {
+    const real = totalHandoffs !== undefined ? Number(totalHandoffs) : 0;
+    return real + backendTotalHandoffs + currentSessionHandoffs;
+  }, [totalHandoffs, backendTotalHandoffs, currentSessionHandoffs]);
 
   // Provider card expanded tabs
   type CardTab = "meds" | "services" | "cost" | "insurance";
@@ -479,9 +495,7 @@ export function HomePage() {
                     textShadow: "0 0 18px oklch(0.82 0.18 145 / 0.45)",
                   }}
                 >
-                  {totalHandoffs !== undefined
-                    ? Number(totalHandoffs).toLocaleString()
-                    : "0"}
+                  {combinedHandoffs.toLocaleString()}
                 </span>
               )}
               <span
@@ -531,6 +545,9 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── Rolling Activity Feed ── */}
+      <RollingActivityFeed />
 
       {/* ── Peer Support Video CTA Banner ── */}
       <section
@@ -1833,6 +1850,121 @@ export function HomePage() {
         );
       })()}
     </main>
+  );
+}
+
+// ─── Rolling Activity Feed ────────────────────────────────────────────────────
+
+const FEED_TEMPLATES = [
+  (city: string) => `Someone in ${city} scanned for MAT providers`,
+  (city: string) => `Handoff completed in ${city}`,
+  (city: string) => `New volunteer joined in ${city}`,
+  (city: string) => `Naloxone kit located in ${city}`,
+  (city: string) => `MAT appointment booked in ${city}`,
+  (city: string) => `Provider verified live in ${city}`,
+];
+
+const FEED_CITIES = [
+  "Akron",
+  "Cleveland",
+  "Parma",
+  "Lorain",
+  "Canton",
+  "Youngstown",
+  "Elyria",
+  "Strongsville",
+  "Mentor",
+  "Euclid",
+];
+
+interface FeedEntry {
+  id: number;
+  text: string;
+  minutesAgo: number;
+}
+
+function generateSeedEntries(): FeedEntry[] {
+  // Generate 5 time-seeded entries based on current time for realism
+  const now = Date.now();
+  return Array.from({ length: 5 }, (_, i) => {
+    const city = FEED_CITIES[(now + i * 7) % FEED_CITIES.length];
+    const template = FEED_TEMPLATES[(now + i * 3) % FEED_TEMPLATES.length];
+    const minutesAgo = Math.floor(((now / 60000 + i * 11) % 55) + 2);
+    return { id: i, text: template(city), minutesAgo };
+  });
+}
+
+function RollingActivityFeed() {
+  const [entries, setEntries] = useState<FeedEntry[]>(generateSeedEntries);
+  const counterRef = useRef(100);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const city = FEED_CITIES[Math.floor(Math.random() * FEED_CITIES.length)];
+      const template =
+        FEED_TEMPLATES[Math.floor(Math.random() * FEED_TEMPLATES.length)];
+      const newEntry: FeedEntry = {
+        id: counterRef.current++,
+        text: template(city),
+        minutesAgo: 0,
+      };
+      setEntries((prev) => [newEntry, ...prev.slice(0, 4)]);
+    }, 45_000); // new entry every 45 seconds
+
+    // Also tick up all minutesAgo every 60 seconds
+    const ticker = setInterval(() => {
+      setEntries((prev) =>
+        prev.map((e) => ({ ...e, minutesAgo: e.minutesAgo + 1 })),
+      );
+    }, 60_000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(ticker);
+    };
+  }, []);
+
+  return (
+    <section
+      className="w-full px-4 py-3"
+      style={{
+        background: "oklch(0.16 0.030 225)",
+        borderBottom: "1px solid oklch(0.22 0.038 225 / 0.5)",
+      }}
+      data-ocid="home.activity_feed"
+      aria-label="Live activity feed"
+    >
+      <div className="max-w-7xl mx-auto flex items-center gap-3 overflow-hidden">
+        <div
+          className="shrink-0 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"
+          style={{ color: "oklch(0.62 0.17 155)" }}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"
+            aria-hidden="true"
+          />
+          Live
+        </div>
+        <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide flex-nowrap">
+          {entries.slice(0, 3).map((entry) => (
+            <div
+              key={entry.id}
+              className="shrink-0 flex items-center gap-2 text-xs"
+            >
+              <span style={{ color: "oklch(0.78 0.04 210)" }}>
+                {entry.text}
+              </span>
+              <span style={{ color: "oklch(0.45 0.03 220)" }}>
+                •{" "}
+                {entry.minutesAgo === 0
+                  ? "just now"
+                  : `${entry.minutesAgo}m ago`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

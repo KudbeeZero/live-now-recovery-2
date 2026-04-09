@@ -9,6 +9,7 @@ import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Link } from "@tanstack/react-router";
 import { Heart, Loader2, Menu, Phone, Users, X } from "lucide-react";
 import { useState } from "react";
+import { useGetRecoveryProfile } from "../hooks/useQueries";
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -16,6 +17,7 @@ export function Header() {
   const { login, clear, loginStatus, identity } = useInternetIdentity();
   const isLoggedIn = loginStatus === "success" && !!identity;
   const isLoggingIn = loginStatus === "logging-in";
+  const { data: recoveryProfile } = useGetRecoveryProfile();
 
   const navLinks = [
     { to: "/", label: "Home" },
@@ -84,6 +86,17 @@ export function Header() {
               <Users className="w-3.5 h-3.5" />
               Be a Helper
             </Link>
+            {recoveryProfile && (
+              <Link
+                to="/my-recovery"
+                className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center gap-1.5 px-3 rounded-md text-teal-light hover:text-white hover:bg-white/5"
+                activeProps={{ className: "text-teal-light font-semibold" }}
+                data-ocid="nav.link"
+              >
+                <Heart className="w-3.5 h-3.5" />
+                My Recovery
+              </Link>
+            )}
           </nav>
 
           {/* Right actions */}
@@ -196,6 +209,17 @@ export function Header() {
               <Users className="w-3.5 h-3.5" />
               Be a Helper
             </Link>
+            {recoveryProfile && (
+              <Link
+                to="/my-recovery"
+                className="py-2.5 landscape:py-1.5 px-2 text-sm font-medium min-h-[44px] landscape:min-h-[36px] flex items-center gap-1.5 rounded-md text-teal-light hover:bg-white/5"
+                onClick={() => setMenuOpen(false)}
+                data-ocid="nav.link"
+              >
+                <Heart className="w-3.5 h-3.5" />
+                My Recovery
+              </Link>
+            )}
           </div>
           {/* CTA row: stacked portrait → side by side landscape */}
           <div className="px-4 pb-4 landscape:pb-2 pt-1 flex flex-col landscape:flex-row gap-2">

@@ -1,4 +1,15 @@
 // Version: 1.0.0
+type CitizenReport__786071060 =
+  {
+    activityType : Text;
+    content : Text;
+    createdAt : Int;
+    id : Text;
+    lat : ?Float;
+    lng : ?Float;
+    upvotes : Nat;
+    zipCode : Text
+  };
 type Data__791452850<K, V> =
   {var count : Nat__490723111; kvs : [var ?(K, V)]};
 type HandoffToken__969534999 =
@@ -28,6 +39,14 @@ type Nat__490723111 = Nat__920180692;
 type Nat__920180692 = Nat;
 type Node__46230540<K, V> =
   {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type ProviderPost__296298770 =
+  {
+    content : Text;
+    createdAt : Int;
+    id : Text;
+    imageUrl : ?Text;
+    providerId : Text
+  };
 type Provider__999103737 =
   {
     id : Text;
@@ -41,6 +60,15 @@ type Provider__999103737 =
     name : Text;
     providerType : Text;
     reputationScore : Nat
+  };
+type RecoveryProfile__618960650 =
+  {
+    createdAt : Int;
+    displayName : Text;
+    favoriteProviders : [Text];
+    id : Text;
+    resourcesUsed : [Text];
+    zip : Text
   };
 type RiskEvent__422506687 =
   {
@@ -90,6 +118,11 @@ actor {
   stable var cachedAlertsText : Text;
   stable var cachedSocialStress : [(Text, Float)];
   stable var cachedWeatherRisk : Float;
+  stable citizenReports :
+    {
+      var root : Node__46230540<Text, CitizenReport__786071060>;
+      var size : Nat__490723111
+    };
   stable costPlusReferrals :
     {var root : Node__46230540<Text, Nat>; var size : Nat__490723111};
   stable var dollarsSaved : Float;
@@ -158,9 +191,19 @@ actor {
       stressToggle : Bool;
       weatherToggle : Bool
     };
+  stable providerPosts :
+    {
+      var root : Node__46230540<Text, ProviderPost__296298770>;
+      var size : Nat__490723111
+    };
   stable providers :
     {
       var root : Node__46230540<Text, Provider__999103737>;
+      var size : Nat__490723111
+    };
+  stable recoveryProfiles :
+    {
+      var root : Node__46230540<Principal, RecoveryProfile__618960650>;
       var size : Nat__490723111
     };
   stable var riskEvents : [RiskEvent__422506687];
@@ -169,6 +212,7 @@ actor {
       var root : Node__46230540<Text, RiskPacketHistory__898629859>;
       var size : Nat__490723111
     };
+  stable var simulationStartTime : Int;
   stable var stabilizedAgents : Nat;
   stable var tokenNonce : Nat;
   stable tokens :
@@ -176,6 +220,9 @@ actor {
       var root : Node__46230540<Text, HandoffToken__969534999>;
       var size : Nat__490723111
     };
+  stable var totalSimHandoffs : Nat;
+  stable var totalSimScans : Nat;
+  stable var totalSimVolunteers : Nat;
   stable var touchpointData : [TouchpointRecord__549151585];
   stable userProfiles :
     {

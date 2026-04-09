@@ -15,6 +15,16 @@ export interface CanisterStateSummary {
   'total_active_providers' : bigint,
   'high_risk_window_active' : boolean,
 }
+export interface CitizenReport {
+  'id' : string,
+  'lat' : [] | [number],
+  'lng' : [] | [number],
+  'upvotes' : bigint,
+  'activityType' : string,
+  'content' : string,
+  'createdAt' : bigint,
+  'zipCode' : string,
+}
 export interface Helper {
   'id' : string,
   'zip' : string,
@@ -36,6 +46,13 @@ export interface PredictionEngineState {
   'stressToggle' : boolean,
   'paydayToggle' : boolean,
 }
+export interface ProviderPost {
+  'id' : string,
+  'content' : string,
+  'createdAt' : bigint,
+  'imageUrl' : [] | [string],
+  'providerId' : string,
+}
 export type ProviderStatus = { 'Live' : null } |
   { 'Offline' : null } |
   { 'Unknown' : null };
@@ -52,6 +69,14 @@ export interface ProviderWithStatus {
   'is_verified' : boolean,
   'providerType' : string,
   'is_active' : boolean,
+}
+export interface RecoveryProfile {
+  'id' : string,
+  'zip' : string,
+  'resourcesUsed' : Array<string>,
+  'displayName' : string,
+  'createdAt' : bigint,
+  'favoriteProviders' : Array<string>,
 }
 export interface RiskEvent {
   'id' : string,
@@ -86,11 +111,15 @@ export type VerifyResult = { 'Ok' : string } |
   { 'AlreadyUsed' : null };
 export interface _SERVICE {
   '_initializeAccessControl' : ActorMethod<[], undefined>,
+  'addFavoriteProvider' : ActorMethod<[string], boolean>,
+  'addProviderPost' : ActorMethod<[string, string, [] | [string]], string>,
   'addRiskEvent' : ActorMethod<[RiskEvent], string>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createRecoveryProfile' : ActorMethod<[string, string], string>,
   'generateHandoffToken' : ActorMethod<[string], string>,
   'getAllHelpers' : ActorMethod<[], Array<Helper>>,
   'getAllProviders' : ActorMethod<[], Array<ProviderWithStatus>>,
+  'getAllReports' : ActorMethod<[], Array<CitizenReport>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCanisterState' : ActorMethod<[], CanisterStateSummary>,
@@ -114,7 +143,19 @@ export interface _SERVICE {
   'getHandoffCountsByZip' : ActorMethod<[], Array<[string, bigint]>>,
   'getMarketplaceGeoJSON' : ActorMethod<[], string>,
   'getPredictionEngineState' : ActorMethod<[], PredictionEngineState>,
+  'getProviderPosts' : ActorMethod<[string], Array<ProviderPost>>,
+  'getRecoveryProfile' : ActorMethod<[], [] | [RecoveryProfile]>,
+  'getReportsByZip' : ActorMethod<[string], Array<CitizenReport>>,
   'getRiskEvents' : ActorMethod<[], Array<RiskEvent>>,
+  'getSimulationStats' : ActorMethod<
+    [],
+    {
+      'totalSimHandoffs' : bigint,
+      'totalSimScans' : bigint,
+      'totalSimVolunteers' : bigint,
+      'simulationStartTime' : bigint,
+    }
+  >,
   'getSocialStressBaseline' : ActorMethod<[], Array<[string, number]>>,
   'getTotalCostPlusReferrals' : ActorMethod<[], bigint>,
   'getTotalHandoffs' : ActorMethod<[], bigint>,
@@ -122,7 +163,10 @@ export interface _SERVICE {
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getWeatherAlerts' : ActorMethod<[], string>,
   'getWeatherRisk' : ActorMethod<[], number>,
+  'incrementSimulationStats' : ActorMethod<[bigint, bigint], undefined>,
+  'initSimulationTime' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'markResourceUsed' : ActorMethod<[string], boolean>,
   'receiveRiskPacket' : ActorMethod<[RiskPacket], undefined>,
   'recordCostPlusReferral' : ActorMethod<[string], undefined>,
   'recordTouchpoint' : ActorMethod<[string, string], undefined>,
@@ -134,6 +178,7 @@ export interface _SERVICE {
     [string, string, number, number, string],
     undefined
   >,
+  'removeFavoriteProvider' : ActorMethod<[string], boolean>,
   'removeRiskEvent' : ActorMethod<[string], boolean>,
   'resetFiscalData' : ActorMethod<[], undefined>,
   'runHeartbeat' : ActorMethod<[], Array<string>>,
@@ -141,9 +186,15 @@ export interface _SERVICE {
   'setEmergencyActive' : ActorMethod<[boolean], undefined>,
   'setPredictionEngineState' : ActorMethod<[PredictionEngineState], undefined>,
   'setProviderActiveStatus' : ActorMethod<[string, boolean], undefined>,
+  'setSimulationVolunteers' : ActorMethod<[bigint], undefined>,
+  'submitCitizenReport' : ActorMethod<
+    [string, string, string, [] | [number], [] | [number]],
+    string
+  >,
   'toggleLive' : ActorMethod<[string, boolean], undefined>,
   'updateInventory' : ActorMethod<[string, string], undefined>,
   'updateRiskEvent' : ActorMethod<[string, RiskEvent], boolean>,
+  'upvoteCitizenReport' : ActorMethod<[string], boolean>,
   'verifyHandoff' : ActorMethod<[string], VerifyResult>,
   'verifyProvider' : ActorMethod<[string], undefined>,
 }

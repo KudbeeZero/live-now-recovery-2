@@ -33,7 +33,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -119,6 +119,35 @@ const RISK_LEVELS = [
   { label: "Medium (1.5×)", value: 1.5 },
   { label: "High (2.0×)", value: 2.0 },
 ];
+
+// ─── Demo scenario ────────────────────────────────────────────────────────────
+
+const DEMO_SETTINGS = {
+  weatherToggle: true,
+  paydayToggle: true,
+  stressToggle: true,
+  potencyToggle: false,
+  sensitivitySlider: 75,
+  avgDailyHandoffCount: 12,
+  simulationEnabled: true,
+};
+
+function buildDemoRiskEvent(): RiskEvent {
+  const now = new Date();
+  // Current month's 15th
+  const start = new Date(now.getFullYear(), now.getMonth(), 15, 0, 0, 0);
+  const end = new Date(now.getFullYear(), now.getMonth(), 16, 23, 59, 59);
+  return {
+    id: "demo-cuyahoga-cold-payday",
+    name: "Cuyahoga County Cold Snap + Payday",
+    startDate: msToNs(start.getTime()),
+    endDate: msToNs(end.getTime()),
+    affectedZIPs: ["44105", "44115", "44120", "44128", "44130"],
+    multiplier: 2.0,
+    fileUrl: "",
+    createdAt: msToNs(Date.now()),
+  };
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -657,6 +686,8 @@ export function PredictionEnginePanel() {
   }, [settings]);
 
   // Fetch engine state from backend
+  const hasAppliedDemo = useRef(false);
+
   useQuery({
     queryKey: ["predictionEngineState"],
     queryFn: async () => {
@@ -673,6 +704,29 @@ export function PredictionEnginePanel() {
           simulationEnabled: raw.simulationEnabled,
         };
         updateSettings(mapped);
+
+        // Auto-apply demo scenario if all toggles are off and sensitivity is default
+        // (blank/fresh canister state). Only fires once per session.
+        if (
+          !hasAppliedDemo.current &&
+          !raw.weatherToggle &&
+          !raw.paydayToggle &&
+          !raw.stressToggle &&
+          !raw.potencyToggle &&
+          Number(raw.sensitivitySlider) === 50
+        ) {
+          hasAppliedDemo.current = true;
+          setLocalSettings({ ...mapped, ...DEMO_SETTINGS });
+          updateSettings(DEMO_SETTINGS);
+          try {
+            await actor.setPredictionEngineState(
+              settingsToBackend({ ...mapped, ...DEMO_SETTINGS }),
+            );
+          } catch {
+            /* admin-only — silently skip if not admin */
+          }
+        }
+
         return mapped;
       } catch {
         return null;
@@ -713,13 +767,26 @@ export function PredictionEnginePanel() {
     refetchInterval: 10 * 60_000,
   });
 
+  const hasSeededDemoEvent = useRef(false);
+
   // Risk events
   const { data: riskEvents = [] } = useQuery({
     queryKey: ["predictionRiskEvents"],
     queryFn: async () => {
       if (!actor) return [];
       try {
-        return await actor.getRiskEvents();
+        const events = await actor.getRiskEvents();
+        // Seed a demo event if none exist (fires once per session)
+        if (events.length === 0 && !hasSeededDemoEvent.current) {
+          hasSeededDemoEvent.current = true;
+          try {
+            await actor.addRiskEvent(buildDemoRiskEvent());
+            qc.invalidateQueries({ queryKey: ["predictionRiskEvents"] });
+          } catch {
+            /* admin-only — silently skip */
+          }
+        }
+        return events;
       } catch {
         return [];
       }
@@ -793,6 +860,16 @@ export function PredictionEnginePanel() {
             Saving…
           </div>
         )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs font-semibold border-live-green/40 text-live-green hover:bg-live-green/10"
+          onClick={() => saveSettings(DEMO_SETTINGS)}
+          disabled={isSaving}
+          data-ocid="prediction.reset_demo_button"
+        >
+          Reset to Demo Mode
+        </Button>
       </div>
 
       {/* Section 1 — Weather Sentinel */}

@@ -20,6 +20,16 @@ export type VerifyResult = {
     __kind__: "AlreadyUsed";
     AlreadyUsed: null;
 };
+export interface CitizenReport {
+    id: string;
+    lat?: number;
+    lng?: number;
+    upvotes: bigint;
+    activityType: string;
+    content: string;
+    createdAt: bigint;
+    zipCode: string;
+}
 export interface RiskEvent {
     id: string;
     multiplier: number;
@@ -29,6 +39,41 @@ export interface RiskEvent {
     createdAt: bigint;
     startDate: bigint;
     fileUrl: string;
+}
+export interface ProviderWithStatus {
+    id: string;
+    lat: number;
+    lng: number;
+    status: ProviderStatus;
+    reputationScore: bigint;
+    inventory: string;
+    name: string;
+    isLive: boolean;
+    lastVerified: bigint;
+    is_verified: boolean;
+    providerType: string;
+    is_active: boolean;
+}
+export interface TouchpointRecord {
+    touchpoints: bigint;
+    agentId: string;
+    totalSaved: number;
+    isStabilized: boolean;
+}
+export interface RecoveryProfile {
+    id: string;
+    zip: string;
+    resourcesUsed: Array<string>;
+    displayName: string;
+    createdAt: bigint;
+    favoriteProviders: Array<string>;
+}
+export interface ProviderPost {
+    id: string;
+    content: string;
+    createdAt: bigint;
+    imageUrl?: string;
+    providerId: string;
 }
 export interface RiskPacket {
     status: boolean;
@@ -63,28 +108,8 @@ export interface PredictionEngineState {
     stressToggle: boolean;
     paydayToggle: boolean;
 }
-export interface ProviderWithStatus {
-    id: string;
-    lat: number;
-    lng: number;
-    status: ProviderStatus;
-    reputationScore: bigint;
-    inventory: string;
-    name: string;
-    isLive: boolean;
-    lastVerified: bigint;
-    is_verified: boolean;
-    providerType: string;
-    is_active: boolean;
-}
 export interface UserProfile {
     name: string;
-}
-export interface TouchpointRecord {
-    touchpoints: bigint;
-    agentId: string;
-    totalSaved: number;
-    isStabilized: boolean;
 }
 export enum ProviderStatus {
     Live = "Live",
@@ -97,11 +122,15 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
+    addFavoriteProvider(providerId: string): Promise<boolean>;
+    addProviderPost(providerId: string, content: string, imageUrl: string | null): Promise<string>;
     addRiskEvent(event: RiskEvent): Promise<string>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createRecoveryProfile(displayName: string, zip: string): Promise<string>;
     generateHandoffToken(zipCode: string): Promise<string>;
     getAllHelpers(): Promise<Array<Helper>>;
     getAllProviders(): Promise<Array<ProviderWithStatus>>;
+    getAllReports(): Promise<Array<CitizenReport>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCanisterState(): Promise<CanisterStateSummary>;
@@ -123,7 +152,16 @@ export interface backendInterface {
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
     getMarketplaceGeoJSON(): Promise<string>;
     getPredictionEngineState(): Promise<PredictionEngineState>;
+    getProviderPosts(providerId: string): Promise<Array<ProviderPost>>;
+    getRecoveryProfile(): Promise<RecoveryProfile | null>;
+    getReportsByZip(zipCode: string): Promise<Array<CitizenReport>>;
     getRiskEvents(): Promise<Array<RiskEvent>>;
+    getSimulationStats(): Promise<{
+        totalSimHandoffs: bigint;
+        totalSimScans: bigint;
+        totalSimVolunteers: bigint;
+        simulationStartTime: bigint;
+    }>;
     getSocialStressBaseline(): Promise<Array<[string, number]>>;
     getTotalCostPlusReferrals(): Promise<bigint>;
     getTotalHandoffs(): Promise<bigint>;
@@ -131,12 +169,16 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getWeatherAlerts(): Promise<string>;
     getWeatherRisk(): Promise<number>;
+    incrementSimulationStats(handoffs: bigint, scans: bigint): Promise<void>;
+    initSimulationTime(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
+    markResourceUsed(resourceCategory: string): Promise<boolean>;
     receiveRiskPacket(packet: RiskPacket): Promise<void>;
     recordCostPlusReferral(providerId: string): Promise<void>;
     recordTouchpoint(agentId: string, _zip: string): Promise<void>;
     registerHelper(firstName: string, lastName: string, email: string, zip: string, phone: string, helpType: string, consent: boolean, note: string): Promise<void>;
     registerProvider(id: string, name: string, lat: number, lng: number, providerType: string): Promise<void>;
+    removeFavoriteProvider(providerId: string): Promise<boolean>;
     removeRiskEvent(id: string): Promise<boolean>;
     resetFiscalData(): Promise<void>;
     runHeartbeat(): Promise<Array<string>>;
@@ -144,9 +186,12 @@ export interface backendInterface {
     setEmergencyActive(isActive: boolean): Promise<void>;
     setPredictionEngineState(state: PredictionEngineState): Promise<void>;
     setProviderActiveStatus(id: string, status: boolean): Promise<void>;
+    setSimulationVolunteers(count: bigint): Promise<void>;
+    submitCitizenReport(zipCode: string, activityType: string, content: string, lat: number | null, lng: number | null): Promise<string>;
     toggleLive(id: string, status: boolean): Promise<void>;
     updateInventory(id: string, newInventory: string): Promise<void>;
     updateRiskEvent(id: string, event: RiskEvent): Promise<boolean>;
+    upvoteCitizenReport(reportId: string): Promise<boolean>;
     verifyHandoff(token: string): Promise<VerifyResult>;
     verifyProvider(id: string): Promise<void>;
 }

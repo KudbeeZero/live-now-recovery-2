@@ -1,5 +1,5 @@
 import type { FeatureCollection, Point } from "geojson";
-import { AlertTriangle, MapPin } from "lucide-react";
+import { AlertTriangle, MapPin, MessageSquarePlus } from "lucide-react";
 import maplibregl, {
   type GeoJSONSource,
   type Map as MaplibreMap,
@@ -10,12 +10,15 @@ import { useEffect, useRef, useState } from "react";
 import { ProviderStatus } from "../backend";
 import {
   useAllProviders,
+  useGetAllReports,
   useGetRiskEvents,
   useGetSocialStressBaseline,
   useGetWeatherRisk,
   useHandoffCountsByZip,
+  useUpvoteCitizenReport,
 } from "../hooks/useQueries";
 import { usePredictionEngineStore } from "../store/predictionEngineStore";
+import type { CitizenReport } from "../types/community";
 import {
   handoffCountsToHeatmapGeoJSON,
   providersToGeoJSON,
@@ -25,6 +28,7 @@ import {
   type FrontendRiskEvent,
   buildSentinelGeoJSON,
 } from "../utils/riskCalculator";
+import { CitizenReportComposer } from "./CitizenReportComposer";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -111,10 +115,18 @@ export function EnhancedRecoveryMap({
   const mapInstanceRef = useRef<MaplibreMap | null>(null);
   const popupRef = useRef<MaplibrePopup | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [_loadError, setLoadError] = useState<string | null>(null);
 
   // ── Sentinel Risk overlay state ──────────────────────────────────────────
   const [sentinelActive, setSentinelActive] = useState(false);
+
+  // ── Community Reports state ──────────────────────────────────────────────
+  const [showCommunityReports, setShowCommunityReports] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
+
+  // ── Citizen reports data ─────────────────────────────────────────────────
+  const { data: citizenReports = [] } = useGetAllReports();
+  const upvoteMutation = useUpvoteCitizenReport();
 
   // Prediction engine store
   const predictionSettings = usePredictionEngineStore((s) => s.settings);
@@ -148,13 +160,13 @@ export function EnhancedRecoveryMap({
   const { data: providers = [] } = useAllProviders();
   const { data: handoffCounts = [] } = useHandoffCountsByZip();
   // ── Weather widget state ─────────────────────────────────────────────────
-  const [weatherData, setWeatherData] = useState<{
+  const [_weatherData, setWeatherData] = useState<{
     temp: number;
     desc: string;
     icon: string;
     city: string;
   } | null>(null);
-  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [_weatherLoading, setWeatherLoading] = useState(false);
   const weatherTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Map WMO weather codes to emoji + label
@@ -233,7 +245,7 @@ export function EnhancedRecoveryMap({
     };
   }, [showWeather, mapReady]);
 
-  const liveCount = providers.filter(
+  const _liveCount = providers.filter(
     (p) => p.status === ProviderStatus.Live && !isProviderStale(p.lastVerified),
   ).length;
 
@@ -1041,6 +1053,169 @@ export function EnhancedRecoveryMap({
     );
   }, [activeFilter, mapReady]);
 
+  // ── Community Reports layer — add/remove/update ──────────────────────────
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+    const SOURCE = "citizen-reports-source";
+    const LAYER = "citizen-reports-layer";
+    const LAYER_LABELS = "citizen-reports-labels";
+
+    function colorForReportType(type: string): string {
+      if (type === "narcan-used") return "#22c55e";
+      if (
+        type === "area-concern" ||
+        type === "suspected-od" ||
+        type === "bad-batch-alert"
+      )
+        return "#f97316";
+      if (type === "resource-found") return "#60a5fa";
+      if (type === "check-in") return "#a78bfa";
+      return "#94a3b8";
+    }
+
+    function removeReportLayers() {
+      try {
+        if (map.getLayer(LAYER_LABELS)) map.removeLayer(LAYER_LABELS);
+        if (map.getLayer(LAYER)) map.removeLayer(LAYER);
+        if (map.getSource(SOURCE)) map.removeSource(SOURCE);
+      } catch (_e) {
+        /* ignore */
+      }
+    }
+
+    if (!showCommunityReports) {
+      removeReportLayers();
+      return;
+    }
+
+    // Build GeoJSON from reports that have coordinates
+    const reportFeatures = citizenReports
+      .filter(
+        (r): r is CitizenReport & { lat: number; lng: number } =>
+          typeof r.lat === "number" && typeof r.lng === "number",
+      )
+      .map((r) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] },
+        properties: {
+          id: r.id,
+          activityType: r.activityType,
+          content: r.content,
+          upvotes: r.upvotes,
+          color: colorForReportType(r.activityType),
+          zipCode: r.zipCode,
+        },
+      }));
+
+    const geoJson: FeatureCollection = {
+      type: "FeatureCollection",
+      features: reportFeatures,
+    };
+
+    const existingSource = map.getSource(SOURCE) as GeoJSONSource | undefined;
+    if (existingSource) {
+      existingSource.setData(geoJson);
+      return;
+    }
+
+    map.addSource(SOURCE, { type: "geojson", data: geoJson });
+
+    map.addLayer({
+      id: LAYER,
+      type: "circle",
+      source: SOURCE,
+      paint: {
+        "circle-radius": 8,
+        "circle-color": ["get", "color"],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "rgba(255,255,255,0.7)",
+        "circle-opacity": 0.9,
+      },
+    });
+
+    map.addLayer({
+      id: LAYER_LABELS,
+      type: "symbol",
+      source: SOURCE,
+      layout: {
+        "text-field": ["concat", "👍 ", ["to-string", ["get", "upvotes"]]],
+        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+        "text-size": 10,
+        "text-offset": [0, 1.2],
+        "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": "#ffffff",
+        "text-halo-color": "rgba(0,0,0,0.6)",
+        "text-halo-width": 1,
+      },
+    });
+
+    // Cursor
+    for (const lyr of [LAYER, LAYER_LABELS]) {
+      map.on("mouseenter", lyr, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", lyr, () => {
+        map.getCanvas().style.cursor = "";
+      });
+    }
+
+    // Popup on click
+    map.on("click", LAYER, (e) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+      const p = feature.properties as {
+        id: string;
+        activityType: string;
+        content: string;
+        upvotes: number;
+        color: string;
+        zipCode: string;
+      };
+      const truncated =
+        p.content.length > 140 ? `${p.content.slice(0, 140)}…` : p.content;
+      const typeLabel = p.activityType
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+      const html = `
+        <div style="background:#0d1b2a;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;min-width:210px;max-width:270px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:11px;font-weight:700;color:${p.color};text-transform:uppercase;letter-spacing:0.06em;">${typeLabel}</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.4);">ZIP ${p.zipCode}</span>
+          </div>
+          <p style="color:#e2e8f0;font-size:12px;line-height:1.5;margin:0 0 10px 0;">${truncated}</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:11px;color:rgba(110,231,208,0.7);">👍 ${p.upvotes} upvotes</span>
+            <button id="upvote-btn-${p.id}" data-report-id="${p.id}" style="background:rgba(0,255,136,0.12);color:#00ff88;border:1px solid rgba(0,255,136,0.3);font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;cursor:pointer;">Upvote</button>
+          </div>
+        </div>`;
+
+      new maplibregl.Popup({ closeButton: true, maxWidth: "290px" })
+        .setLngLat(e.lngLat)
+        .setHTML(html)
+        .addTo(map);
+
+      setTimeout(() => {
+        const btn = document.getElementById(`upvote-btn-${p.id}`);
+        if (btn) {
+          btn.addEventListener("click", () => {
+            upvoteMutation.mutate(p.id);
+            btn.textContent = "✓ Thanks!";
+            btn.style.opacity = "0.5";
+            (btn as HTMLButtonElement).disabled = true;
+          });
+        }
+      }, 50);
+    });
+
+    return () => {
+      removeReportLayers();
+    };
+  }, [showCommunityReports, mapReady, citizenReports, upvoteMutation]);
+
   // ── Locate-me handler ─────────────────────────────────────────────────────
   const handleLocateMe = () => {
     if (!mapInstanceRef.current) return;
@@ -1105,132 +1280,106 @@ export function EnhancedRecoveryMap({
         </svg>
       </button>
 
-      {/* Empty state overlay — shown when canister has no providers yet */}
-      {mapReady && providers.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50 rounded-xl z-10 pointer-events-none px-6 text-center">
-          <MapPin className="w-8 h-8" style={{ color: "#6ee7d0" }} />
-          <p className="text-sm font-semibold" style={{ color: "#6ee7d0" }}>
-            No providers loaded yet
-          </p>
-          <p className="text-xs" style={{ color: "rgba(110,231,208,0.6)" }}>
-            Admin: go to /admin → Sign In → "Seed Ohio Providers" to populate
-            the map
-          </p>
-        </div>
-      )}
-
-      {/* Loading skeleton */}
-      {!mapReady && !loadError && (
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center z-20"
-          style={{ background: "#0a1520" }}
-          data-ocid="map.loading_state"
-        >
-          <div className="w-full h-full absolute inset-0 opacity-10">
-            {["a", "b", "c", "d", "e", "f"].map((k) => (
-              <div
-                key={k}
-                className="border-b border-white/10"
-                style={{ height: "16.666%" }}
-              />
-            ))}
-          </div>
-          <div className="relative flex flex-col items-center gap-3">
-            <div className="w-10 h-10 rounded-full border-2 border-[#00ff88]/30 border-t-[#00ff88] animate-spin" />
-            <p className="text-sm font-semibold" style={{ color: "#6ee7d0" }}>
-              Loading Live Recovery Map…
-            </p>
-            <p className="text-xs" style={{ color: "#4a6070" }}>
-              Fetching provider locations
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Error state */}
-      {loadError && (
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center z-20 gap-3 px-6 text-center"
-          style={{ background: "#0a1520" }}
-          data-ocid="map.error_state"
-        >
-          <div className="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center">
-            <span className="text-red-400 text-lg">!</span>
-          </div>
-          <p className="text-sm font-semibold text-red-400">
-            Map failed to load
-          </p>
-          <p className="text-xs" style={{ color: "#4a6070" }}>
-            {loadError}
-          </p>
-        </div>
-      )}
-
-      {/* Live count badge */}
+      {/* Report Activity button — opens the composer */}
       {mapReady && (
-        <div
-          className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl"
+        <button
+          type="button"
+          aria-label="Submit a community report"
+          onClick={() => setShowComposer(true)}
+          data-ocid="map.report_activity_btn"
+          className="absolute z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all duration-150 hover:scale-105 active:scale-95"
           style={{
+            bottom: "134px",
+            right: "10px",
             background: "rgba(15,25,35,0.9)",
-            border: "1px solid rgba(0,255,136,0.25)",
-          }}
-          data-ocid="map.panel"
-        >
-          <span
-            className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shrink-0"
-            style={{ boxShadow: "0 0 6px rgba(0,255,136,0.8)" }}
-          />
-          <span className="text-xs font-bold text-[#00ff88]">
-            {liveCount} Live
-          </span>
-          <span className="text-xs" style={{ color: "rgba(110,231,208,0.6)" }}>
-            providers
-          </span>
-        </div>
-      )}
-
-      {/* Weather widget — upper-left, Apple Maps style */}
-      {showWeather && mapReady && (
-        <div
-          className="absolute z-10 flex items-center gap-2.5 px-3 py-2 rounded-xl"
-          style={{
-            top: "52px",
-            left: "10px",
-            background: "rgba(15,25,35,0.92)",
-            border: "1px solid rgba(255,255,255,0.12)",
+            border: "1px solid rgba(0,255,136,0.28)",
             backdropFilter: "blur(8px)",
-            minWidth: "130px",
           }}
-          data-ocid="map.weather_widget"
         >
-          {weatherLoading && !weatherData ? (
-            <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white/70 animate-spin" />
-          ) : weatherData ? (
-            <>
-              <span className="text-xl leading-none">{weatherData.icon}</span>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-white leading-tight">
-                  {weatherData.temp}°F
-                </span>
-                <span
-                  className="text-[10px] font-medium leading-tight"
-                  style={{ color: "rgba(110,231,208,0.85)" }}
-                >
-                  {weatherData.desc}
-                </span>
-                <span
-                  className="text-[9px] leading-tight"
-                  style={{ color: "rgba(255,255,255,0.45)" }}
-                >
-                  {weatherData.city}
-                </span>
-              </div>
-            </>
-          ) : null}
-        </div>
+          <MessageSquarePlus
+            className="w-3.5 h-3.5 shrink-0"
+            style={{ color: "#00ff88" }}
+          />
+          <span className="text-xs font-bold" style={{ color: "#00ff88" }}>
+            Report
+          </span>
+        </button>
       )}
 
-      {/* Sentinel Risk toggle chip — bottom-left corner, above locate-me */}
+      {/* Community Reports toggle chip */}
+      {mapReady && (
+        <button
+          type="button"
+          onClick={() => setShowCommunityReports((v) => !v)}
+          data-ocid="map.community_reports_toggle"
+          aria-pressed={showCommunityReports}
+          aria-label={
+            showCommunityReports
+              ? "Hide community reports"
+              : "Show community reports"
+          }
+          className="absolute z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
+          style={{
+            bottom: "176px",
+            right: "10px",
+            background: showCommunityReports
+              ? "rgba(96,165,250,0.18)"
+              : "rgba(15,25,35,0.9)",
+            border: showCommunityReports
+              ? "1px solid rgba(96,165,250,0.45)"
+              : "1px solid rgba(255,255,255,0.12)",
+            backdropFilter: "blur(8px)",
+            boxShadow: showCommunityReports
+              ? "0 0 12px rgba(96,165,250,0.22)"
+              : "none",
+          }}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <title>Community reports</title>
+            <circle
+              cx="12"
+              cy="12"
+              r="4"
+              stroke={
+                showCommunityReports ? "#60a5fa" : "rgba(110,231,208,0.7)"
+              }
+              strokeWidth="2"
+            />
+            <path
+              d="M12 2v3M12 19v3M2 12h3M19 12h3"
+              stroke={
+                showCommunityReports ? "#60a5fa" : "rgba(110,231,208,0.7)"
+              }
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          <span
+            className="text-xs font-bold"
+            style={{
+              color: showCommunityReports ? "#60a5fa" : "rgba(110,231,208,0.7)",
+            }}
+          >
+            Community
+          </span>
+          {showCommunityReports && citizenReports.length > 0 && (
+            <span
+              className="px-1 py-px rounded-full text-[9px] font-black leading-none"
+              style={{ background: "#60a5fa", color: "#fff" }}
+            >
+              {citizenReports.length}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Sentinel Risk toggle chip */}
       {mapReady && (
         <button
           type="button"
@@ -1244,7 +1393,7 @@ export function EnhancedRecoveryMap({
           }
           className="absolute z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
           style={{
-            bottom: "134px",
+            bottom: "218px",
             right: "10px",
             background: sentinelActive
               ? "rgba(220,38,38,0.2)"
@@ -1277,6 +1426,11 @@ export function EnhancedRecoveryMap({
             />
           )}
         </button>
+      )}
+
+      {/* Citizen Report Composer modal */}
+      {showComposer && (
+        <CitizenReportComposer onClose={() => setShowComposer(false)} />
       )}
     </div>
   );

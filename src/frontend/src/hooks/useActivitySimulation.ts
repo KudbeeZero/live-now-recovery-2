@@ -1,6 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { usePredictionEngineStore } from "../store/predictionEngineStore";
+import {
+  useGetSimulationStats,
+  useIncrementSimulationStats,
+  useInitSimulationTime,
+} from "./useQueries";
 
 // ─── Ohio ZIP → City map (required ZIPs from spec) ────────────────────────────
 
@@ -53,94 +58,24 @@ const MILESTONE_POOL: ((city: string) => string)[] = [
 ];
 
 // ─── Audio subsystem ──────────────────────────────────────────────────────────
+// Audio context kept for future re-enablement once backend TTS proxy is wired up.
 
-let audioUnlocked = false;
-let pendingAudioCtx: AudioContext | null = null;
-
-function ensureAudioContext(): AudioContext {
-  if (!pendingAudioCtx) {
-    pendingAudioCtx = new AudioContext();
-  }
-  return pendingAudioCtx;
-}
-
-/** Unlock audio on first user gesture — required by iOS Safari */
-function setupAudioUnlock() {
-  const unlock = () => {
-    try {
-      const ctx = ensureAudioContext();
-      if (ctx.state === "suspended") {
-        ctx.resume().catch(() => {});
-      }
-      audioUnlocked = true;
-    } catch {
-      // ignore
-    }
-  };
-  document.addEventListener("click", unlock, { once: true });
-  document.addEventListener("touchstart", unlock, { once: true });
-}
-
-// Initialize audio unlock listener immediately (module level)
-setupAudioUnlock();
-
-/** Truncate message to max 200 chars for TTS clips */
-function truncateForTTS(text: string): string {
-  if (text.length <= 200) return text;
-  const cut = text.slice(0, 200);
-  const lastSpace = cut.lastIndexOf(" ");
-  return lastSpace > 100 ? `${cut.slice(0, lastSpace)}.` : `${cut}.`;
-}
-
-const ELEVENLABS_API_KEY =
-  "sk_0f7ce7dfa7d51f3eae33d595787f454d6888a444f1cffef2";
-const VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel
+const VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel — used when backend TTS proxy is available
 
 /**
  * Speak text via ElevenLabs TTS (Rachel voice).
- * Plays through Web Audio API for best cross-platform compatibility.
- * Silently no-ops if audio context is not yet unlocked (user hasn't interacted).
+ * All ElevenLabs API calls must be routed through the ICP backend proxy to keep
+ * the API key out of the frontend bundle. Until a backend `getTextToSpeech`
+ * function is available, this silently no-ops so TTS is non-functional but the
+ * rest of the simulation continues to work.
  */
-export async function speakText(text: string): Promise<void> {
-  if (!audioUnlocked) return;
-
-  const truncated = truncateForTTS(text);
-
-  try {
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "xi-api-key": ELEVENLABS_API_KEY,
-        },
-        body: JSON.stringify({
-          text: truncated,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-        }),
-      },
-    );
-
-    if (!response.ok) return;
-
-    const arrayBuffer = await response.arrayBuffer();
-    const ctx = ensureAudioContext();
-
-    // Resume context if suspended (needed on some mobile browsers)
-    if (ctx.state === "suspended") {
-      await ctx.resume();
-    }
-
-    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-    const source = ctx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(ctx.destination);
-    source.start(0);
-  } catch {
-    // Audio is non-critical — silently degrade
-  }
+export async function speakText(_text: string): Promise<void> {
+  // NOTE: TTS is intentionally disabled here. The ElevenLabs API key must
+  // never be placed in frontend code. Wire this up to the backend canister's
+  // getTextToSpeech() proxy function when it is available.
+  console.warn(
+    `[speakText] TTS disabled — backend proxy required (voiceId: ${VOICE_ID})`,
+  );
 }
 
 // ─── Jackpot event listener ───────────────────────────────────────────────────
@@ -205,9 +140,39 @@ function nextToastDelayMs(avgDailyHandoffCount: number): number {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useActivitySimulation() {
+export interface ActivitySimulationResult {
+  /** Handoffs generated in this browser session */
+  currentSessionHandoffs: number;
+  /** Cumulative handoffs stored in the canister */
+  backendTotalHandoffs: number;
+  /** Volunteer count from the canister (starts at 47) */
+  backendTotalVolunteers: number;
+}
+
+export function useActivitySimulation(): ActivitySimulationResult {
   const { settings } = usePredictionEngineStore();
   const { simulationEnabled, avgDailyHandoffCount, potencyToggle } = settings;
+
+  // Backend simulation stats
+  const { data: simStats } = useGetSimulationStats();
+  const incrementStats = useIncrementSimulationStats();
+  const initSimTime = useInitSimulationTime();
+
+  // Session-local handoff counter
+  const [currentSessionHandoffs, setCurrentSessionHandoffs] = useState(0);
+
+  // Init simulation time once per session (fire-and-forget)
+  const initFiredRef = useRef(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const initSimMutate = useRef(initSimTime.mutate);
+  useEffect(() => {
+    initSimMutate.current = initSimTime.mutate;
+  });
+  useEffect(() => {
+    if (initFiredRef.current) return;
+    initFiredRef.current = true;
+    initSimMutate.current();
+  }, []);
 
   // Keep a ref so the timeout callback always reads the latest values
   const stateRef = useRef({
@@ -225,6 +190,11 @@ export function useActivitySimulation() {
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const incrementStatsMutate = useRef(incrementStats.mutate);
+  useEffect(() => {
+    incrementStatsMutate.current = incrementStats.mutate;
+  });
+
   useEffect(() => {
     if (!simulationEnabled) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -239,6 +209,11 @@ export function useActivitySimulation() {
       const delay = nextToastDelayMs(avgDailyHandoffCount);
       timeoutRef.current = setTimeout(() => {
         fireToast(potencyToggle);
+        // Increment session counter
+        setCurrentSessionHandoffs((prev) => prev + 1);
+        // Increment backend counter: 1 handoff, 1-3 scans (fire-and-forget)
+        const scans = Math.floor(Math.random() * 3) + 1;
+        incrementStatsMutate.current({ handoffs: 1n, scans: BigInt(scans) });
         scheduleNext();
       }, delay);
     }
@@ -249,6 +224,17 @@ export function useActivitySimulation() {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [simulationEnabled]);
+
+  const backendTotalHandoffs = simStats ? Number(simStats.totalSimHandoffs) : 0;
+  const backendTotalVolunteers = simStats
+    ? Number(simStats.totalSimVolunteers)
+    : 47;
+
+  return {
+    currentSessionHandoffs,
+    backendTotalHandoffs,
+    backendTotalVolunteers,
+  };
 }
 
 // ─── Toast firing ─────────────────────────────────────────────────────────────

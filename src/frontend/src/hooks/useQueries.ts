@@ -7,6 +7,12 @@ import type {
   VerifyResult,
 } from "../backend";
 import { createActor } from "../backend";
+import type {
+  ActivityTypeValue,
+  CitizenReport,
+  ProviderPost,
+  RecoveryProfile,
+} from "../types/community";
 
 // ─── Public queries — no authentication required ────────────────────────────
 // These call backend query methods that are publicly accessible on ICP.
@@ -434,6 +440,188 @@ export function useRegisterHelper() {
         agreed,
         "", // note — not collected in UI
       );
+    },
+  });
+}
+
+// ─── Simulation Stats hooks ───────────────────────────────────────────────────
+
+export function useGetSimulationStats() {
+  const { actor } = useActor(createActor);
+  return useQuery({
+    queryKey: ["simulationStats"],
+    queryFn: async () => {
+      if (!actor)
+        return {
+          totalSimHandoffs: 0n,
+          totalSimScans: 0n,
+          totalSimVolunteers: 47n,
+          simulationStartTime: 0n,
+        };
+      try {
+        return await actor.getSimulationStats();
+      } catch (err) {
+        console.error("[useGetSimulationStats] Failed:", err);
+        return {
+          totalSimHandoffs: 0n,
+          totalSimScans: 0n,
+          totalSimVolunteers: 47n,
+          simulationStartTime: 0n,
+        };
+      }
+    },
+    enabled: !!actor,
+    refetchInterval: 60_000,
+    retry: 2,
+  });
+}
+
+export function useIncrementSimulationStats() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      handoffs,
+      scans,
+    }: {
+      handoffs: bigint;
+      scans: bigint;
+    }): Promise<void> => {
+      if (!actor) return; // fire-and-forget: silently skip if no actor
+      return actor.incrementSimulationStats(handoffs, scans);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["simulationStats"] });
+    },
+  });
+}
+
+export function useSetSimulationVolunteers() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (count: bigint): Promise<void> => {
+      if (!actor) return;
+      return actor.setSimulationVolunteers(count);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["simulationStats"] });
+    },
+  });
+}
+
+export function useInitSimulationTime() {
+  const { actor } = useActor(createActor);
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      if (!actor) return;
+      return actor.initSimulationTime();
+    },
+  });
+}
+
+// ─── Community Layer: Provider Posts ─────────────────────────────────────────
+
+export function useGetProviderPosts(providerId: string) {
+  return useQuery<ProviderPost[]>({
+    queryKey: ["providerPosts", providerId],
+    queryFn: async () => [],
+    enabled: !!providerId,
+    staleTime: 30_000,
+  });
+}
+
+export function useAddProviderPost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (_payload: {
+      providerId: string;
+      content: string;
+      imageUrl?: string;
+    }): Promise<void> => {
+      // stub — backend integration follows in a separate task
+      return Promise.resolve();
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({
+        queryKey: ["providerPosts", variables.providerId],
+      });
+    },
+  });
+}
+
+// ─── Community Layer: Recovery Profiles ──────────────────────────────────────
+
+export function useGetRecoveryProfile() {
+  return useQuery<RecoveryProfile | null>({
+    queryKey: ["recoveryProfile"],
+    queryFn: async () => null,
+    staleTime: 60_000,
+  });
+}
+
+export function useCreateRecoveryProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (_payload: {
+      displayName: string;
+      zip: string;
+    }): Promise<void> => {
+      return Promise.resolve();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recoveryProfile"] });
+    },
+  });
+}
+
+export function useAddFavoriteProvider() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (_payload: {
+      providerId: string;
+      remove?: boolean;
+    }): Promise<void> => {
+      return Promise.resolve();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recoveryProfile"] });
+    },
+  });
+}
+
+// ─── Community Layer: Citizen Reports ────────────────────────────────────────
+
+export function useGetAllReports() {
+  return useQuery<CitizenReport[]>({
+    queryKey: ["citizenReports"],
+    queryFn: async () => [],
+    staleTime: 30_000,
+  });
+}
+
+export function useSubmitCitizenReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      _report: Omit<CitizenReport, "id" | "upvotes" | "createdAt">,
+    ): Promise<void> => {
+      return Promise.resolve();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["citizenReports"] });
+    },
+  });
+}
+
+export function useUpvoteCitizenReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (_reportId: string): Promise<void> => {
+      return Promise.resolve();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["citizenReports"] });
     },
   });
 }

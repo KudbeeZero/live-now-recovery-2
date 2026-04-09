@@ -12,6 +12,7 @@ const sections = [
       { to: "/verify", label: "Verify Handoff" },
       { to: "/register", label: "Register as Provider" },
       { to: "/signup", label: "Sign Up" },
+      { to: "/my-recovery", label: "My Recovery Account" },
       { to: "/admin", label: "Admin Panel" },
     ],
   },

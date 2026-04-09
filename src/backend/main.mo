@@ -581,6 +581,17 @@ actor {
   var stabilizedAgents : Nat = 0;
   var touchpointData : [TouchpointRecord] = [];
 
+  // ── Simulation Stats State ────────────────────────────────────────────────────
+  var totalSimHandoffs : Nat = 0;
+  var totalSimScans : Nat = 0;
+  var totalSimVolunteers : Nat = 47;
+  var simulationStartTime : Int = 0;
+
+  // ── Community Feature State ───────────────────────────────────────────────────
+  let providerPosts = Map.empty<Text, ProviderPost>();
+  let citizenReports = Map.empty<Text, CitizenReport>();
+  let recoveryProfiles = Map.empty<Principal, RecoveryProfile>();
+
   // ── Fiscal Impact Functions ───────────────────────────────────────────────────
 
   // recordTouchpoint — public update (no PHI), implements 7-Attempts model
@@ -684,6 +695,37 @@ actor {
       Runtime.trap("Unauthorized: Only admins can view touchpoint data");
     };
     touchpointData;
+  };
+
+  // ── Community Feature Types ───────────────────────────────────────────────────
+
+  public type ProviderPost = {
+    id : Text;
+    providerId : Text;
+    content : Text;
+    imageUrl : ?Text;
+    createdAt : Int;
+  };
+
+  // NO-PHI: location/activity only, no names or patient data
+  public type CitizenReport = {
+    id : Text;
+    zipCode : Text;
+    activityType : Text;
+    content : Text;
+    upvotes : Nat;
+    lat : ?Float;
+    lng : ?Float;
+    createdAt : Int;
+  };
+
+  public type RecoveryProfile = {
+    id : Text;
+    displayName : Text;
+    zip : Text;
+    favoriteProviders : [Text];
+    resourcesUsed : [Text];
+    createdAt : Int;
   };
 
   // ── Prediction Engine Types ──────────────────────────────────────────────────
@@ -1036,5 +1078,224 @@ actor {
       return #Unknown;
     };
     #Live;
+  };
+
+  // ── Simulation Stats Functions ────────────────────────────────────────────────
+
+  // getSimulationStats — public query, returns cumulative simulation counters
+  public query func getSimulationStats() : async {
+    totalSimHandoffs : Nat;
+    totalSimScans : Nat;
+    totalSimVolunteers : Nat;
+    simulationStartTime : Int;
+  } {
+    {
+      totalSimHandoffs;
+      totalSimScans;
+      totalSimVolunteers;
+      simulationStartTime;
+    };
+  };
+
+  // incrementSimulationStats — public update, accumulates handoff and scan counts
+  public shared func incrementSimulationStats(handoffs : Nat, scans : Nat) : async () {
+    totalSimHandoffs += handoffs;
+    totalSimScans += scans;
+  };
+
+  // setSimulationVolunteers — public update, sets volunteer count
+  public shared func setSimulationVolunteers(count : Nat) : async () {
+    totalSimVolunteers := count;
+  };
+
+  // initSimulationTime — public update, sets simulationStartTime to now on first call only
+  public shared func initSimulationTime() : async () {
+    if (simulationStartTime == 0) {
+      simulationStartTime := Time.now();
+    };
+  };
+
+  // ── Provider Posts ────────────────────────────────────────────────────────────
+
+  // addProviderPost — provider-only; returns new post ID
+  public shared ({ caller }) func addProviderPost(providerId : Text, content : Text, imageUrl : ?Text) : async Text {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    let id = "post-".concat(Time.now().toText());
+    let post : ProviderPost = {
+      id;
+      providerId;
+      content;
+      imageUrl;
+      createdAt = Time.now();
+    };
+    providerPosts.add(id, post);
+    id;
+  };
+
+  // getProviderPosts — public query; returns all posts for a provider
+  public query func getProviderPosts(providerId : Text) : async [ProviderPost] {
+    let filtered = providerPosts.values().toArray().filter(
+      func(p : ProviderPost) : Bool { p.providerId == providerId }
+    );
+    filtered.sort(func(a : ProviderPost, b : ProviderPost) : Order.Order {
+      // descending: compare b to a
+      Int.compare(b.createdAt, a.createdAt)
+    });
+  };
+
+  // ── Citizen Reports (NO-PHI) ──────────────────────────────────────────────────
+
+  // submitCitizenReport — anonymous OK; returns new report ID
+  public shared func submitCitizenReport(zipCode : Text, activityType : Text, content : Text, lat : ?Float, lng : ?Float) : async Text {
+    if (zipCode.size() == 0) {
+      Runtime.trap("ZIP code is required");
+    };
+    if (content.size() > 280) {
+      Runtime.trap("Content exceeds 280 character limit");
+    };
+    let id = "report-".concat(Time.now().toText());
+    let report : CitizenReport = {
+      id;
+      zipCode;
+      activityType;
+      content;
+      upvotes = 0;
+      lat;
+      lng;
+      createdAt = Time.now();
+    };
+    citizenReports.add(id, report);
+    id;
+  };
+
+  // getReportsByZip — public query; returns reports for a ZIP code
+  public query func getReportsByZip(zipCode : Text) : async [CitizenReport] {
+    let filtered = citizenReports.values().toArray().filter(
+      func(r : CitizenReport) : Bool { r.zipCode == zipCode }
+    );
+    filtered.sort(func(a : CitizenReport, b : CitizenReport) : Order.Order {
+      Int.compare(b.createdAt, a.createdAt)
+    });
+  };
+
+  // getAllReports — public query; returns all reports for the map layer
+  public query func getAllReports() : async [CitizenReport] {
+    let all = citizenReports.values().toArray();
+    let sorted = all.sort(func(a : CitizenReport, b : CitizenReport) : Order.Order {
+      Int.compare(b.createdAt, a.createdAt)
+    });
+    // Limit to most recent 100 to prevent performance issues
+    if (sorted.size() <= 100) {
+      sorted;
+    } else {
+      sorted.sliceToArray(0, 100);
+    };
+  };
+
+  // upvoteCitizenReport — anonymous OK; returns true if report was found and upvoted
+  public shared func upvoteCitizenReport(reportId : Text) : async Bool {
+    switch (citizenReports.get(reportId)) {
+      case (null) { false };
+      case (?report) {
+        citizenReports.add(reportId, { report with upvotes = report.upvotes + 1 });
+        true;
+      };
+    };
+  };
+
+  // ── Recovery Profiles ─────────────────────────────────────────────────────────
+
+  // createRecoveryProfile — caller-authenticated; returns profile ID (principal text)
+  public shared ({ caller }) func createRecoveryProfile(displayName : Text, zip : Text) : async Text {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    // Idempotent: return existing profile ID if already exists
+    let profileId = caller.toText();
+    let profile : RecoveryProfile = {
+      id = profileId;
+      displayName;
+      zip;
+      favoriteProviders = [];
+      resourcesUsed = [];
+      createdAt = Time.now();
+    };
+    // Only create if not already present
+    switch (recoveryProfiles.get(caller)) {
+      case (?existing) { existing.id };
+      case (null) {
+        recoveryProfiles.add(caller, profile);
+        profileId;
+      };
+    };
+  };
+
+  // getRecoveryProfile — caller-authenticated; returns caller's own profile
+  public query ({ caller }) func getRecoveryProfile() : async ?RecoveryProfile {
+    recoveryProfiles.get(caller);
+  };
+
+  // addFavoriteProvider — caller-authenticated; returns true on success
+  public shared ({ caller }) func addFavoriteProvider(providerId : Text) : async Bool {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    switch (recoveryProfiles.get(caller)) {
+      case (null) { false };
+      case (?profile) {
+        // Deduplicate: only add if not already present
+        let alreadyPresent = profile.favoriteProviders.find(func(id : Text) : Bool { id == providerId });
+        switch (alreadyPresent) {
+          case (?_) { true }; // already in list, no-op but success
+          case (null) {
+            let updated = { profile with favoriteProviders = profile.favoriteProviders.concat([providerId]) };
+            recoveryProfiles.add(caller, updated);
+            true;
+          };
+        };
+      };
+    };
+  };
+
+  // removeFavoriteProvider — caller-authenticated; returns true on success
+  public shared ({ caller }) func removeFavoriteProvider(providerId : Text) : async Bool {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    switch (recoveryProfiles.get(caller)) {
+      case (null) { false };
+      case (?profile) {
+        let before = profile.favoriteProviders.size();
+        let filtered = profile.favoriteProviders.filter(func(id : Text) : Bool { id != providerId });
+        let removed = filtered.size() < before;
+        if (removed) {
+          recoveryProfiles.add(caller, { profile with favoriteProviders = filtered });
+        };
+        removed;
+      };
+    };
+  };
+
+  // markResourceUsed — caller-authenticated; returns true on success
+  public shared ({ caller }) func markResourceUsed(resourceCategory : Text) : async Bool {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    switch (recoveryProfiles.get(caller)) {
+      case (null) { false };
+      case (?profile) {
+        let alreadyMarked = profile.resourcesUsed.find(func(r : Text) : Bool { r == resourceCategory });
+        switch (alreadyMarked) {
+          case (?_) { true }; // already marked, idempotent
+          case (null) {
+            let updated = { profile with resourcesUsed = profile.resourcesUsed.concat([resourceCategory]) };
+            recoveryProfiles.add(caller, updated);
+            true;
+          };
+        };
+      };
+    };
   };
 }
