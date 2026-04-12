@@ -588,10 +588,20 @@ actor {
   var totalSimVolunteers : Nat = 47;
   var simulationStartTime : Int = 0;
 
+  // ── Harm Reduction Inventory Types ───────────────────────────────────────────
+
+  public type HarmReductionItem = {
+    itemType : Text; // "clean_syringes" | "sharps_disposal" | "fentanyl_test_strips" | "narcan_kits" | "wound_care" | "alcohol_swabs"
+    available : Bool;
+    quantity : ?Nat;
+    notes : ?Text;
+  };
+
   // ── Community Feature State ───────────────────────────────────────────────────
   let providerPosts = Map.empty<Text, ProviderPost>();
   let citizenReports = Map.empty<Text, CitizenReport>();
   let recoveryProfiles = Map.empty<Principal, RecoveryProfile>();
+  let harmReductionInventory = Map.empty<Text, [HarmReductionItem]>();
 
   // ── Testimonials & Citizen Risk Boost State ───────────────────────────────────
   // testimonials: array of (id, Testimonial) tuples — consistent with riskEvents/touchpointData patterns
@@ -883,6 +893,30 @@ actor {
           createdAt = Time.now() - (reportIdx * 3_600_000_000_000);
         });
         reportIdx += 1;
+      };
+    };
+
+    // Seed harm reduction inventory for kiosk, ER, and MAT providers if not already seeded
+    if (harmReductionInventory.isEmpty()) {
+      let kioskItems : [HarmReductionItem] = [
+        { itemType = "narcan_kits"; available = true; quantity = ?(20 : Nat); notes = ?"Free, no questions asked" },
+        { itemType = "fentanyl_test_strips"; available = true; quantity = ?(50 : Nat); notes = ?"Free, legal in Ohio" },
+        { itemType = "clean_syringes"; available = true; quantity = ?(100 : Nat); notes = ?"Needle exchange, no questions asked" },
+        { itemType = "sharps_disposal"; available = true; quantity = null; notes = ?"Drop box available 24/7" },
+        { itemType = "wound_care"; available = true; quantity = ?(30 : Nat); notes = ?"Basic wound care kits" },
+        { itemType = "alcohol_swabs"; available = true; quantity = ?(200 : Nat); notes = ?"Available at all hours" },
+      ];
+      let erMatItems : [HarmReductionItem] = [
+        { itemType = "narcan_kits"; available = true; quantity = null; notes = ?"Available on request" },
+        { itemType = "wound_care"; available = true; quantity = null; notes = ?"Clinical wound care available" },
+        { itemType = "alcohol_swabs"; available = true; quantity = null; notes = ?"Standard medical supplies" },
+      ];
+      for ((pid, p) in providers.entries()) {
+        if (p.providerType == "Naloxone Kiosk/Vending Machine") {
+          harmReductionInventory.add(pid, kioskItems);
+        } else if (p.providerType == "Emergency Room" or p.providerType == "MAT Clinic") {
+          harmReductionInventory.add(pid, erMatItems);
+        };
       };
     };
   };
@@ -1520,5 +1554,65 @@ actor {
   // getHelperCount — public query; returns total number of helper signups
   public query func getHelperCount() : async Nat {
     helpers.size();
+  };
+
+  // ── Harm Reduction Inventory Functions ───────────────────────────────────────
+
+  // setHarmReductionInventory — admin or provider; sets harm reduction items for a provider
+  public shared ({ caller }) func setHarmReductionInventory(providerId : Text, items : [HarmReductionItem]) : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous callers are not allowed");
+    };
+    if (not (AccessControl.isAdmin(accessControlState, caller) or isAdminLegacy(caller))) {
+      Runtime.trap("Unauthorized: Only admins can set harm reduction inventory");
+    };
+    harmReductionInventory.add(providerId, items);
+  };
+
+  // getHarmReductionInventory — public query; returns harm reduction items for a provider
+  public query func getHarmReductionInventory(providerId : Text) : async [HarmReductionItem] {
+    switch (harmReductionInventory.get(providerId)) {
+      case null { [] };
+      case (?items) { items };
+    };
+  };
+
+  // getProvidersByHarmReductionItem — public query; returns providers stocking a specific item type
+  public query func getProvidersByHarmReductionItem(itemType : Text) : async [ProviderWithStatus] {
+    // Collect provider IDs that have the requested item available
+    var matchingIds : [Text] = [];
+    for ((pid, items) in harmReductionInventory.entries()) {
+      let hasItem = items.find(func(item : HarmReductionItem) : Bool {
+        item.itemType == itemType and item.available
+      });
+      switch (hasItem) {
+        case (?_) { matchingIds := matchingIds.concat([pid]) };
+        case null {};
+      };
+    };
+    // Map matching IDs to ProviderWithStatus
+    var results : [ProviderWithStatus] = [];
+    for (pid in matchingIds.vals()) {
+      switch (providers.get(pid)) {
+        case null {};
+        case (?p) {
+          results := results.concat([{
+            id = p.id;
+            name = p.name;
+            lat = p.lat;
+            lng = p.lng;
+            isLive = p.isLive;
+            lastVerified = p.lastVerified;
+            status = resolveStatus(p);
+            providerType = p.providerType;
+            is_verified = p.is_verified;
+            is_active = p.is_active;
+            inventory = p.inventory;
+            reputationScore = p.reputationScore;
+          }]);
+        };
+      };
+    };
+    results;
   };
 }

@@ -47,6 +47,7 @@ export function Footer() {
               {[
                 { to: "/", label: "Live Map" },
                 { to: "/citizens", label: "Citizens Hub" },
+                { to: "/national-impact", label: "National Impact" },
                 { to: "/verify", label: "Verify Handoff" },
                 { to: "/helper", label: "Helper Guide" },
                 { to: "/integration", label: "AI Integration" },

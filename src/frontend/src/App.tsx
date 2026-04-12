@@ -30,6 +30,7 @@ import { HowItWorksPage } from "./pages/HowItWorksPage";
 import { IntegrationPage } from "./pages/IntegrationPage";
 import { LocationPage } from "./pages/LocationPage";
 import { MissionPage } from "./pages/MissionPage";
+import { NationalImpactPage } from "./pages/NationalImpactPage";
 import { OhioStatsPage } from "./pages/OhioStatsPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { ProviderPage } from "./pages/ProviderPage";
@@ -284,6 +285,11 @@ const citizensRoute = createRoute({
   path: "/citizens",
   component: CitizensPage,
 });
+const nationalImpactRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/national-impact",
+  component: NationalImpactPage,
+});
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -328,6 +334,7 @@ const routeTree = rootRoute.addChildren([
   sitemapRoute,
   myRecoveryRoute,
   citizensRoute,
+  nationalImpactRoute,
 ]);
 
 const router = createRouter({ routeTree });

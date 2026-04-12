@@ -13,6 +13,7 @@ import {
   useAllProviders,
   useGetActiveRiskBoosts,
   useGetAllReports,
+  useGetProvidersByHarmReductionItem,
   useGetRiskEvents,
   useGetSocialStressBaseline,
   useGetWeatherRisk,
@@ -126,6 +127,9 @@ export function EnhancedRecoveryMap({
   const [showCommunityReports, setShowCommunityReports] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
 
+  // ── Harm Reduction filter state ──────────────────────────────────────────
+  const [showHarmReductionOnly, setShowHarmReductionOnly] = useState(false);
+
   // ── Citizen reports data ─────────────────────────────────────────────────
   const { data: citizenReports = [] } = useGetAllReports();
   const upvoteMutation = useUpvoteCitizenReport();
@@ -167,10 +171,15 @@ export function EnhancedRecoveryMap({
   const marketplaceDataRef = useRef<FeatureCollection | null>(null);
   // Mirror activeFilter for use inside stable map event callbacks
   const activeFilterRef = useRef<string>("all");
+  // Mirror showHarmReductionOnly for use inside stable map event callbacks
+  const showHarmReductionOnlyRef = useRef<boolean>(false);
 
   // ── Existing queries (unchanged) ─────────────────────────────────────────
   const { data: providers = [] } = useAllProviders();
   const { data: handoffCounts = [] } = useHandoffCountsByZip();
+  // ── Harm Reduction providers query ──────────────────────────────────────
+  const { data: harmReductionProviders = [] } =
+    useGetProvidersByHarmReductionItem("narcan_kits");
   // ── Weather widget state ─────────────────────────────────────────────────
   const [_weatherData, setWeatherData] = useState<{
     temp: number;
@@ -647,7 +656,20 @@ export function EnhancedRecoveryMap({
     }
 
     function filteredData(full: FeatureCollection): FeatureCollection {
-      return applyProviderTypeFilter(full, activeFilterRef.current);
+      let result = applyProviderTypeFilter(full, activeFilterRef.current);
+      if (
+        showHarmReductionOnlyRef.current &&
+        harmReductionProviders.length > 0
+      ) {
+        const hrIds = new Set(harmReductionProviders.map((p) => p.id));
+        result = {
+          ...result,
+          features: result.features.filter((f) =>
+            hrIds.has((f.properties?.id as string) ?? ""),
+          ),
+        };
+      }
+      return result;
     }
 
     // ── main init ────────────────────────────────────────────────────────
@@ -890,7 +912,7 @@ export function EnhancedRecoveryMap({
     }, 15_000);
 
     return () => clearInterval(intervalId);
-  }, [mapReady, providers]);
+  }, [mapReady, providers, harmReductionProviders]);
 
   // ── Sync backend prediction data into store ──────────────────────────────
   useEffect(() => {
@@ -1076,13 +1098,26 @@ export function EnhancedRecoveryMap({
       | GeoJSONSource
       | undefined;
     if (!source) return;
-    source.setData(
-      applyProviderTypeFilter(
-        marketplaceDataRef.current,
-        activeFilter ?? "all",
-      ),
+    let filtered = applyProviderTypeFilter(
+      marketplaceDataRef.current,
+      activeFilter ?? "all",
     );
-  }, [activeFilter, mapReady]);
+    if (showHarmReductionOnly && harmReductionProviders.length > 0) {
+      const hrIds = new Set(harmReductionProviders.map((p) => p.id));
+      filtered = {
+        ...filtered,
+        features: filtered.features.filter((f) =>
+          hrIds.has((f.properties?.id as string) ?? ""),
+        ),
+      };
+    }
+    source.setData(filtered);
+  }, [activeFilter, mapReady, showHarmReductionOnly, harmReductionProviders]);
+
+  // ── Sync harm reduction ref ──────────────────────────────────────────────
+  useEffect(() => {
+    showHarmReductionOnlyRef.current = showHarmReductionOnly;
+  }, [showHarmReductionOnly]);
 
   // ── Community Reports layer — add/remove/update ──────────────────────────
   useEffect(() => {
@@ -1454,6 +1489,60 @@ export function EnhancedRecoveryMap({
             <span
               className="w-1.5 h-1.5 rounded-full animate-pulse shrink-0"
               style={{ background: "#f87171" }}
+            />
+          )}
+        </button>
+      )}
+
+      {/* Harm Reduction filter toggle chip */}
+      {mapReady && (
+        <button
+          type="button"
+          onClick={() => setShowHarmReductionOnly((v) => !v)}
+          data-ocid="map.harm_reduction_toggle"
+          aria-pressed={showHarmReductionOnly}
+          aria-label={
+            showHarmReductionOnly
+              ? "Show all providers"
+              : "Show only harm reduction supply locations"
+          }
+          className="absolute z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
+          style={{
+            bottom: "260px",
+            right: "10px",
+            background: showHarmReductionOnly
+              ? "rgba(20,184,166,0.18)"
+              : "rgba(15,25,35,0.9)",
+            border: showHarmReductionOnly
+              ? "1px solid rgba(20,184,166,0.5)"
+              : "1px solid rgba(255,255,255,0.12)",
+            backdropFilter: "blur(8px)",
+            boxShadow: showHarmReductionOnly
+              ? "0 0 12px rgba(20,184,166,0.25)"
+              : "none",
+          }}
+        >
+          <span
+            className="text-sm leading-none"
+            aria-hidden="true"
+            style={{ fontSize: "12px" }}
+          >
+            💊
+          </span>
+          <span
+            className="text-xs font-bold"
+            style={{
+              color: showHarmReductionOnly
+                ? "#2dd4bf"
+                : "rgba(110,231,208,0.7)",
+            }}
+          >
+            Harm Reduction
+          </span>
+          {showHarmReductionOnly && (
+            <span
+              className="w-1.5 h-1.5 rounded-full animate-pulse shrink-0"
+              style={{ background: "#2dd4bf" }}
             />
           )}
         </button>

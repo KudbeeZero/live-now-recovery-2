@@ -15,6 +15,8 @@ type Data__791452850<K, V> =
 type HandoffToken__969534999 =
   {createdAt : Int; token : Text; used : Bool; zipCode : Text};
 type Handoff__23152836 = {timestamp : Int; tokenId : Text; zipCode : Text};
+type HarmReductionItem__904358289 =
+  {available : Bool; itemType : Text; notes : ?Text; quantity : ?Nat};
 type Helper__207691655 =
   {
     consent : Bool;
@@ -144,6 +146,11 @@ actor {
   stable handoffs :
     {
       var root : Node__46230540<Text, Handoff__23152836>;
+      var size : Nat__490723111
+    };
+  stable harmReductionInventory :
+    {
+      var root : Node__46230540<Text, [HarmReductionItem__904358289]>;
       var size : Nat__490723111
     };
   stable helpers :

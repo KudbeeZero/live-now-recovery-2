@@ -25,6 +25,12 @@ export interface CitizenReport {
   'createdAt' : bigint,
   'zipCode' : string,
 }
+export interface HarmReductionItem {
+  'available' : boolean,
+  'notes' : [] | [string],
+  'itemType' : string,
+  'quantity' : [] | [bigint],
+}
 export interface Helper {
   'id' : string,
   'zip' : string,
@@ -158,10 +164,15 @@ export interface _SERVICE {
     }
   >,
   'getHandoffCountsByZip' : ActorMethod<[], Array<[string, bigint]>>,
+  'getHarmReductionInventory' : ActorMethod<[string], Array<HarmReductionItem>>,
   'getHelperCount' : ActorMethod<[], bigint>,
   'getMarketplaceGeoJSON' : ActorMethod<[], string>,
   'getPredictionEngineState' : ActorMethod<[], PredictionEngineState>,
   'getProviderPosts' : ActorMethod<[string], Array<ProviderPost>>,
+  'getProvidersByHarmReductionItem' : ActorMethod<
+    [string],
+    Array<ProviderWithStatus>
+  >,
   'getRecoveryProfile' : ActorMethod<[], [] | [RecoveryProfile]>,
   'getReportsByZip' : ActorMethod<[string], Array<CitizenReport>>,
   'getRiskEvents' : ActorMethod<[], Array<RiskEvent>>,
@@ -204,6 +215,10 @@ export interface _SERVICE {
   'runHeartbeat' : ActorMethod<[], Array<string>>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setEmergencyActive' : ActorMethod<[boolean], undefined>,
+  'setHarmReductionInventory' : ActorMethod<
+    [string, Array<HarmReductionItem>],
+    undefined
+  >,
   'setPredictionEngineState' : ActorMethod<[PredictionEngineState], undefined>,
   'setProviderActiveStatus' : ActorMethod<[string, boolean], undefined>,
   'setSimulationVolunteers' : ActorMethod<[bigint], undefined>,

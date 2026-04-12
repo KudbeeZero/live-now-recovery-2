@@ -11,6 +11,7 @@ import type {
   ActivityTypeValue,
   CitizenReport,
   CitizenRiskBoost,
+  HarmReductionItem,
   ProviderPost,
   RecoveryProfile,
   Testimonial,
@@ -899,6 +900,86 @@ export function useGetTestimonialCount() {
       }
     },
     enabled: !!actor,
+    refetchInterval: 60_000,
+    retry: 2,
+  });
+}
+
+// ─── Harm Reduction Inventory ─────────────────────────────────────────────────
+
+export function useGetHarmReductionInventory(providerId: string) {
+  const { actor } = useActor(createActor);
+  return useQuery<HarmReductionItem[]>({
+    queryKey: ["harmReductionInventory", providerId],
+    queryFn: async () => {
+      if (!actor || !providerId) return [];
+      try {
+        return await (
+          actor as unknown as Record<
+            string,
+            (id: string) => Promise<HarmReductionItem[]>
+          >
+        ).getHarmReductionInventory(providerId);
+      } catch (err) {
+        console.error("[useGetHarmReductionInventory] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !!providerId,
+    refetchInterval: 60_000,
+    retry: 2,
+  });
+}
+
+export function useSetHarmReductionInventory() {
+  const { actor } = useActor(createActor);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      providerId,
+      items,
+    }: {
+      providerId: string;
+      items: HarmReductionItem[];
+    }): Promise<void> => {
+      if (!actor) throw new Error("Not connected");
+      await (
+        actor as unknown as Record<
+          string,
+          (id: string, items: HarmReductionItem[]) => Promise<undefined>
+        >
+      ).setHarmReductionInventory(providerId, items);
+    },
+    onSuccess: (_data, { providerId }) => {
+      qc.invalidateQueries({
+        queryKey: ["harmReductionInventory", providerId],
+      });
+      qc.invalidateQueries({
+        queryKey: ["providersByHarmReductionItem"],
+      });
+    },
+  });
+}
+
+export function useGetProvidersByHarmReductionItem(itemType: string) {
+  const { actor } = useActor(createActor);
+  return useQuery<ProviderWithStatus[]>({
+    queryKey: ["providersByHarmReductionItem", itemType],
+    queryFn: async () => {
+      if (!actor || !itemType) return [];
+      try {
+        return await (
+          actor as unknown as Record<
+            string,
+            (item: string) => Promise<ProviderWithStatus[]>
+          >
+        ).getProvidersByHarmReductionItem(itemType);
+      } catch (err) {
+        console.error("[useGetProvidersByHarmReductionItem] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !!itemType,
     refetchInterval: 60_000,
     retry: 2,
   });

@@ -11,6 +11,7 @@ const sections = [
       { to: "/verify", label: "Verify Handoff" },
       { to: "/register", label: "Register as Provider" },
       { to: "/admin", label: "Admin Panel" },
+      { to: "/national-impact", label: "National Impact" },
     ],
   },
   {

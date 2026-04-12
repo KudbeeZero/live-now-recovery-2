@@ -80,6 +80,12 @@ export const CanisterStateSummary = IDL.Record({
   'total_active_providers' : IDL.Nat,
   'high_risk_window_active' : IDL.Bool,
 });
+export const HarmReductionItem = IDL.Record({
+  'available' : IDL.Bool,
+  'notes' : IDL.Opt(IDL.Text),
+  'itemType' : IDL.Text,
+  'quantity' : IDL.Opt(IDL.Nat),
+});
 export const PredictionEngineState = IDL.Record({
   'avgDailyHandoffCount' : IDL.Nat,
   'potencyToggle' : IDL.Bool,
@@ -184,10 +190,20 @@ export const idlService = IDL.Service({
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
       ['query'],
     ),
+  'getHarmReductionInventory' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(HarmReductionItem)],
+      ['query'],
+    ),
   'getHelperCount' : IDL.Func([], [IDL.Nat], ['query']),
   'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
   'getPredictionEngineState' : IDL.Func([], [PredictionEngineState], ['query']),
   'getProviderPosts' : IDL.Func([IDL.Text], [IDL.Vec(ProviderPost)], ['query']),
+  'getProvidersByHarmReductionItem' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(ProviderWithStatus)],
+      ['query'],
+    ),
   'getRecoveryProfile' : IDL.Func([], [IDL.Opt(RecoveryProfile)], ['query']),
   'getReportsByZip' : IDL.Func([IDL.Text], [IDL.Vec(CitizenReport)], ['query']),
   'getRiskEvents' : IDL.Func([], [IDL.Vec(RiskEvent)], ['query']),
@@ -252,6 +268,11 @@ export const idlService = IDL.Service({
   'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setEmergencyActive' : IDL.Func([IDL.Bool], [], []),
+  'setHarmReductionInventory' : IDL.Func(
+      [IDL.Text, IDL.Vec(HarmReductionItem)],
+      [],
+      [],
+    ),
   'setPredictionEngineState' : IDL.Func([PredictionEngineState], [], []),
   'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
   'setSimulationVolunteers' : IDL.Func([IDL.Nat], [], []),
@@ -349,6 +370,12 @@ export const idlFactory = ({ IDL }) => {
     'active_providers' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat, IDL.Bool)),
     'total_active_providers' : IDL.Nat,
     'high_risk_window_active' : IDL.Bool,
+  });
+  const HarmReductionItem = IDL.Record({
+    'available' : IDL.Bool,
+    'notes' : IDL.Opt(IDL.Text),
+    'itemType' : IDL.Text,
+    'quantity' : IDL.Opt(IDL.Nat),
   });
   const PredictionEngineState = IDL.Record({
     'avgDailyHandoffCount' : IDL.Nat,
@@ -458,6 +485,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
         ['query'],
       ),
+    'getHarmReductionInventory' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(HarmReductionItem)],
+        ['query'],
+      ),
     'getHelperCount' : IDL.Func([], [IDL.Nat], ['query']),
     'getMarketplaceGeoJSON' : IDL.Func([], [IDL.Text], ['query']),
     'getPredictionEngineState' : IDL.Func(
@@ -468,6 +500,11 @@ export const idlFactory = ({ IDL }) => {
     'getProviderPosts' : IDL.Func(
         [IDL.Text],
         [IDL.Vec(ProviderPost)],
+        ['query'],
+      ),
+    'getProvidersByHarmReductionItem' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(ProviderWithStatus)],
         ['query'],
       ),
     'getRecoveryProfile' : IDL.Func([], [IDL.Opt(RecoveryProfile)], ['query']),
@@ -538,6 +575,11 @@ export const idlFactory = ({ IDL }) => {
     'runHeartbeat' : IDL.Func([], [IDL.Vec(IDL.Text)], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setEmergencyActive' : IDL.Func([IDL.Bool], [], []),
+    'setHarmReductionInventory' : IDL.Func(
+        [IDL.Text, IDL.Vec(HarmReductionItem)],
+        [],
+        [],
+      ),
     'setPredictionEngineState' : IDL.Func([PredictionEngineState], [], []),
     'setProviderActiveStatus' : IDL.Func([IDL.Text, IDL.Bool], [], []),
     'setSimulationVolunteers' : IDL.Func([IDL.Nat], [], []),

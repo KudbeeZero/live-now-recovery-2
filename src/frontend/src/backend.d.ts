@@ -115,6 +115,12 @@ export interface PredictionEngineState {
     stressToggle: boolean;
     paydayToggle: boolean;
 }
+export interface HarmReductionItem {
+    available: boolean;
+    notes?: string;
+    itemType: string;
+    quantity?: bigint;
+}
 export interface UserProfile {
     name: string;
 }
@@ -172,10 +178,12 @@ export interface backendInterface {
         dollarsSaved: number;
     }>;
     getHandoffCountsByZip(): Promise<Array<[string, bigint]>>;
+    getHarmReductionInventory(providerId: string): Promise<Array<HarmReductionItem>>;
     getHelperCount(): Promise<bigint>;
     getMarketplaceGeoJSON(): Promise<string>;
     getPredictionEngineState(): Promise<PredictionEngineState>;
     getProviderPosts(providerId: string): Promise<Array<ProviderPost>>;
+    getProvidersByHarmReductionItem(itemType: string): Promise<Array<ProviderWithStatus>>;
     getRecoveryProfile(): Promise<RecoveryProfile | null>;
     getReportsByZip(zipCode: string): Promise<Array<CitizenReport>>;
     getRiskEvents(): Promise<Array<RiskEvent>>;
@@ -209,6 +217,7 @@ export interface backendInterface {
     runHeartbeat(): Promise<Array<string>>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setEmergencyActive(isActive: boolean): Promise<void>;
+    setHarmReductionInventory(providerId: string, items: Array<HarmReductionItem>): Promise<void>;
     setPredictionEngineState(state: PredictionEngineState): Promise<void>;
     setProviderActiveStatus(id: string, status: boolean): Promise<void>;
     setSimulationVolunteers(count: bigint): Promise<void>;

@@ -115,6 +115,13 @@ type Helper =
    phone: text;
    zip: text;
  };
+type HarmReductionItem = 
+ record {
+   available: bool;
+   itemType: text;
+   notes: opt text;
+   quantity: opt nat;
+ };
 type CitizenReport = 
  record {
    activityType: text;
@@ -180,10 +187,14 @@ service : {
                                       text;
                                       nat;
                                     }) query;
+  getHarmReductionInventory: (providerId: text) ->
+   (vec HarmReductionItem) query;
   getHelperCount: () -> (nat) query;
   getMarketplaceGeoJSON: () -> (text) query;
   getPredictionEngineState: () -> (PredictionEngineState) query;
   getProviderPosts: (providerId: text) -> (vec ProviderPost) query;
+  getProvidersByHarmReductionItem: (itemType: text) ->
+   (vec ProviderWithStatus) query;
   getRecoveryProfile: () -> (opt RecoveryProfile) query;
   getReportsByZip: (zipCode: text) -> (vec CitizenReport) query;
   getRiskEvents: () -> (vec RiskEvent) query;
@@ -223,6 +234,8 @@ service : {
   runHeartbeat: () -> (vec text);
   saveCallerUserProfile: (profile: UserProfile) -> ();
   setEmergencyActive: (isActive: bool) -> ();
+  setHarmReductionInventory: (providerId: text, items:
+   vec HarmReductionItem) -> ();
   setPredictionEngineState: (state: PredictionEngineState) -> ();
   setProviderActiveStatus: (id: text, status: bool) -> ();
   setSimulationVolunteers: (count: nat) -> ();

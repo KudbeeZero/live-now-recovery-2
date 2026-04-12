@@ -17,6 +17,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { HarmReductionInventoryPanel } from "../components/HarmReductionInventoryPanel";
 import { PriceComparisonCard } from "../components/PriceComparisonCard";
 import { VolunteerHandoff } from "../components/VolunteerHandoff";
 import {
@@ -720,6 +721,22 @@ export function ProviderPage() {
 
         {/* Cost Plus Rx — compact */}
         <CostPlusRxCard providerId={id} />
+
+        {/* Harm Reduction Supplies — shown for kiosks or if any HR inventory exists */}
+        {(providerType === "Naloxone Kiosk" ||
+          providerType === "Naloxone Kiosk / Vending Machine" ||
+          providerType === "Narcan" ||
+          providerType === "Narcan Distribution") && (
+          <div className="mb-4" data-ocid="provider.harm_reduction_section">
+            <div className="flex items-center gap-2 mb-2 mt-2">
+              <div className="w-1.5 h-5 rounded-full bg-teal-400" />
+              <h2 className="text-base font-bold text-foreground">
+                Harm Reduction Supplies
+              </h2>
+            </div>
+            <HarmReductionInventoryPanel providerId={id} showTitle={false} />
+          </div>
+        )}
 
         {/* Volunteer handoff */}
         <VolunteerHandoff />

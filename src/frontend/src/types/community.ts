@@ -80,3 +80,52 @@ export const ActivityType = {
 
 export type ActivityTypeValue =
   (typeof ActivityType)[keyof typeof ActivityType];
+
+// ─── Harm Reduction Inventory ──────────────────────────────────────────────────
+
+export interface HarmReductionItem {
+  /** "clean_syringes" | "sharps_disposal" | "fentanyl_test_strips" | "narcan_kits" | "wound_care" | "alcohol_swabs" */
+  itemType: string;
+  available: boolean;
+  quantity: [] | [bigint];
+  notes: [] | [string];
+}
+
+export const HARM_REDUCTION_ITEMS = [
+  {
+    key: "narcan_kits",
+    label: "Narcan / Naloxone Kits",
+    icon: "💊",
+    color: "text-green-400",
+  },
+  {
+    key: "fentanyl_test_strips",
+    label: "Fentanyl Test Strips",
+    icon: "🔬",
+    color: "text-blue-400",
+  },
+  {
+    key: "clean_syringes",
+    label: "Clean Syringes",
+    icon: "💉",
+    color: "text-teal-400",
+  },
+  {
+    key: "sharps_disposal",
+    label: "Sharps Disposal",
+    icon: "🗑️",
+    color: "text-amber-400",
+  },
+  {
+    key: "wound_care",
+    label: "Wound Care Supplies",
+    icon: "🩹",
+    color: "text-rose-400",
+  },
+  {
+    key: "alcohol_swabs",
+    label: "Alcohol Swabs",
+    icon: "🧴",
+    color: "text-purple-400",
+  },
+] as const;
