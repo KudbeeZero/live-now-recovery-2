@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import ActivitySimulationToasts from "./components/ActivitySimulationToasts";
+import { BottomNavBar } from "./components/BottomNavBar";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { EmergencyBanner } from "./components/EmergencyBanner";
 import { Footer } from "./components/Footer";
@@ -22,12 +23,16 @@ import { CitizensPage } from "./pages/CitizensPage";
 import { ContactPage } from "./pages/ContactPage";
 import { CookiesPage } from "./pages/CookiesPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { DonatePage } from "./pages/DonatePage";
 import { FAQPage } from "./pages/FAQPage";
 import { FounderPage } from "./pages/FounderPage";
+import GalleryPage from "./pages/GalleryPage";
 import { HelperPage } from "./pages/HelperPage";
 import { HomePage } from "./pages/HomePage";
 import { HowItWorksPage } from "./pages/HowItWorksPage";
+import { ImpactPage } from "./pages/ImpactPage";
 import { IntegrationPage } from "./pages/IntegrationPage";
+import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { LocationPage } from "./pages/LocationPage";
 import { MissionPage } from "./pages/MissionPage";
 import { NationalImpactPage } from "./pages/NationalImpactPage";
@@ -42,6 +47,8 @@ import { SitemapPage } from "./pages/SitemapPage";
 import { TermsPage } from "./pages/TermsPage";
 import { VerifyPage } from "./pages/VerifyPage";
 import { VideosPage } from "./pages/VideosPage";
+import { VolunteerProfilePage } from "./pages/VolunteerProfilePage";
+import { VolunteersDirectoryPage } from "./pages/VolunteersDirectoryPage";
 
 function ScrollToTop() {
   const { location } = useRouterState();
@@ -59,10 +66,11 @@ function RootLayout() {
       <ScrollToTop />
       <EmergencyBanner />
       <Header />
-      <div className="flex-1">
+      <div className="flex-1 landscape:pb-[52px] md:landscape:pb-0">
         <Outlet />
       </div>
       <Footer />
+      <BottomNavBar />
       <Toaster richColors position="top-right" />
       <ActivitySimulationToasts />
       <SentinelChat />
@@ -290,6 +298,40 @@ const nationalImpactRoute = createRoute({
   path: "/national-impact",
   component: NationalImpactPage,
 });
+const donateRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/donate",
+  component: DonatePage,
+});
+
+const leaderboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/leaderboard",
+  component: LeaderboardPage,
+});
+const impactRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/impact",
+  component: ImpactPage,
+});
+
+const galleryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/gallery",
+  component: GalleryPage,
+});
+
+const volunteersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/volunteers",
+  component: VolunteersDirectoryPage,
+});
+
+const volunteerProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/volunteer/$id",
+  component: VolunteerProfilePage,
+});
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -335,6 +377,12 @@ const routeTree = rootRoute.addChildren([
   myRecoveryRoute,
   citizensRoute,
   nationalImpactRoute,
+  donateRoute,
+  leaderboardRoute,
+  impactRoute,
+  galleryRoute,
+  volunteersRoute,
+  volunteerProfileRoute,
 ]);
 
 const router = createRouter({ routeTree });

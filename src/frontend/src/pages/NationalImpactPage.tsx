@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
+import { SEO } from "../components/SEO";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -333,6 +334,12 @@ export function NationalImpactPage() {
       className="min-h-screen bg-[oklch(0.12_0.03_240)]"
       data-ocid="national-impact.page"
     >
+      <SEO
+        title="National Opioid Crisis Impact | Live Now Recovery"
+        description="Explore overdose burden by state and projected impact of recovery platform deployment across US hot zones. West Virginia, Ohio, Kentucky, Tennessee and more."
+        keywords="national opioid crisis, overdose deaths by state, opioid hot zones US, harm reduction national scale"
+        canonical="/national-impact"
+      />
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-[oklch(0.11_0.03_240)] border-b border-[oklch(0.22_0.05_240)]">
         {/* Background glow */}

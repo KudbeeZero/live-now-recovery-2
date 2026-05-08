@@ -1,29 +1,29 @@
 {
-  "overview": "Live Now Recovery is a privacy-first, real-time marketplace for Medication-Assisted Treatment (MAT) provider availability in Ohio. Built on ICP with a Motoko backend and React/TypeScript/Tailwind frontend, it features real-time provider status, Sentinel risk prediction, a community citizen reporting layer, peer support testimonials, and a comprehensive admin dashboard for health system analytics.",
+  "overview": "Live Now Recovery is a privacy-first, real-time recovery and resource platform for MAT and harm reduction in Ohio. It connects people to providers, naloxone, peer support, and community volunteers while earning on-chain credentials for every contribution — no medical data ever stored.",
   "features": [
-    "Real-time MAT provider map with MapLibre GL JS clustering and heatmap",
-    "Sentinel Prediction Engine with NWS weather, Census ACS social stress, payday cycle logic",
-    "Citizen community reporting — live map layer boosting Sentinel risk scores",
-    "Share My Story peer support testimonials on recovery account pages",
-    "Full citizens community hub page with live feed, embedded map, and stats",
-    "Comprehensive admin dashboard with 8 tabs including provider management, report moderation, testimonials, and fiscal impact odometer",
-    "ElevenLabs accessibility integration — text-to-speech, ambient music, language selector",
-    "Fiscal Impact Engine with 7-Attempts model and live healthcare savings odometer",
-    "Recovery Intelligence Dashboard with B2B analytics at /dashboard",
-    "Cost Plus Rx referral tracking with QR codes on provider pages"
+    "Soul-bound on-chain credential badges for volunteers, counselors, and providers",
+    "Searchable volunteer directory with filterable profile cards",
+    "Full volunteer profiles with credential timeline, impact stats, and Share on X",
+    "Become a Volunteer redesign with role selector cards and clear step-by-step signup path",
+    "Privacy controls — volunteers choose public or anonymous mode",
+    "Mock seed data with 15+ realistic Ohio volunteer profiles",
+    "Public leaderboard of top contributors by impact score",
+    "Citizens Hub full-screen community reporting map",
+    "Sentinel Prediction Engine with real-time risk overlays",
+    "National hot zone visualization for expansion pitch"
   ],
   "category": "health-wellness",
   "tags": [
-    "healthcare",
     "recovery",
-    "mat-treatment",
-    "opioid-crisis",
+    "harm-reduction",
+    "mat",
+    "opioid",
     "ohio",
-    "real-time",
-    "community",
+    "volunteers",
+    "credentials",
     "icp",
-    "public-health",
-    "nonprofit"
+    "blockchain",
+    "public-health"
   ],
-  "last_updated": "2026-04-09T19:25:55.549Z"
+  "last_updated": "2026-05-08T06:25:05.040Z"
 }

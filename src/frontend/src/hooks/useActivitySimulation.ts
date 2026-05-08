@@ -57,6 +57,66 @@ const MILESTONE_POOL: ((city: string) => string)[] = [
     `Agent in ${city} crossed the 7-touchpoint threshold. Community ROI generated: $45,000.`,
 ];
 
+/** Credential badge events — fires ~35% of the time to make the community feel alive */
+const CRED_CITIES = [
+  "Cleveland",
+  "Akron",
+  "Columbus",
+  "Dayton",
+  "Toledo",
+  "Youngstown",
+  "Canton",
+  "Lorain",
+  "Hamilton",
+  "Springfield",
+  "Mansfield",
+  "Lima",
+  "Parma",
+  "Euclid",
+  "Mentor",
+];
+
+const CRED_NAMES = [
+  "Alex",
+  "Jordan",
+  "Taylor",
+  "Morgan",
+  "Casey",
+  "Riley",
+  "Avery",
+  "Jamie",
+  "Quinn",
+  "Reese",
+  "Sage",
+  "Robin",
+  "Drew",
+  "Lane",
+  "Blair",
+];
+
+const CREDENTIAL_POOL: ((name: string, city: string) => string)[] = [
+  (name, city) =>
+    `${name} just earned the Recovery Navigator badge in ${city} — 25 verified warm handoffs completed`,
+  (_name, city) =>
+    `A new Narcan Hero was recognized in ${city} — naloxone deployment confirmed`,
+  (name, city) =>
+    `${name} earned Community Sentinel status in ${city} — 10 community reports verified`,
+  (_name, city) =>
+    `New First Responder badge minted in ${city} — community member submitted their first report`,
+  (_name, city) =>
+    `MAT Champion credential awarded in ${city} — provider milestone reached`,
+  (_name, city) =>
+    `Bridge Provider badge earned in ${city} — 5+ 72-hour bridge prescriptions issued`,
+  (name, city) =>
+    `Recovery Ally verified in ${city} — ${name} completed peer support training`,
+  (_name, city) =>
+    `Story Sharer credential awarded — a peer support story approved and published in ${city}`,
+  (_name, city) =>
+    `Community Architect badge earned in ${city} — local outreach event logged`,
+  (name, city) =>
+    `30-Day Guide milestone reached in ${city} — ${name}'s peer support journey completed`,
+];
+
 // ─── Audio subsystem ──────────────────────────────────────────────────────────
 // Audio context kept for future re-enablement once backend TTS proxy is wired up.
 
@@ -127,15 +187,15 @@ function nextToastDelayMs(avgDailyHandoffCount: number): number {
   const baseIntervalMs =
     (24 * 60 * 60 * 1000) / Math.max(avgDailyHandoffCount, 1);
 
-  // Minimum 8 s to avoid spamming; if weight is ~0 use a long idle delay
+  // Minimum 5 s to avoid spamming; if weight is ~0 use a long idle delay
   if (weight < 0.05) return Math.min(baseIntervalMs * 10, 5 * 60 * 1000);
 
   // Scale inversely: at peak weight=1, use shortest interval
   const scaledMs = baseIntervalMs / weight;
 
-  // Clamp: 8 s – 8 min, then add ±30 % jitter for naturalness
+  // Clamp: 5 s – 18 s max for a lively community feel, with jitter
   const jitter = 0.7 + Math.random() * 0.6;
-  return Math.min(Math.max(scaledMs * jitter, 8_000), 8 * 60 * 1000);
+  return Math.min(Math.max(scaledMs * jitter, 5_000), 18_000);
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -246,6 +306,22 @@ function pick<T>(arr: T[]): T {
 function fireToast(potencyActive: boolean) {
   const zip = pick(OHIO_ZIPS);
   const city = ZIP_CITY_MAP[zip] ?? "Ohio";
+
+  // Credential badge fires ~35% of the time for community energy
+  if (Math.random() < 0.35) {
+    const name = pick(CRED_NAMES);
+    const credCity = pick(CRED_CITIES);
+    const msgFn = pick(CREDENTIAL_POOL);
+    const message = msgFn(name, credCity);
+    toast(message, {
+      position: "bottom-left",
+      duration: 6000,
+      className:
+        "bg-[oklch(0.22_0.045_55)] text-white border border-[oklch(0.68_0.18_55)] text-sm font-semibold",
+      icon: "🏅",
+    });
+    return;
+  }
 
   // Milestone fires 1-in-5 when potency toggle is on
   if (potencyActive && Math.random() < 0.2) {

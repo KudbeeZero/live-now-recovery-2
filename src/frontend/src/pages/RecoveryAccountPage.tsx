@@ -4,15 +4,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Link } from "@tanstack/react-router";
 import {
+  Award,
   Bookmark,
   CheckSquare,
+  Copy,
+  ExternalLink,
+  Gift,
   Heart,
   Info,
   MapPin,
   MessageCircleHeart,
   Send,
+  Share2,
   ShieldCheck,
   Square,
   Trash2,
@@ -20,6 +26,9 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { AchievementTimeline } from "../components/AchievementTimeline";
+import { BadgeGrid } from "../components/BadgeGrid";
+import { useUserCredentials, useUserTimeline } from "../hooks/useCredentials";
 import {
   useAddFavoriteProvider,
   useAllProviders,
@@ -28,20 +37,19 @@ import {
   useGetRecoveryProfile,
   useStoreTestimonial,
 } from "../hooks/useQueries";
+import { getShareUrl, isPhysicalRewardEligible } from "../lib/credentials";
 import type { Testimonial } from "../types/community";
 
-// ─── Resource categories the user can mark as explored ───────────────────────
-
+// --- Resource categories ---
 const RESOURCE_CATEGORIES = [
-  { id: "food", label: "Food Assistance", emoji: "🛒" },
-  { id: "housing", label: "Housing & Sober Living", emoji: "🏠" },
-  { id: "employment", label: "Employment Resources", emoji: "💼" },
-  { id: "peer-support", label: "Peer Support & Groups", emoji: "🤝" },
-  { id: "bill-assistance", label: "Bill Assistance", emoji: "💳" },
+  { id: "food", label: "Food Assistance", emoji: "\u{1F6D2}" },
+  { id: "housing", label: "Housing & Sober Living", emoji: "\u{1F3E0}" },
+  { id: "employment", label: "Employment Resources", emoji: "\u{1F4BC}" },
+  { id: "peer-support", label: "Peer Support & Groups", emoji: "\u{1F91D}" },
+  { id: "bill-assistance", label: "Bill Assistance", emoji: "\u{1F4B3}" },
 ];
 
-// ─── Create profile card ──────────────────────────────────────────────────────
-
+// --- Create profile card ---
 function CreateProfileCard() {
   const [displayName, setDisplayName] = useState("");
   const [zip, setZip] = useState("");
@@ -68,8 +76,6 @@ function CreateProfileCard() {
         <p className="text-muted-foreground text-sm text-center mb-6 leading-relaxed">
           Save providers and track resources — no medical details, ever.
         </p>
-
-        {/* NO-PHI notice */}
         <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
           <ShieldCheck className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -80,7 +86,6 @@ function CreateProfileCard() {
             categories you've explored.
           </p>
         </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label
@@ -94,7 +99,7 @@ function CreateProfileCard() {
             </Label>
             <Input
               id="displayName"
-              placeholder="e.g. NE Ohio Strong, Phoenix44105…"
+              placeholder="e.g. NE Ohio Strong, Phoenix44105..."
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={40}
@@ -128,7 +133,7 @@ function CreateProfileCard() {
             }
             data-ocid="recovery.submit"
           >
-            {createProfile.isPending ? "Creating Account…" : "Create Account"}
+            {createProfile.isPending ? "Creating Account..." : "Create Account"}
           </Button>
         </form>
       </div>
@@ -136,8 +141,7 @@ function CreateProfileCard() {
   );
 }
 
-// ─── Saved providers section ──────────────────────────────────────────────────
-
+// --- Saved providers section ---
 function SavedProvidersSection({ favoriteIds }: { favoriteIds: string[] }) {
   const { data: allProviders = [], isLoading } = useAllProviders();
   const removeFavorite = useAddFavoriteProvider();
@@ -239,8 +243,7 @@ function SavedProvidersSection({ favoriteIds }: { favoriteIds: string[] }) {
   );
 }
 
-// ─── Resources explored section ───────────────────────────────────────────────
-
+// --- Resources explored section ---
 function ResourcesExploredSection({
   resourcesUsed,
 }: { resourcesUsed: string[] }) {
@@ -288,16 +291,19 @@ function ResourcesExploredSection({
   );
 }
 
-// ─── Testimonial card ─────────────────────────────────────────────────────────
-
+// --- Testimonial card ---
 function TestimonialCard({ t }: { t: Testimonial }) {
   const date = new Date(Number(t.createdAt) / 1_000_000).toLocaleDateString(
     "en-US",
-    { month: "short", day: "numeric", year: "numeric" },
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    },
   );
   const preview =
     t.content.length > 180
-      ? `${t.content.slice(0, 180).trimEnd()}…`
+      ? `${t.content.slice(0, 180).trimEnd()}...`
       : t.content;
 
   return (
@@ -324,15 +330,11 @@ function TestimonialCard({ t }: { t: Testimonial }) {
   );
 }
 
-// ─── Share My Story section ───────────────────────────────────────────────────
-
+// --- Share My Story section ---
 function ShareMyStorySection({
   displayName,
   zip,
-}: {
-  displayName: string;
-  zip: string;
-}) {
+}: { displayName: string; zip: string }) {
   const [content, setContent] = useState("");
   const [authorName, setAuthorName] = useState(displayName);
   const [authorZip, setAuthorZip] = useState(zip);
@@ -342,14 +344,12 @@ function ShareMyStorySection({
   const storeTestimonial = useStoreTestimonial();
   const { data: testimonials = [], isLoading: loadingTestimonials } =
     useGetApprovedTestimonials();
-
   const recent = testimonials.slice(0, 6);
   const MAX = 500;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError("");
-
     if (!content.trim()) {
       setValidationError("Please write something before submitting.");
       return;
@@ -358,7 +358,6 @@ function ShareMyStorySection({
       setValidationError(`Your story must be ${MAX} characters or fewer.`);
       return;
     }
-
     storeTestimonial.mutate(
       {
         authorDisplayName: authorName.trim() || displayName,
@@ -379,7 +378,6 @@ function ShareMyStorySection({
 
   return (
     <section data-ocid="recovery.share-story.section" className="space-y-6">
-      {/* Section header */}
       <div className="flex items-center gap-2">
         <MessageCircleHeart className="w-5 h-5 text-primary" />
         <h2 className="text-lg font-bold text-foreground">Share My Story</h2>
@@ -387,8 +385,6 @@ function ShareMyStorySection({
       <p className="text-muted-foreground text-sm -mt-3">
         Your recovery journey could help someone else take the first step.
       </p>
-
-      {/* Submission form */}
       <div className="bg-card border border-border rounded-2xl p-6 shadow-card space-y-4">
         {submitted ? (
           <div
@@ -416,7 +412,6 @@ function ShareMyStorySection({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* NO-PHI reminder */}
             <div className="flex items-start gap-2.5 bg-primary/5 border border-primary/20 rounded-xl p-3">
               <ShieldCheck className="w-4 h-4 text-primary mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground leading-relaxed">
@@ -427,8 +422,6 @@ function ShareMyStorySection({
                 personal health information.
               </p>
             </div>
-
-            {/* Story textarea */}
             <div className="space-y-1.5">
               <Label
                 htmlFor="story-content"
@@ -438,7 +431,7 @@ function ShareMyStorySection({
               </Label>
               <Textarea
                 id="story-content"
-                placeholder="e.g. 'I wasn't sure if recovery was possible for me, but finding a clinic through this app changed everything…'"
+                placeholder="e.g. 'I wasn't sure if recovery was possible for me, but finding a clinic through this app changed everything...'"
                 value={content}
                 onChange={(e) => {
                   setContent(e.target.value);
@@ -456,18 +449,12 @@ function ShareMyStorySection({
                   <span />
                 )}
                 <span
-                  className={`text-xs ml-auto ${
-                    content.length > MAX
-                      ? "text-destructive font-medium"
-                      : "text-muted-foreground"
-                  }`}
+                  className={`text-xs ml-auto ${content.length > MAX ? "text-destructive font-medium" : "text-muted-foreground"}`}
                 >
                   {content.length}/{MAX}
                 </span>
               </div>
             </div>
-
-            {/* Display name */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label
@@ -506,7 +493,6 @@ function ShareMyStorySection({
                 />
               </div>
             </div>
-
             <Button
               type="submit"
               className="w-full min-h-[44px] font-semibold gap-2"
@@ -518,13 +504,11 @@ function ShareMyStorySection({
               data-ocid="recovery.story.submit"
             >
               <Send className="w-4 h-4" />
-              {storeTestimonial.isPending ? "Submitting…" : "Submit My Story"}
+              {storeTestimonial.isPending ? "Submitting..." : "Submit My Story"}
             </Button>
           </form>
         )}
       </div>
-
-      {/* Community Stories */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-4 h-4 text-primary" />
@@ -537,7 +521,6 @@ function ShareMyStorySection({
             </Badge>
           )}
         </div>
-
         {loadingTestimonials ? (
           <div className="space-y-3" data-ocid="recovery.stories.loading">
             {[1, 2, 3].map((i) => (
@@ -551,7 +534,7 @@ function ShareMyStorySection({
           >
             <MessageCircleHeart className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-40" />
             <p className="text-foreground font-medium mb-1">
-              No stories yet — be the first
+              No stories yet - be the first
             </p>
             <p className="text-muted-foreground text-sm">
               Approved stories from the community will appear here.
@@ -569,7 +552,245 @@ function ShareMyStorySection({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// --- Physical Reward Claim Card ---
+function PhysicalRewardClaimCard({ credName }: { credName: string }) {
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [stateVal, setStateVal] = useState("");
+  const [zip, setZip] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const mailtoSubject = encodeURIComponent(
+    `Physical Reward Claim - ${credName}`,
+  );
+  const mailtoBody = encodeURIComponent(
+    `Name: ${name}\nAddress: ${address}\nCity: ${city}\nState: ${stateVal}\nZIP: ${zip}\n\nCredential Earned: ${credName}`,
+  );
+  const mailtoLink = `mailto:founder@livenowrecovery.org?subject=${mailtoSubject}&body=${mailtoBody}`;
+  const fullAddress = `${name} | ${address}, ${city}, ${stateVal} ${zip}`;
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(fullAddress).catch(() => null);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  return (
+    <div
+      data-ocid="recovery.physical_reward.card"
+      className="bg-gradient-to-br from-amber-500/10 to-purple-500/10 border border-amber-500/20 rounded-2xl p-6 space-y-4"
+    >
+      <div className="flex items-center gap-2">
+        <Gift className="w-5 h-5 text-amber-400" />
+        <h3 className="font-bold text-foreground">
+          Claim Your Physical Reward
+        </h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        You've earned the{" "}
+        <strong className="text-foreground">{credName}</strong> credential — a
+        physical engraved award is yours. Enter your mailing address. It's never
+        stored on-chain.
+      </p>
+      {submitted ? (
+        <div
+          className="flex flex-col items-center text-center py-4 gap-3"
+          data-ocid="recovery.physical_reward.success_state"
+        >
+          <Gift className="w-8 h-8 text-amber-400" />
+          <p className="font-semibold text-foreground text-sm">
+            Claim submitted!
+          </p>
+          <p className="text-xs text-muted-foreground">
+            The founder will mail your reward within 7-10 days.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label
+                htmlFor="rw-name"
+                className="text-xs font-medium text-foreground"
+              >
+                Full Name
+              </label>
+              <input
+                id="rw-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Jane Doe"
+                data-ocid="recovery.physical_reward.name_input"
+                className="w-full text-sm rounded-lg border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <div className="space-y-1">
+              <label
+                htmlFor="rw-zip"
+                className="text-xs font-medium text-foreground"
+              >
+                ZIP
+              </label>
+              <input
+                id="rw-zip"
+                value={zip}
+                onChange={(e) => setZip(e.target.value)}
+                placeholder="44105"
+                maxLength={5}
+                data-ocid="recovery.physical_reward.zip_input"
+                className="w-full text-sm rounded-lg border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label
+              htmlFor="rw-address"
+              className="text-xs font-medium text-foreground"
+            >
+              Street Address
+            </label>
+            <input
+              id="rw-address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="123 Main St"
+              data-ocid="recovery.physical_reward.address_input"
+              className="w-full text-sm rounded-lg border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label
+                htmlFor="rw-city"
+                className="text-xs font-medium text-foreground"
+              >
+                City
+              </label>
+              <input
+                id="rw-city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Cleveland"
+                className="w-full text-sm rounded-lg border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <div className="space-y-1">
+              <label
+                htmlFor="rw-state"
+                className="text-xs font-medium text-foreground"
+              >
+                State
+              </label>
+              <input
+                id="rw-state"
+                value={stateVal}
+                onChange={(e) => setStateVal(e.target.value)}
+                placeholder="OH"
+                maxLength={2}
+                className="w-full text-sm rounded-lg border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+              disabled={!name || !address}
+              data-ocid="recovery.physical_reward.copy_button"
+              className="flex items-center gap-1.5 text-xs"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              {copied ? "Copied!" : "Copy Address"}
+            </Button>
+            <a
+              href={mailtoLink}
+              onClick={() => setSubmitted(true)}
+              data-ocid="recovery.physical_reward.submit_button"
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                name && address
+                  ? "bg-amber-500 text-white hover:bg-amber-500/90"
+                  : "bg-muted text-muted-foreground pointer-events-none opacity-50"
+              }`}
+            >
+              <ExternalLink className="w-3.5 h-3.5" /> Send Claim Email
+            </a>
+          </div>
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+            <ShieldCheck className="w-3 h-3" /> Never saved to the blockchain.
+            Opens your email client.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Recovery credentials section ---
+function RecoveryCredentialsSection() {
+  const { identity } = useInternetIdentity();
+  const principal = identity ? identity.getPrincipal() : null;
+  const { data: credentials = [], isLoading: credsLoading } =
+    useUserCredentials(principal);
+  const { data: timeline = [], isLoading: timelineLoading } =
+    useUserTimeline(principal);
+  const eligibleForPhysical = credentials.filter(isPhysicalRewardEligible);
+  const topCred = credentials[0] ?? null;
+  const shareUrl = topCred ? getShareUrl(topCred) : null;
+
+  return (
+    <section data-ocid="recovery.credentials_section" className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Award className="w-5 h-5 text-amber-400" />
+          <h2 className="text-lg font-bold text-foreground">
+            Credentials &amp; Achievements
+          </h2>
+        </div>
+        {shareUrl && (
+          <a
+            href={shareUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-ocid="recovery.share_achievements_btn"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
+          >
+            <Share2 className="w-3.5 h-3.5" /> Share on X
+          </a>
+        )}
+      </div>
+      <BadgeGrid
+        credentials={credentials}
+        isLoading={credsLoading}
+        emptyText="Earn credentials by submitting reports, sharing stories, and contributing to the platform."
+      />
+      {(timeline.length > 0 || timelineLoading) && (
+        <div className="mt-2">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-5 rounded-full bg-primary" />
+            <h3 className="text-base font-bold text-foreground">
+              Achievement Timeline
+            </h3>
+          </div>
+          <AchievementTimeline
+            credentials={timeline}
+            isLoading={timelineLoading}
+          />
+        </div>
+      )}
+      {eligibleForPhysical.length > 0 && (
+        <PhysicalRewardClaimCard
+          credName={String(eligibleForPhysical[0].name)}
+        />
+      )}
+    </section>
+  );
+}
+
+// --- Page ---
 
 export function RecoveryAccountPage() {
   const { data: profile, isLoading } = useGetRecoveryProfile();
@@ -604,7 +825,6 @@ export function RecoveryAccountPage() {
         ) : !profile ? (
           <div className="space-y-10">
             <CreateProfileCard />
-            {/* Soft prompt for Share My Story when no profile */}
             <div
               className="bg-muted/40 border border-border rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
               data-ocid="recovery.story.no-profile-prompt"
@@ -643,6 +863,9 @@ export function RecoveryAccountPage() {
                 Recovery Account
               </Badge>
             </div>
+
+            {/* Credentials & Achievements */}
+            <RecoveryCredentialsSection />
 
             {/* Saved Providers */}
             <section>

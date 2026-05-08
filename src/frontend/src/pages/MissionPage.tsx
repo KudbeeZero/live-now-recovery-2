@@ -9,6 +9,7 @@ import {
   Zap,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { SEO } from "../components/SEO";
 
 /* ─── Animation Variants ─────────────────────────────────────── */
 const fadeUp = {
@@ -112,6 +113,13 @@ const impactFigures = [
 export function MissionPage() {
   return (
     <main className="min-h-screen" data-ocid="mission.page">
+      {" "}
+      <SEO
+        title="Our Mission | Live Now Recovery"
+        description="Connecting Ohioans to life-saving addiction treatment resources in real time. Zero PHI. Privacy-first. Built on the Internet Computer."
+        keywords="recovery mission, MAT access Ohio, opioid crisis Ohio, addiction treatment mission"
+        canonical="/mission"
+      />
       {/* ── HERO ── */}
       <section className="bg-[oklch(0.12_0.01_240)] px-4 py-20 text-center border-b border-border">
         <div className="max-w-3xl mx-auto">
@@ -161,7 +169,6 @@ export function MissionPage() {
           </motion.div>
         </div>
       </section>
-
       <div className="max-w-4xl mx-auto px-4 py-14 space-y-20">
         {/* ── WHO ── */}
         <motion.section

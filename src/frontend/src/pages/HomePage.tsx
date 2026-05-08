@@ -7,6 +7,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  Award,
   BedDouble,
   ChevronDown,
   ChevronUp,
@@ -32,8 +33,11 @@ import { toast } from "sonner";
 import { ProviderStatus } from "../backend";
 import { EnhancedRecoveryMap } from "../components/EnhancedRecoveryMap";
 import { HandoffImpact } from "../components/HandoffImpact";
+import { ImpactDashboard } from "../components/ImpactDashboard";
 import { PriceComparisonCard } from "../components/PriceComparisonCard";
+import { SEO } from "../components/SEO";
 import { useActivitySimulation } from "../hooks/useActivitySimulation";
+import { useTopContributors } from "../hooks/useCredentials";
 import {
   useAllProviders,
   useCanisterState,
@@ -42,6 +46,7 @@ import {
   useToggleLive,
   useTotalHandoffs,
 } from "../hooks/useQueries";
+import { CREDENTIAL_META } from "../types/credentials";
 import { isProviderStale, statusLabel } from "../utils/providerUtils";
 
 type FilterType = "all" | "mat" | "narcan" | "er" | "kiosk" | "telehealth";
@@ -112,6 +117,7 @@ function formatMinutesAgo(setAt: number): string {
 }
 
 export function HomePage() {
+  // SEO
   const { data: providers = [], isLoading } = useAllProviders();
   const { data: canisterState } = useCanisterState();
   const { data: isAdmin } = useIsAdmin();
@@ -330,6 +336,32 @@ export function HomePage() {
 
   return (
     <main className="min-h-screen bg-background" data-ocid="home.page">
+      {" "}
+      <SEO
+        title="Live Now Recovery | Real-Time MAT Provider Map in Ohio"
+        description="Find medication-assisted treatment (MAT) providers, Narcan kiosks, and harm reduction resources in Ohio — anonymous, privacy-first, available 24/7."
+        keywords="MAT providers Ohio, medication-assisted treatment, Narcan locations Ohio, addiction treatment near me, buprenorphine clinic Ohio"
+        canonical="/"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Live Now Recovery",
+          url: "https://live-now-recovery-3f2.caffeine.xyz",
+          logo: "https://live-now-recovery-3f2.caffeine.xyz/favicon.ico",
+          description:
+            "Privacy-first real-time MAT provider and harm reduction resource platform in Ohio",
+          address: {
+            "@type": "PostalAddress",
+            addressRegion: "OH",
+            addressCountry: "US",
+          },
+          contactPoint: {
+            "@type": "ContactPoint",
+            telephone: "833-234-6343",
+            contactType: "crisis support",
+          },
+        }}
+      />
       {/* ── Hero Section ── */}
       <section
         id="hero"
@@ -447,6 +479,16 @@ export function HomePage() {
                 <TrendingDown className="w-4 h-4" /> See the Data
               </Link>
             </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="min-h-[52px] px-7 rounded-xl border-primary/25 text-primary/80 hover:bg-primary/8 font-semibold text-base gap-2 transition-all duration-200"
+              data-ocid="home.donate_cta"
+            >
+              <Link to="/donate">
+                <Heart className="w-4 h-4" /> Support This Mission
+              </Link>
+            </Button>
           </motion.div>
 
           {/* Search + live badge */}
@@ -489,10 +531,8 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
       {/* ── Crisis Is Now Strip ── */}
       <CrisisStrip />
-
       {/* ── High-Risk Alert ── */}
       {isLoggedIn && canisterState?.high_risk_window_active && (
         <div className="w-full px-4 pt-4">
@@ -528,7 +568,6 @@ export function HomePage() {
           </div>
         </div>
       )}
-
       {/* ── Community Momentum Stat Bar ── */}
       <section
         className="w-full px-4 py-5"
@@ -651,80 +690,6 @@ export function HomePage() {
           </div>
         </motion.div>
       </section>
-
-      {/* ── Rolling Activity Feed ── */}
-      <RollingActivityFeed />
-
-      {/* ── Peer Support Video CTA Banner ── */}
-      <section
-        className="w-full px-4 py-5"
-        style={{
-          background:
-            "linear-gradient(90deg, oklch(0.17 0.032 225) 0%, oklch(0.20 0.040 196) 100%)",
-          borderBottom: "1px solid oklch(0.26 0.045 196 / 0.5)",
-        }}
-        data-ocid="home.section"
-      >
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{
-                background: "oklch(0.72 0.20 142 / 0.15)",
-                border: "1px solid oklch(0.72 0.20 142 / 0.35)",
-              }}
-            >
-              <svg
-                className="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="oklch(0.72 0.20 142)"
-                  strokeWidth="1.5"
-                />
-                <polygon
-                  points="10,8 16,12 10,16"
-                  fill="oklch(0.72 0.20 142)"
-                />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <p
-                className="font-bold text-sm leading-snug"
-                style={{ color: "oklch(0.92 0.02 200)" }}
-              >
-                Real Stories of Recovery
-              </p>
-              <p
-                className="text-xs leading-snug mt-0.5 line-clamp-1"
-                style={{ color: "oklch(0.58 0.04 220)" }}
-              >
-                Hear from people in recovery, MAT providers, and community
-                advocates — real stories that make the path forward visible.
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/videos"
-            className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            style={{
-              background: "oklch(0.72 0.20 142 / 0.18)",
-              border: "1px solid oklch(0.72 0.20 142 / 0.45)",
-              color: "oklch(0.82 0.18 142)",
-            }}
-            data-ocid="home.videos_cta"
-          >
-            Watch Videos
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </section>
-
       {/* ── Results Section: Map + Provider List ── */}
       <section
         id="providers-map"
@@ -1193,8 +1158,84 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ── Authenticated: Dashboard Controls ── */}
+      {/* Rolling Activity Feed */}
+      <RollingActivityFeed />
+      {/* Real Change Live: Impact Dashboard */}
+      <ImpactDashboard />
+      {/* Community Impact: Top Contributors */}
+      <CommunityImpactSection />
+      {/* Join the Movement CTA Strip */}
+      <JoinMovementStrip />
+      {/* Peer Support Video CTA Banner */}
+      <section
+        className="w-full px-4 py-5"
+        style={{
+          background:
+            "linear-gradient(90deg, oklch(0.17 0.032 225) 0%, oklch(0.20 0.040 196) 100%)",
+          borderBottom: "1px solid oklch(0.26 0.045 196 / 0.5)",
+        }}
+        data-ocid="home.section"
+      >
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{
+                background: "oklch(0.72 0.20 142 / 0.15)",
+                border: "1px solid oklch(0.72 0.20 142 / 0.35)",
+              }}
+            >
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="oklch(0.72 0.20 142)"
+                  strokeWidth="1.5"
+                />
+                <polygon
+                  points="10,8 16,12 10,16"
+                  fill="oklch(0.72 0.20 142)"
+                />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p
+                className="font-bold text-sm leading-snug"
+                style={{ color: "oklch(0.92 0.02 200)" }}
+              >
+                Real Stories of Recovery
+              </p>
+              <p
+                className="text-xs leading-snug mt-0.5 line-clamp-1"
+                style={{ color: "oklch(0.58 0.04 220)" }}
+              >
+                Hear from people in recovery, MAT providers, and community
+                advocates. Real stories that make the path forward visible.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/videos"
+            className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            style={{
+              background: "oklch(0.72 0.20 142 / 0.18)",
+              border: "1px solid oklch(0.72 0.20 142 / 0.45)",
+              color: "oklch(0.82 0.18 142)",
+            }}
+            data-ocid="home.videos_cta"
+          >
+            Watch Videos
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+      {/* Authenticated: Dashboard Controls */}
       {isLoggedIn && (
         <section
           className="w-full px-4 py-8"
@@ -1697,7 +1738,6 @@ export function HomePage() {
           </div>
         </section>
       )}
-
       {/* ── Self-Service Toggle Confirmation Modal ── */}
       {selfToggleModal && (
         <div
@@ -1792,7 +1832,6 @@ export function HomePage() {
           </div>
         </div>
       )}
-
       {/* ── Mission ── */}
       <section className="py-16 px-4 bg-secondary" data-ocid="home.section">
         <motion.div
@@ -1865,7 +1904,6 @@ export function HomePage() {
           </div>
         </motion.div>
       </section>
-
       {/* ── Impact + Costs ── */}
       <section
         className="py-16 px-4 max-w-7xl mx-auto"
@@ -1884,7 +1922,6 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
       {/* ── Cities ── */}
       {(() => {
         const CITIES: [string, string][] = [
@@ -1978,7 +2015,6 @@ export function HomePage() {
           </section>
         );
       })()}
-
       {/* ── What It Could Be ── */}
       <WhatItCouldBe />
     </main>
@@ -2401,6 +2437,217 @@ function RollingActivityFeed() {
             </div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Community Impact Section ───────────────────────────────────────────────
+
+function CommunityImpactSection() {
+  const { data: contributors = [], isLoading } = useTopContributors(3);
+
+  const tierColors: Record<string, string> = {
+    FirstResponder: "text-emerald-400",
+    CommunitySentinel: "text-emerald-400",
+    NarcanHero: "text-emerald-400",
+    RecoveryAlly: "text-blue-400",
+    ThirtyDayGuide: "text-blue-400",
+    StorySharer: "text-blue-400",
+    MATChampion: "text-amber-400",
+    BridgeProvider: "text-amber-400",
+    RecoveryNavigator: "text-amber-400",
+    SentinelVerified: "text-amber-400",
+    CommunityArchitect: "text-purple-400",
+    PolicyPioneer: "text-purple-400",
+  };
+
+  const tierBg: Record<string, string> = {
+    FirstResponder: "bg-emerald-500/10 border-emerald-500/30",
+    CommunitySentinel: "bg-emerald-500/10 border-emerald-500/30",
+    NarcanHero: "bg-emerald-500/10 border-emerald-500/30",
+    RecoveryAlly: "bg-blue-500/10 border-blue-500/30",
+    ThirtyDayGuide: "bg-blue-500/10 border-blue-500/30",
+    StorySharer: "bg-blue-500/10 border-blue-500/30",
+    MATChampion: "bg-amber-500/10 border-amber-500/30",
+    BridgeProvider: "bg-amber-500/10 border-amber-500/30",
+    RecoveryNavigator: "bg-amber-500/10 border-amber-500/30",
+    SentinelVerified: "bg-amber-500/10 border-amber-500/30",
+    CommunityArchitect: "bg-purple-500/10 border-purple-500/30",
+    PolicyPioneer: "bg-purple-500/10 border-purple-500/30",
+  };
+
+  return (
+    <section
+      className="w-full px-4 py-10"
+      style={{
+        background:
+          "linear-gradient(180deg, oklch(0.16 0.030 225) 0%, oklch(0.18 0.032 228) 100%)",
+        borderBottom: "1px solid oklch(0.24 0.040 225 / 0.6)",
+      }}
+      data-ocid="community_impact.section"
+    >
+      <div className="max-w-4xl mx-auto">
+        <motion.div
+          className="text-center mb-7"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-brand-teal mb-3">
+            <Users className="h-3 w-3" />
+            Community Leaders
+          </div>
+          <h2 className="text-2xl font-bold text-foreground">
+            Top Community Contributors
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-lg mx-auto">
+            Pseudonymous, on-chain — everyone here earned their place through
+            real action in the community.
+          </p>
+        </motion.div>
+
+        {isLoading ? (
+          <div
+            className="flex justify-center items-center h-28"
+            data-ocid="community_impact.loading_state"
+          >
+            <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          </div>
+        ) : contributors.length === 0 ? (
+          <div
+            className="text-center py-8 text-sm text-muted-foreground"
+            data-ocid="community_impact.empty_state"
+          >
+            <Award className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p>Be the first to earn a community credential.</p>
+          </div>
+        ) : (
+          <div
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6"
+            data-ocid="community_impact.list"
+          >
+            {contributors.map((entry, idx) => {
+              const topCred = entry.credentialTypes[0] ?? "FirstResponder";
+              const meta =
+                CREDENTIAL_META[topCred as keyof typeof CREDENTIAL_META] ??
+                null;
+              const colorClass = tierColors[topCred] ?? "text-primary";
+              const bgClass =
+                tierBg[topCred] ?? "bg-primary/10 border-primary/30";
+              return (
+                <motion.div
+                  key={entry.principal.toString()}
+                  className="rounded-2xl p-5 bg-card border border-border/50 flex flex-col gap-3"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{
+                    duration: 0.4,
+                    ease: "easeOut",
+                    delay: idx * 0.1,
+                  }}
+                  data-ocid={`community_impact.item.${idx + 1}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`h-9 w-9 rounded-xl flex items-center justify-center text-lg font-black border ${bgClass}`}
+                    >
+                      <span className={colorClass}>#{entry.rank}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-mono text-muted-foreground truncate">
+                        {entry.principal.toString().slice(0, 16)}…
+                      </p>
+                      <p className={`text-xs font-bold ${colorClass}`}>
+                        {meta?.displayName ?? topCred}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Impact Score
+                    </span>
+                    <span
+                      className={`text-lg font-black tabular-nums ${colorClass}`}
+                    >
+                      {Number(entry.impactScore).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {entry.credentialTypes.slice(0, 3).map((ct) => {
+                      const cm =
+                        CREDENTIAL_META[ct as keyof typeof CREDENTIAL_META];
+                      return (
+                        <span
+                          key={ct}
+                          className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${
+                            tierBg[ct] ?? "bg-primary/10 border-primary/30"
+                          } ${tierColors[ct] ?? "text-primary"}`}
+                        >
+                          {cm?.displayName ?? ct}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="text-center">
+          <Link
+            to="/leaderboard"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-brand-teal hover:text-primary transition-colors"
+            data-ocid="community_impact.leaderboard_link"
+          >
+            See Full Leaderboard <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Join the Movement Strip ──────────────────────────────────────────────────
+
+function JoinMovementStrip() {
+  return (
+    <section
+      className="w-full px-4 py-8"
+      style={{
+        background:
+          "linear-gradient(90deg, oklch(0.35 0.12 196) 0%, oklch(0.42 0.14 175) 100%)",
+      }}
+      data-ocid="join_movement.section"
+    >
+      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-5">
+        <div className="text-center sm:text-left">
+          <p className="text-lg md:text-xl font-extrabold text-white leading-snug">
+            Every report saved a life. Every handoff earned a badge.
+          </p>
+          <p
+            className="text-sm font-medium mt-1"
+            style={{ color: "oklch(0.88 0.04 200)" }}
+          >
+            Track your impact and join the movement building recovery
+            infrastructure in Ohio.
+          </p>
+        </div>
+        <Link
+          to="/leaderboard"
+          className="shrink-0 inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          style={{
+            background: "white",
+            color: "oklch(0.28 0.12 196)",
+          }}
+          data-ocid="join_movement.leaderboard_button"
+        >
+          <Award className="w-4 h-4" />
+          Track your impact →
+        </Link>
       </div>
     </section>
   );

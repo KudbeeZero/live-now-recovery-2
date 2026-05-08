@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  Award,
   Camera,
   CheckCircle2,
   Clock,
@@ -12,14 +13,18 @@ import {
   Package,
   QrCode,
   Send,
+  Share2,
   Star,
   User,
   XCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AchievementTimeline } from "../components/AchievementTimeline";
+import { BadgeGrid } from "../components/BadgeGrid";
 import { HarmReductionInventoryPanel } from "../components/HarmReductionInventoryPanel";
 import { PriceComparisonCard } from "../components/PriceComparisonCard";
 import { VolunteerHandoff } from "../components/VolunteerHandoff";
+import { useUserCredentials, useUserTimeline } from "../hooks/useCredentials";
 import {
   useAddProviderPost,
   useAllProviders,
@@ -28,6 +33,7 @@ import {
   useIsAdmin,
   useRecordCostPlusReferral,
 } from "../hooks/useQueries";
+import { getShareUrl } from "../lib/credentials";
 import {
   isProviderStale,
   statusColor,
@@ -501,6 +507,64 @@ function ProfileHeader({
   );
 }
 
+// ─── Credentials & Achievements Section ─────────────────────────────────────
+function ProviderCredentialsSection() {
+  const { data: credentials = [], isLoading: credsLoading } =
+    useUserCredentials(null);
+  const { data: timeline = [], isLoading: timelineLoading } =
+    useUserTimeline(null);
+
+  const topCred = credentials[0] ?? null;
+  const shareUrl = topCred ? getShareUrl(topCred) : null;
+
+  return (
+    <section
+      className="mb-6 bg-card rounded-2xl border border-border/30 p-5 shadow-card"
+      data-ocid="provider.credentials_section"
+    >
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <Award className="w-5 h-5 text-amber-400" />
+          <h2 className="text-base font-bold text-foreground">
+            Credentials &amp; Achievements
+          </h2>
+        </div>
+        {shareUrl && (
+          <a
+            href={shareUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-ocid="provider.share_achievements_btn"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            Share on X
+          </a>
+        )}
+      </div>
+      <BadgeGrid
+        credentials={credentials}
+        isLoading={credsLoading}
+        emptyText="This provider hasn't earned credentials yet."
+      />
+      {timeline.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-5 rounded-full bg-primary" />
+            <h3 className="text-sm font-bold text-foreground">
+              Achievement Timeline
+            </h3>
+          </div>
+          <AchievementTimeline
+            credentials={timeline}
+            isLoading={timelineLoading}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function ProviderPage() {
   const params = useParams({ strict: false }) as { id?: string };
@@ -573,6 +637,9 @@ export function ProviderPage() {
         >
           <ArrowLeft className="w-4 h-4" /> Back to map
         </Link>
+
+        {/* Credentials & Achievements — ABOVE THE FOLD */}
+        <ProviderCredentialsSection />
 
         {/* Twitter/X-style profile header */}
         <ProfileHeader

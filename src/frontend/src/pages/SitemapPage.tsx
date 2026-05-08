@@ -7,6 +7,7 @@ const sections = [
     links: [
       { to: "/", label: "Home" },
       { to: "/dashboard", label: "Recovery Intelligence Dashboard" },
+      { to: "/donate", label: "Donate \u2192" },
       { to: "/videos", label: "Video Library" },
       { to: "/verify", label: "Verify Handoff" },
       { to: "/register", label: "Register as Provider" },
@@ -118,7 +119,18 @@ export function SitemapPage() {
           ))}
         </div>
 
-        <div className="mt-16 pt-8 border-t border-border text-center">
+        <div className="mt-16 pt-8 border-t border-border text-center space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Machine-readable sitemap:{" "}
+            <a
+              href="/sitemap.xml"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-mono"
+            >
+              /sitemap.xml
+            </a>
+          </p>
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()}. Built with love using{" "}
             <a

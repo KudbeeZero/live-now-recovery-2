@@ -14,6 +14,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useState } from "react";
+import { SEO } from "../components/SEO";
 import type { ResourceOrg } from "../types/community";
 
 // ─── Static data ─────────────────────────────────────────────────────────────
@@ -482,6 +483,13 @@ export function ResourcesPage() {
 
   return (
     <main className="min-h-screen" data-ocid="resources.page">
+      {" "}
+      <SEO
+        title="Recovery Resources in Ohio | Live Now Recovery"
+        description="Find food assistance, housing, employment help, bill assistance, and peer support resources for people in recovery across Ohio."
+        keywords="recovery resources Ohio, food assistance recovery, housing sober living Ohio, peer support Ohio"
+        canonical="/resources"
+      />
       {/* Hero */}
       <section className="bg-navy px-4 py-16">
         <div className="max-w-5xl mx-auto">
@@ -500,7 +508,6 @@ export function ResourcesPage() {
           </p>
         </div>
       </section>
-
       <div className="max-w-5xl mx-auto px-4 py-12">
         {/* Crisis alert */}
         <div className="rounded-xl border border-amber-recovery/60 bg-amber-recovery/10 p-5 mb-12 flex gap-4 items-start">

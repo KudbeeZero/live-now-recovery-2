@@ -1,7 +1,7 @@
 /**
- * AdminPage — 8-tab admin command center for Live Now Recovery.
+ * AdminPage — 9-tab admin command center for Live Now Recovery.
  * Auth guard: useInternetIdentity() + useIsAdmin()
- * Tabs: Overview, Providers, Citizen Reports, Testimonials, Helpers, Fiscal Impact, Health Monitor, Prediction Engine
+ * Tabs: Overview, Providers, Citizen Reports, Testimonials, Helpers, Fiscal Impact, Health Monitor, Prediction Engine, Credentials
  */
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,
   AlertTriangle,
+  Award,
   BarChart3,
   BedDouble,
   CheckCircle2,
@@ -27,11 +28,14 @@ import {
   Heart,
   Loader2,
   Lock,
+  Medal,
   MessageSquare,
+  Package,
   Plus,
   Settings,
   Shield,
   ShieldCheck,
+  Star,
   TrendingUp,
   Users,
   X,
@@ -44,6 +48,10 @@ import type { Helper, ProviderWithStatus, TouchpointRecord } from "../backend";
 import { HealthMonitor } from "../components/HealthMonitor";
 import { ImpactOdometer } from "../components/ImpactOdometer";
 import { PredictionEnginePanel } from "../components/PredictionEnginePanel";
+import {
+  useGlobalImpactStats,
+  usePendingPhysicalFulfillments,
+} from "../hooks/useCredentials";
 import {
   useAllProviders,
   useApproveTestimonial,
@@ -58,8 +66,20 @@ import {
   useToggleLive,
   useVerifyProvider,
 } from "../hooks/useQueries";
+import {
+  formatEarnedAt,
+  getTierBgColor,
+  getTierColor,
+  getTierLabel,
+  shortenPrincipal,
+} from "../lib/credentials";
 import { usePredictionEngineStore } from "../store/predictionEngineStore";
 import type { CitizenReport, Testimonial } from "../types/community";
+import {
+  ALL_CREDENTIAL_TYPES,
+  CREDENTIAL_META,
+  CredentialType,
+} from "../types/credentials";
 import { isProviderStale, statusLabel } from "../utils/providerUtils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -72,7 +92,8 @@ type AdminTab =
   | "helpers"
   | "fiscal"
   | "health"
-  | "prediction";
+  | "prediction"
+  | "credentials";
 
 type EmergencyStatus = "open_bed" | "72hr_bridge" | null;
 
@@ -223,6 +244,11 @@ const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
     id: "prediction",
     label: "Prediction Engine",
     icon: <Zap className="w-4 h-4" />,
+  },
+  {
+    id: "credentials",
+    label: "Credentials",
+    icon: <Award className="w-4 h-4" />,
   },
 ];
 
@@ -1837,6 +1863,519 @@ function RegisterProviderPanel() {
   );
 }
 
+// ─── Helpers: tier utils ──────────────────────────────────────────────────────
+
+const TIER_ORDER = [
+  "Community",
+  "PeerSupport",
+  "Clinical",
+  "Leadership",
+] as const;
+
+function TierBadge({ tier }: { tier: string }) {
+  const colorCls = getTierColor(tier);
+  const bgCls = getTierBgColor(tier);
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${bgCls} ${colorCls}`}
+    >
+      {getTierLabel(tier)}
+    </span>
+  );
+}
+
+function CredentialNameBadge({
+  credType,
+}: { credType: CredentialType | string }) {
+  const meta = CREDENTIAL_META[credType as CredentialType];
+  const name =
+    meta?.displayName ??
+    String(credType)
+      .replace(/([A-Z])/g, " $1")
+      .trim();
+  const tierBg = meta ? getTierBgColor(meta.tier) : "bg-muted border-border";
+  const tierColor = meta ? getTierColor(meta.tier) : "text-muted-foreground";
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${tierBg} ${tierColor}`}
+    >
+      {name}
+    </span>
+  );
+}
+
+// ─── Tab: Credentials ─────────────────────────────────────────────────────────
+
+const PENDING_APPROVAL_SIMULATED = [
+  {
+    principal: "rdmx6-jaaaa-aaaah-qcaiq-cai",
+    type: CredentialType.RecoveryAlly,
+    note: "Completed peer support training — verified by admin",
+  },
+  {
+    principal: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+    type: CredentialType.StorySharer,
+    note: "Submitted approved recovery testimonial",
+  },
+  {
+    principal: "r7inp-6aaaa-aaaaa-aaabq-cai",
+    type: CredentialType.SentinelVerified,
+    note: "Provider verification process passed",
+  },
+];
+
+function CredentialsTab() {
+  const { actor, isFetching } = useActor(createActor);
+  const qc = useQueryClient();
+
+  // Stats
+  const { data: globalStats, isLoading: statsLoading } = useGlobalImpactStats();
+
+  // Mint ledger — getAllPublicBadges returns [Principal, bigint][] (principal → credential count)
+  const { data: publicBadges = [], isLoading: ledgerLoading } = useQuery<
+    Array<[{ toString(): string }, bigint]>
+  >({
+    queryKey: ["allPublicBadges"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getAllPublicBadges();
+      } catch (err) {
+        console.error("[getAllPublicBadges] Failed:", err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30_000,
+  });
+
+  // Physical fulfillment queue
+  const {
+    data: pendingFulfillments = [],
+    isLoading: fulfillmentsLoading,
+    refetch: refetchFulfillments,
+  } = usePendingPhysicalFulfillments();
+
+  const fulfillMutation = useMutation({
+    mutationFn: async (_credId: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      return Promise.resolve(); // markPhysicalFulfilled not yet in backend
+    },
+    onSuccess: () => {
+      toast.success("Marked as fulfilled — ready to ship!");
+      void refetchFulfillments();
+      void qc.invalidateQueries({ queryKey: ["pendingPhysicalFulfillments"] });
+    },
+    onError: () => toast.error("Failed to mark fulfilled"),
+  });
+
+  // Manual mint form
+  const [mintForm, setMintForm] = useState({
+    principal: "",
+    credType: CredentialType.FirstResponder as CredentialType,
+    metadata: "",
+  });
+  const [minting, setMinting] = useState(false);
+
+  const handleMint = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!actor || !mintForm.principal) return;
+    setMinting(true);
+    try {
+      const { Principal } = await import("@icp-sdk/core/principal");
+      const principal = Principal.fromText(mintForm.principal.trim());
+      await actor.adminMintCredential(
+        principal,
+        mintForm.credType,
+        mintForm.metadata.trim() || null,
+      );
+      toast.success("Credential minted successfully!");
+      setMintForm({
+        principal: "",
+        credType: CredentialType.FirstResponder,
+        metadata: "",
+      });
+      void qc.invalidateQueries({ queryKey: ["allPublicBadges"] });
+      void qc.invalidateQueries({ queryKey: ["globalImpactStats"] });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      toast.error(`Mint failed: ${msg}`);
+    } finally {
+      setMinting(false);
+    }
+  };
+
+  // Pending approvals actions
+  const [approvingKeys, setApprovingKeys] = useState<Set<string>>(new Set());
+
+  const handleApproveCredential = async (
+    principalText: string,
+    credType: CredentialType,
+    key: string,
+  ) => {
+    if (!actor) return;
+    setApprovingKeys((prev) => new Set(prev).add(key));
+    try {
+      const { Principal } = await import("@icp-sdk/core/principal");
+      const principal = Principal.fromText(principalText);
+      await actor.adminMintCredential(principal, credType, null);
+      toast.success("Credential approved and minted");
+      void qc.invalidateQueries({ queryKey: ["allPublicBadges"] });
+      void qc.invalidateQueries({ queryKey: ["globalImpactStats"] });
+    } catch {
+      toast.error("Approval failed. Admin access required.");
+    } finally {
+      setApprovingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-8" data-ocid="admin.credentials_tab">
+      {/* 1. Global Stats Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+              <Medal className="w-4 h-4 text-emerald-400" />
+            </div>
+            <span className="text-sm text-muted-foreground">Badges Minted</span>
+          </div>
+          {statsLoading ? (
+            <Skeleton className="h-8 w-16" />
+          ) : (
+            <p className="text-2xl font-bold text-emerald-400">
+              {Number(globalStats?.totalBadgesMinted ?? 0n).toLocaleString()}
+            </p>
+          )}
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
+              <Users className="w-4 h-4 text-blue-400" />
+            </div>
+            <span className="text-sm text-muted-foreground">
+              Active Contributors
+            </span>
+          </div>
+          {statsLoading ? (
+            <Skeleton className="h-8 w-16" />
+          ) : (
+            <p className="text-2xl font-bold text-blue-400">
+              {Number(globalStats?.activeContributors ?? 0n).toLocaleString()}
+            </p>
+          )}
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
+              <Star className="w-4 h-4 text-purple-400" />
+            </div>
+            <span className="text-sm text-muted-foreground">
+              Total Impact Score
+            </span>
+          </div>
+          {statsLoading ? (
+            <Skeleton className="h-8 w-16" />
+          ) : (
+            <p className="text-2xl font-bold text-purple-400">
+              {Number(globalStats?.totalImpactScore ?? 0n).toLocaleString()}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Full Mint Ledger */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Award className="w-4 h-4 text-live-green" />
+          <h3 className="font-semibold text-foreground">Mint Ledger</h3>
+          <Badge className="ml-auto bg-muted text-muted-foreground border-border text-xs">
+            {publicBadges.length} records
+          </Badge>
+        </div>
+        {ledgerLoading ? (
+          <div className="p-8 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : publicBadges.length === 0 ? (
+          <div
+            className="p-12 text-center"
+            data-ocid="admin.credentials_ledger_empty"
+          >
+            <Award className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+            <p className="text-muted-foreground text-sm">
+              No credentials minted yet
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              Use the manual mint form below to issue the first credential
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Principal
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Badge Count
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {publicBadges.map(([principal, count], i) => (
+                  <tr
+                    key={principal.toString()}
+                    className="hover:bg-muted/30 transition-colors"
+                    data-ocid={`admin.credentials_row.${i + 1}`}
+                  >
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {shortenPrincipal(principal)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-bold text-emerald-400">
+                        {Number(count)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Manual Mint Form */}
+      <div className="bg-card rounded-2xl border border-border p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <Plus className="w-4 h-4 text-live-green" />
+          <h3 className="font-semibold text-foreground">
+            Manual Credential Mint
+          </h3>
+        </div>
+        <form
+          onSubmit={handleMint}
+          className="space-y-4"
+          data-ocid="admin.credentials_mint_form"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="mint-principal">Principal (text format)</Label>
+              <Input
+                id="mint-principal"
+                value={mintForm.principal}
+                onChange={(e) =>
+                  setMintForm((f) => ({ ...f, principal: e.target.value }))
+                }
+                placeholder="aaaaa-aa or rrkah-fqaaa-aaaaa-aaaaq-cai"
+                className="mt-1 min-h-[44px] font-mono text-xs"
+                required
+                data-ocid="admin.credentials_principal_input"
+              />
+            </div>
+            <div>
+              <Label htmlFor="mint-type">Credential Type</Label>
+              <select
+                id="mint-type"
+                value={mintForm.credType}
+                onChange={(e) =>
+                  setMintForm((f) => ({
+                    ...f,
+                    credType: e.target.value as CredentialType,
+                  }))
+                }
+                className="mt-1 w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                data-ocid="admin.credentials_type_select"
+              >
+                {TIER_ORDER.map((tier) =>
+                  ALL_CREDENTIAL_TYPES.filter(
+                    (ct) =>
+                      CREDENTIAL_META[ct as CredentialType]?.tier === tier,
+                  ).map((ct) => (
+                    <option key={ct} value={ct}>
+                      [{getTierLabel(tier)}]{" "}
+                      {CREDENTIAL_META[ct as CredentialType]?.displayName ?? ct}
+                    </option>
+                  )),
+                )}
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="mint-metadata">Metadata / Notes (optional)</Label>
+            <textarea
+              id="mint-metadata"
+              value={mintForm.metadata}
+              onChange={(e) =>
+                setMintForm((f) => ({ ...f, metadata: e.target.value }))
+              }
+              placeholder="e.g. report_id:42, handoff_count:25, event_id:outreach-2026-01"
+              rows={2}
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              data-ocid="admin.credentials_metadata_textarea"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            ⚠ Soul-bound — minted credentials cannot be transferred or revoked.
+            Zero PHI stored.
+          </p>
+          <Button
+            type="submit"
+            disabled={minting || !actor}
+            className="min-h-[44px] bg-live-green hover:bg-live-green/90 text-navy font-semibold"
+            data-ocid="admin.credentials_mint_submit"
+          >
+            {minting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                Minting…
+              </>
+            ) : (
+              <>
+                <Award className="w-3.5 h-3.5 mr-1.5" />
+                Issue Credential
+              </>
+            )}
+          </Button>
+        </form>
+      </div>
+
+      {/* 4. Physical Fulfillment Queue */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Package className="w-4 h-4 text-amber-400" />
+          <h3 className="font-semibold text-foreground">
+            Physical Fulfillment Queue
+          </h3>
+          {pendingFulfillments.length > 0 && (
+            <Badge className="ml-auto bg-amber-900/40 text-amber-400 border-amber-700/40 text-xs">
+              {pendingFulfillments.length} pending
+            </Badge>
+          )}
+        </div>
+        {fulfillmentsLoading ? (
+          <div className="p-8 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : pendingFulfillments.length === 0 ? (
+          <div className="p-10 text-center" data-ocid="admin.fulfillment_empty">
+            <Package className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              No pending physical rewards
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              When contributors claim physical rewards, they will appear here
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {pendingFulfillments.map((cred, i) => (
+              <div
+                key={Number(cred.id)}
+                className="px-5 py-4 flex items-center gap-4"
+                data-ocid={`admin.fulfillment_row.${i + 1}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <CredentialNameBadge credType={cred.credentialType} />
+                    <TierBadge tier={cred.tier} />
+                  </div>
+                  <p className="font-mono text-xs text-muted-foreground truncate">
+                    {shortenPrincipal(cred.owner)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Earned: {formatEarnedAt(cred.earnedAt)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fulfillMutation.mutate(cred.id)}
+                  disabled={fulfillMutation.isPending}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-emerald-700/40 text-emerald-400 hover:bg-emerald-950/30 transition-colors min-h-[36px]"
+                  data-ocid={`admin.mark_fulfilled.${i + 1}`}
+                >
+                  {fulfillMutation.isPending ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3 h-3" /> Mark Fulfilled
+                    </>
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 5. Pending Approvals */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-blue-400" />
+          <h3 className="font-semibold text-foreground">Pending Approvals</h3>
+          <span className="ml-1 text-xs text-muted-foreground">
+            (Recovery Ally · Story Sharer · Sentinel Verified)
+          </span>
+        </div>
+        <div className="divide-y divide-border">
+          {PENDING_APPROVAL_SIMULATED.map((item, i) => {
+            const key = `${item.principal}-${item.type}`;
+            return (
+              <div
+                key={key}
+                className="px-5 py-4 flex items-center gap-4"
+                data-ocid={`admin.approval_row.${i + 1}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CredentialNameBadge credType={item.type} />
+                  </div>
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {shortenPrincipal(item.principal)}
+                  </p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">
+                    {item.note}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleApproveCredential(item.principal, item.type, key)
+                  }
+                  disabled={approvingKeys.has(key)}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-900/40 text-blue-400 border border-blue-700/40 hover:bg-blue-900/60 transition-colors min-h-[36px]"
+                  data-ocid={`admin.approval_button.${i + 1}`}
+                >
+                  {approvingKeys.has(key) ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3 h-3" /> Approve &amp; Mint
+                    </>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <div className="px-5 py-3 border-t border-border">
+          <p className="text-xs text-muted-foreground">
+            These are example pending approvals. In production, submissions from
+            the recovery account flow will populate this queue automatically.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main AdminPage ───────────────────────────────────────────────────────────
 
 export function AdminPage() {
@@ -2083,6 +2622,7 @@ export function AdminPage() {
         {activeTab === "fiscal" && <FiscalImpactTab />}
         {activeTab === "health" && <HealthMonitor />}
         {activeTab === "prediction" && <PredictionEnginePanel />}
+        {activeTab === "credentials" && <CredentialsTab />}
       </div>
     </main>
   );

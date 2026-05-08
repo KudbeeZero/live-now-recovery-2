@@ -1,3 +1,17 @@
+type VolunteerProfile = 
+ record {
+   bio: text;
+   city: text;
+   displayName: text;
+   id: nat;
+   impactScore: nat;
+   joinedAt: nat64;
+   "principal": opt principal;
+   privacyPublic: bool;
+   role: text;
+   skills: vec text;
+   zip: text;
+ };
 type VerifyResult = 
  variant {
    AlreadyUsed;
@@ -19,6 +33,7 @@ type TouchpointRecord =
    totalSaved: float64;
    touchpoints: nat;
  };
+type Tier = text;
 type Testimonial = 
  record {
    authorDisplayName: text;
@@ -92,6 +107,16 @@ type ProviderPost =
    imageUrl: opt text;
    providerId: text;
  };
+type ProfileUpdate = 
+ record {
+   bio: opt text;
+   city: opt text;
+   displayName: opt text;
+   privacyPublic: opt bool;
+   role: opt text;
+   skills: opt vec text;
+   zip: opt text;
+ };
 type PredictionEngineState = 
  record {
    avgDailyHandoffCount: nat;
@@ -122,6 +147,42 @@ type HarmReductionItem =
    notes: opt text;
    quantity: opt nat;
  };
+type GlobalImpactStats = 
+ record {
+   activeContributors: nat;
+   totalBadgesMinted: nat;
+   totalImpactScore: nat;
+ };
+type CredentialType = 
+ variant {
+   BridgeProvider;
+   CommunityArchitect;
+   CommunitySentinel;
+   FirstResponder;
+   MATChampion;
+   NarcanHero;
+   PolicyPioneer;
+   RecoveryAlly;
+   RecoveryNavigator;
+   SentinelVerified;
+   StorySharer;
+   ThirtyDayGuide;
+ };
+type Credential = 
+ record {
+   badgeSvg: opt text;
+   cardMetadata: opt text;
+   credentialType: CredentialType;
+   description: text;
+   earnedAt: int;
+   id: nat;
+   impactScore: nat;
+   metadata: opt text;
+   name: text;
+   owner: principal;
+   tier: Tier;
+   verifier: opt principal;
+ };
 type CitizenReport = 
  record {
    activityType: text;
@@ -149,8 +210,11 @@ service : {
   addProviderPost: (providerId: text, content: text, imageUrl: opt text) ->
    (text);
   addRiskEvent: (event: RiskEvent) -> (text);
+  adminMintCredential: (owner: principal, credType: CredentialType, metadata:
+   opt text) -> (nat);
   approveTestimonial: (id: text) -> (bool);
   assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  checkAndAutoMint: (owner: principal, actionType: text, count: nat) -> ();
   createRecoveryProfile: (displayName: text, zip: text) -> (text);
   flagCitizenReport: (id: text) -> (bool);
   generateHandoffToken: (zipCode: text) -> (text);
@@ -160,6 +224,11 @@ service : {
                                   });
   getAllHelpers: () -> (vec Helper) query;
   getAllProviders: () -> (vec ProviderWithStatus) query;
+  getAllPublicBadges: () -> (vec record {
+                                   principal;
+                                   nat;
+                                 }) query;
+  getAllPublicVolunteers: () -> (vec VolunteerProfile) query;
   getAllReports: () -> (vec CitizenReport) query;
   getAllTestimonialsAdmin: () -> (vec Testimonial) query;
   getApprovedTestimonials: () -> (vec Testimonial) query;
@@ -167,6 +236,7 @@ service : {
   getCallerUserRole: () -> (UserRole) query;
   getCanisterState: () -> (CanisterStateSummary) query;
   getCostPlusReferralCount: (providerId: text) -> (nat) query;
+  getCredentialById: (id: nat) -> (opt Credential) query;
   getEmergencyActive: () -> (vec ProviderWithStatus) query;
   getEmergencyBridgeStatus: () ->
    (record {
@@ -183,6 +253,7 @@ service : {
       stabilizedAgents: nat;
       touchpointCount: nat;
     }) query;
+  getGlobalImpactStats: () -> (GlobalImpactStats) query;
   getHandoffCountsByZip: () -> (vec record {
                                       text;
                                       nat;
@@ -210,17 +281,32 @@ service : {
                                         float64;
                                       });
   getTestimonialCount: () -> (nat) query;
+  getTopContributors: (limit: nat) ->
+   (vec record {
+          principal;
+          nat;
+          vec text;
+        }) query;
   getTotalCostPlusReferrals: () -> (nat) query;
   getTotalHandoffs: () -> (nat) query;
   getTouchpointData: () -> (vec TouchpointRecord) query;
+  getUserCredentials: ("principal": principal) -> (vec Credential) query;
   getUserProfile: (user: principal) -> (opt UserProfile) query;
+  getUserTimeline: (owner: principal) -> (vec Credential) query;
+  getVolunteer: (id: nat) -> (opt VolunteerProfile) query;
+  getVolunteerByPrincipal: ("principal": principal) ->
+   (opt VolunteerProfile) query;
   getWeatherAlerts: () -> (text);
   getWeatherRisk: () -> (float64);
+  hasCredential: ("principal": principal, credType: CredentialType) ->
+   (bool) query;
   hideTestimonial: (id: text) -> (bool);
   incrementSimulationStats: (handoffs: nat, scans: nat) -> ();
   initSimulationTime: () -> ();
   isCallerAdmin: () -> (bool) query;
   markResourceUsed: (resourceCategory: text) -> (bool);
+  mintCredential: (owner: principal, credType: CredentialType, metadata:
+   opt text, verifier: opt principal) -> (nat);
   receiveRiskPacket: (packet: RiskPacket) -> ();
   recordCostPlusReferral: (providerId: text) -> ();
   recordTouchpoint: (agentId: text, _zip: text) -> ();
@@ -228,6 +314,8 @@ service : {
    text, phone: text, helpType: text, consent: bool, note: text) -> ();
   registerProvider: (id: text, name: text, lat: float64, lng: float64,
    providerType: text) -> ();
+  registerVolunteerProfile: (displayName: text, role: text, city: text, zip:
+   text, bio: text, skills: vec text, privacyPublic: bool) -> (nat);
   removeFavoriteProvider: (providerId: text) -> (bool);
   removeRiskEvent: (id: text) -> (bool);
   resetFiscalData: () -> ();
@@ -246,7 +334,9 @@ service : {
   toggleLive: (id: text, status: bool) -> ();
   updateInventory: (id: text, newInventory: text) -> ();
   updateRiskEvent: (id: text, event: RiskEvent) -> (bool);
+  updateVolunteerProfile: (id: nat, upd: ProfileUpdate) -> (bool);
   upvoteCitizenReport: (reportId: text) -> (bool);
   verifyHandoff: (token: text) -> (VerifyResult);
   verifyProvider: (id: text) -> ();
+  volunteerCount: () -> (nat) query;
 }

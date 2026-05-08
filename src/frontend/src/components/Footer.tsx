@@ -26,6 +26,13 @@ export function Footer() {
                 Live Now Recovery
               </span>
             </div>
+            <Link
+              to="/donate"
+              className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline hover:text-primary/80 transition-colors"
+              data-ocid="footer.donate_link"
+            >
+              Help fund recovery access in Ohio \u2192
+            </Link>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Real-time, privacy-first MAT provider availability for Ohio Region
               13. Zero PHI. Always anonymous.
@@ -47,9 +54,14 @@ export function Footer() {
               {[
                 { to: "/", label: "Live Map" },
                 { to: "/citizens", label: "Citizens Hub" },
+                { to: "/leaderboard", label: "Leaderboard" },
+                { to: "/impact", label: "Impact" },
                 { to: "/national-impact", label: "National Impact" },
+                { to: "/donate", label: "Donate →" },
                 { to: "/verify", label: "Verify Handoff" },
                 { to: "/helper", label: "Helper Guide" },
+                { to: "/volunteers", label: "Volunteer Directory" },
+                { to: "/helper", label: "Become a Volunteer" },
                 { to: "/integration", label: "AI Integration" },
                 { to: "/admin", label: "Admin" },
               ].map((l) => (

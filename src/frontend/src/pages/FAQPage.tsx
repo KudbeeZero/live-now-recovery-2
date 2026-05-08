@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/accordion";
 import { HelpCircle } from "lucide-react";
 import { motion } from "motion/react";
+import { SEO } from "../components/SEO";
 
 const FAQS = [
   {
@@ -89,6 +90,59 @@ const FAQS = [
 export function FAQPage() {
   return (
     <main className="min-h-screen" data-ocid="faq.page">
+      {" "}
+      <SEO
+        title="Frequently Asked Questions | Live Now Recovery"
+        description="Answers to common questions about medication-assisted treatment, using Live Now Recovery, and finding recovery resources in Ohio."
+        keywords="MAT FAQ, addiction treatment questions Ohio, recovery app FAQ, what is medication-assisted treatment"
+        canonical="/faq"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: [
+            {
+              "@type": "Question",
+              name: "What is medication-assisted treatment (MAT)?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Medication-assisted treatment (MAT) combines FDA-approved medications like buprenorphine and methadone with counseling to treat opioid use disorder. MAT reduces overdose mortality by 50\u201370%.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Is using Live Now Recovery anonymous?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Yes. Live Now Recovery stores zero Protected Health Information. You can find providers, get resources, and report community needs completely anonymously.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Where can I get Narcan in Ohio?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Narcan (naloxone) is available at most Ohio pharmacies without a prescription, at harm reduction kiosks displayed on the Live Now Recovery map, and through local health departments.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "What is a warm handoff?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "A warm handoff is a direct, real-time referral from one care provider to another \u2014 ensuring someone in crisis is connected to treatment without falling through the gaps.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "How much does MAT cost in Ohio?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Many Ohio MAT clinics accept Medicaid, offer sliding scale fees, or provide free treatment through state funding. Cost Plus Drugs offers buprenorphine-naloxone at significantly reduced prices.",
+              },
+            },
+          ],
+        }}
+      />
       {/* Hero */}
       <section className="bg-navy px-4 py-16 md:py-20">
         <motion.div
@@ -113,7 +167,6 @@ export function FAQPage() {
           </p>
         </motion.div>
       </section>
-
       <div className="max-w-3xl mx-auto px-4 py-12 space-y-10">
         {/* Why MAT? section */}
         <motion.div

@@ -84,33 +84,39 @@ export function EmergencyBanner() {
     );
   }
 
-  // After hours AND zero coverage → full red emergency alert
+  // After hours AND zero coverage → urgent teal alert (NEVER red — psychiatric/UX policy)
   if (!showFullAlert) return null;
 
   return (
     <div
-      className="w-full bg-destructive text-destructive-foreground text-sm font-medium py-2.5 px-4"
+      className="w-full text-sm font-medium py-2.5 px-4"
       role="alert"
       aria-live="polite"
       aria-label="Emergency crisis resources — after hours, no live providers"
       data-ocid="emergency.banner"
+      style={{
+        background: "oklch(0.16 0.05 200)",
+        borderBottom: "1px solid oklch(0.28 0.08 200)",
+      }}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-center gap-3 flex-wrap text-center">
         <AlertTriangle
           className="w-4 h-4 shrink-0 pulse-slow"
           aria-hidden="true"
+          style={{ color: "#6ee7d0" }}
         />
-        <span className="font-semibold">
+        <span className="font-semibold" style={{ color: "#6ee7d0" }}>
           After Hours — No providers live now. Call Ohio MAR NOW:
         </span>
         <a
           href="tel:833-234-6343"
           className="font-bold underline underline-offset-2 hover:opacity-90 transition-opacity min-h-[44px] inline-flex items-center"
+          style={{ color: "#6ee7d0" }}
           data-ocid="emergency.link"
         >
           833-234-6343
         </a>
-        <span className="opacity-90">
+        <span style={{ color: "oklch(0.72 0.04 220)" }}>
           | After Hours Crisis Support Available
         </span>
       </div>

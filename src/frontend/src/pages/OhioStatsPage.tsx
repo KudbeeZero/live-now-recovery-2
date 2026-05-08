@@ -27,6 +27,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { SEO } from "../components/SEO";
 
 // ─── Color constants ──────────────────────────────────────────────────────────
 const GREEN = "#00e676";
@@ -381,6 +382,21 @@ export function OhioStatsPage() {
 
   return (
     <main className="min-h-screen" data-ocid="ohio_stats.page">
+      {" "}
+      <SEO
+        title="Ohio Opioid Crisis Statistics 2024 | Live Now Recovery"
+        description="Ohio overdose death rates, MAT access gaps, and community impact data. 5,232 deaths in 2023. See how Live Now Recovery addresses the crisis."
+        keywords="Ohio opioid statistics, Ohio overdose deaths 2024, opioid epidemic Ohio data, MAT access Ohio"
+        canonical="/ohio-stats"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "MedicalWebPage",
+          name: "Ohio Opioid Crisis Statistics 2024",
+          description:
+            "Ohio overdose death rates, MAT access gaps, and community impact data from Live Now Recovery.",
+          about: { "@type": "MedicalCondition", name: "Opioid Use Disorder" },
+        }}
+      />
       {/* ── Hero ── */}
       <section
         className="relative px-4 py-20 overflow-hidden"
@@ -434,7 +450,6 @@ export function OhioStatsPage() {
           </motion.div>
         </div>
       </section>
-
       <div className="max-w-5xl mx-auto px-4 py-12">
         {/* ── Narrative context ── */}
         <motion.div

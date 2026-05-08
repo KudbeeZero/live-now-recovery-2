@@ -26,6 +26,7 @@ import {
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SEO } from "../components/SEO";
 import {
   useAllProviders,
   useGetAllReports,
@@ -1495,107 +1496,118 @@ export function CitizensPage() {
 
   return (
     <div
-      className="fixed inset-0 overflow-hidden"
+      className="flex flex-col flex-1 min-h-0"
       style={{
         background: "#060d14",
         color: "rgba(255,255,255,0.9)",
-        zIndex: 50,
       }}
       data-ocid="citizens.page"
     >
-      {/* ── Full-viewport map ────────────────────────────────────────── */}
-      <CitizensMap reports={reports} providers={providers} filters={filters} />
+      <SEO
+        title="Community Reports & Recovery Hub | Live Now Recovery"
+        description="View live community reports, find nearby Narcan and harm reduction resources, and share recovery stories. Anonymous, real-time, privacy-first."
+        keywords="community recovery reports, Narcan locations map, harm reduction community"
+        canonical="/citizens"
+      />
+      {/* ── Map fills remaining height below header ───────────────────── */}
+      <div className="relative flex-1 min-h-0" style={{ overflow: "hidden" }}>
+        <CitizensMap
+          reports={reports}
+          providers={providers}
+          filters={filters}
+        />
 
-      {/* ── Floating top bar ─────────────────────────────────────────── */}
-      <div
-        className="absolute top-0 left-0 right-0 z-20 flex flex-col gap-2 px-4 pt-3 pb-2"
-        style={{
-          background:
-            "linear-gradient(to bottom, rgba(6,13,20,0.9) 70%, transparent)",
-          backdropFilter: "blur(2px)",
-        }}
-        data-ocid="citizens.topbar"
-      >
-        {/* Title row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span
-              className="w-2 h-2 rounded-full animate-pulse"
-              style={{ background: "#22c55e" }}
+        {/* ── Floating top bar ─────────────────────────────────────────── */}
+        <div
+          className="absolute top-0 left-0 right-0 z-20 flex flex-col gap-2 px-4 pt-3 pb-2"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(6,13,20,0.9) 70%, transparent)",
+            backdropFilter: "blur(2px)",
+          }}
+          data-ocid="citizens.topbar"
+        >
+          {/* Title row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span
+                className="w-2 h-2 rounded-full animate-pulse"
+                style={{ background: "#22c55e" }}
+                aria-hidden="true"
+              />
+              <span
+                className="text-sm font-bold tracking-tight"
+                style={{ color: "rgba(255,255,255,0.95)" }}
+              >
+                Community Hub
+              </span>
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{
+                  background: "rgba(34,197,94,0.12)",
+                  color: "#22c55e",
+                  border: "1px solid rgba(34,197,94,0.25)",
+                }}
+              >
+                LIVE
+              </span>
+            </div>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all duration-150 hover:scale-105 active:scale-95"
+              style={{
+                background: "rgba(94,234,212,0.18)",
+                border: "1px solid rgba(94,234,212,0.4)",
+                color: TEAL,
+                boxShadow: "0 0 12px rgba(94,234,212,0.15)",
+              }}
+              onClick={() => {
+                setDrawerState("expanded");
+                setDrawerTab("feed");
+              }}
+              data-ocid="citizens.report_btn"
+              aria-label="Submit a community report"
+            >
+              <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+              Report
+            </button>
+          </div>
+
+          {/* Filter pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 hide-scrollbar">
+            <Filter
+              className="w-3.5 h-3.5 shrink-0"
+              style={{ color: "rgba(255,255,255,0.3)" }}
               aria-hidden="true"
             />
-            <span
-              className="text-sm font-bold tracking-tight"
-              style={{ color: "rgba(255,255,255,0.95)" }}
-            >
-              Community Hub
-            </span>
-            <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-              style={{
-                background: "rgba(34,197,94,0.12)",
-                color: "#22c55e",
-                border: "1px solid rgba(34,197,94,0.25)",
-              }}
-            >
-              LIVE
-            </span>
+            {filterDefs.map((f) => (
+              <FilterPill
+                key={f.key}
+                label={f.label}
+                active={filters[f.key]}
+                dot={f.dot}
+                onClick={() => toggleFilter(f.key)}
+              />
+            ))}
           </div>
-          <button
-            type="button"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all duration-150 hover:scale-105 active:scale-95"
-            style={{
-              background: "rgba(94,234,212,0.18)",
-              border: "1px solid rgba(94,234,212,0.4)",
-              color: TEAL,
-              boxShadow: "0 0 12px rgba(94,234,212,0.15)",
-            }}
-            onClick={() => {
-              setDrawerState("expanded");
-              setDrawerTab("feed");
-            }}
-            data-ocid="citizens.report_btn"
-            aria-label="Submit a community report"
-          >
-            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-            Report
-          </button>
         </div>
 
-        {/* Filter pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-0.5 hide-scrollbar">
-          <Filter
-            className="w-3.5 h-3.5 shrink-0"
-            style={{ color: "rgba(255,255,255,0.3)" }}
-            aria-hidden="true"
-          />
-          {filterDefs.map((f) => (
-            <FilterPill
-              key={f.key}
-              label={f.label}
-              active={filters[f.key]}
-              dot={f.dot}
-              onClick={() => toggleFilter(f.key)}
-            />
-          ))}
-        </div>
+        {/* ── Legend ───────────────────────────────────────────────────── */}
+        <MapLegend showProviders={providers.length > 0} />
+
+        {/* ── Slide-up bottom drawer ───────────────────────────────────── */}
+        <BottomDrawer
+          reports={reports}
+          testimonials={testimonials}
+          reportsWeek={reportsWeek}
+          narcanLocations={narcanLocations > 0 ? narcanLocations : 8}
+          storiesCount={testimonials.length}
+          drawerState={drawerState}
+          setDrawerState={setDrawerState}
+          drawerTab={drawerTab}
+          setDrawerTab={setDrawerTab}
+        />
       </div>
-
-      {/* ── Legend ───────────────────────────────────────────────────── */}
-      <MapLegend showProviders={providers.length > 0} />
-
-      {/* ── Slide-up bottom drawer ───────────────────────────────────── */}
-      <BottomDrawer
-        reports={reports}
-        testimonials={testimonials}
-        reportsWeek={reportsWeek}
-        narcanLocations={narcanLocations > 0 ? narcanLocations : 8}
-        storiesCount={testimonials.length}
-        drawerState={drawerState}
-        setDrawerState={setDrawerState}
-        drawerTab={drawerTab}
-        setDrawerTab={setDrawerTab}
-      />
     </div>
   );
 }

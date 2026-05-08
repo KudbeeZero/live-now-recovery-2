@@ -25,6 +25,37 @@ export interface CitizenReport {
   'createdAt' : bigint,
   'zipCode' : string,
 }
+export interface Credential {
+  'id' : bigint,
+  'verifier' : [] | [Principal],
+  'impactScore' : bigint,
+  'badgeSvg' : [] | [string],
+  'owner' : Principal,
+  'metadata' : [] | [string],
+  'name' : string,
+  'credentialType' : CredentialType,
+  'tier' : Tier,
+  'description' : string,
+  'cardMetadata' : [] | [string],
+  'earnedAt' : bigint,
+}
+export type CredentialType = { 'BridgeProvider' : null } |
+  { 'PolicyPioneer' : null } |
+  { 'NarcanHero' : null } |
+  { 'CommunityArchitect' : null } |
+  { 'MATChampion' : null } |
+  { 'RecoveryNavigator' : null } |
+  { 'SentinelVerified' : null } |
+  { 'CommunitySentinel' : null } |
+  { 'StorySharer' : null } |
+  { 'ThirtyDayGuide' : null } |
+  { 'RecoveryAlly' : null } |
+  { 'FirstResponder' : null };
+export interface GlobalImpactStats {
+  'totalImpactScore' : bigint,
+  'activeContributors' : bigint,
+  'totalBadgesMinted' : bigint,
+}
 export interface HarmReductionItem {
   'available' : boolean,
   'notes' : [] | [string],
@@ -51,6 +82,15 @@ export interface PredictionEngineState {
   'simulationEnabled' : boolean,
   'stressToggle' : boolean,
   'paydayToggle' : boolean,
+}
+export interface ProfileUpdate {
+  'bio' : [] | [string],
+  'zip' : [] | [string],
+  'displayName' : [] | [string],
+  'city' : [] | [string],
+  'role' : [] | [string],
+  'privacyPublic' : [] | [boolean],
+  'skills' : [] | [Array<string>],
 }
 export interface ProviderPost {
   'id' : string,
@@ -113,6 +153,7 @@ export interface Testimonial {
   'isHidden' : boolean,
   'authorDisplayName' : string,
 }
+export type Tier = string;
 export interface TouchpointRecord {
   'touchpoints' : bigint,
   'agentId' : string,
@@ -127,19 +168,39 @@ export type VerifyResult = { 'Ok' : string } |
   { 'NotFound' : null } |
   { 'Expired' : null } |
   { 'AlreadyUsed' : null };
+export interface VolunteerProfile {
+  'id' : bigint,
+  'bio' : string,
+  'zip' : string,
+  'principal' : [] | [Principal],
+  'displayName' : string,
+  'impactScore' : bigint,
+  'city' : string,
+  'joinedAt' : bigint,
+  'role' : string,
+  'privacyPublic' : boolean,
+  'skills' : Array<string>,
+}
 export interface _SERVICE {
   '_initializeAccessControl' : ActorMethod<[], undefined>,
   'addFavoriteProvider' : ActorMethod<[string], boolean>,
   'addProviderPost' : ActorMethod<[string, string, [] | [string]], string>,
   'addRiskEvent' : ActorMethod<[RiskEvent], string>,
+  'adminMintCredential' : ActorMethod<
+    [Principal, CredentialType, [] | [string]],
+    bigint
+  >,
   'approveTestimonial' : ActorMethod<[string], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'checkAndAutoMint' : ActorMethod<[Principal, string, bigint], undefined>,
   'createRecoveryProfile' : ActorMethod<[string, string], string>,
   'flagCitizenReport' : ActorMethod<[string], boolean>,
   'generateHandoffToken' : ActorMethod<[string], string>,
   'getActiveRiskBoosts' : ActorMethod<[], Array<[string, number]>>,
   'getAllHelpers' : ActorMethod<[], Array<Helper>>,
   'getAllProviders' : ActorMethod<[], Array<ProviderWithStatus>>,
+  'getAllPublicBadges' : ActorMethod<[], Array<[Principal, bigint]>>,
+  'getAllPublicVolunteers' : ActorMethod<[], Array<VolunteerProfile>>,
   'getAllReports' : ActorMethod<[], Array<CitizenReport>>,
   'getAllTestimonialsAdmin' : ActorMethod<[], Array<Testimonial>>,
   'getApprovedTestimonials' : ActorMethod<[], Array<Testimonial>>,
@@ -147,6 +208,7 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCanisterState' : ActorMethod<[], CanisterStateSummary>,
   'getCostPlusReferralCount' : ActorMethod<[string], bigint>,
+  'getCredentialById' : ActorMethod<[bigint], [] | [Credential]>,
   'getEmergencyActive' : ActorMethod<[], Array<ProviderWithStatus>>,
   'getEmergencyBridgeStatus' : ActorMethod<
     [],
@@ -163,6 +225,7 @@ export interface _SERVICE {
       'dollarsSaved' : number,
     }
   >,
+  'getGlobalImpactStats' : ActorMethod<[], GlobalImpactStats>,
   'getHandoffCountsByZip' : ActorMethod<[], Array<[string, bigint]>>,
   'getHarmReductionInventory' : ActorMethod<[string], Array<HarmReductionItem>>,
   'getHelperCount' : ActorMethod<[], bigint>,
@@ -187,17 +250,30 @@ export interface _SERVICE {
   >,
   'getSocialStressBaseline' : ActorMethod<[], Array<[string, number]>>,
   'getTestimonialCount' : ActorMethod<[], bigint>,
+  'getTopContributors' : ActorMethod<
+    [bigint],
+    Array<[Principal, bigint, Array<string>]>
+  >,
   'getTotalCostPlusReferrals' : ActorMethod<[], bigint>,
   'getTotalHandoffs' : ActorMethod<[], bigint>,
   'getTouchpointData' : ActorMethod<[], Array<TouchpointRecord>>,
+  'getUserCredentials' : ActorMethod<[Principal], Array<Credential>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getUserTimeline' : ActorMethod<[Principal], Array<Credential>>,
+  'getVolunteer' : ActorMethod<[bigint], [] | [VolunteerProfile]>,
+  'getVolunteerByPrincipal' : ActorMethod<[Principal], [] | [VolunteerProfile]>,
   'getWeatherAlerts' : ActorMethod<[], string>,
   'getWeatherRisk' : ActorMethod<[], number>,
+  'hasCredential' : ActorMethod<[Principal, CredentialType], boolean>,
   'hideTestimonial' : ActorMethod<[string], boolean>,
   'incrementSimulationStats' : ActorMethod<[bigint, bigint], undefined>,
   'initSimulationTime' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'markResourceUsed' : ActorMethod<[string], boolean>,
+  'mintCredential' : ActorMethod<
+    [Principal, CredentialType, [] | [string], [] | [Principal]],
+    bigint
+  >,
   'receiveRiskPacket' : ActorMethod<[RiskPacket], undefined>,
   'recordCostPlusReferral' : ActorMethod<[string], undefined>,
   'recordTouchpoint' : ActorMethod<[string, string], undefined>,
@@ -208,6 +284,10 @@ export interface _SERVICE {
   'registerProvider' : ActorMethod<
     [string, string, number, number, string],
     undefined
+  >,
+  'registerVolunteerProfile' : ActorMethod<
+    [string, string, string, string, string, Array<string>, boolean],
+    bigint
   >,
   'removeFavoriteProvider' : ActorMethod<[string], boolean>,
   'removeRiskEvent' : ActorMethod<[string], boolean>,
@@ -230,9 +310,11 @@ export interface _SERVICE {
   'toggleLive' : ActorMethod<[string, boolean], undefined>,
   'updateInventory' : ActorMethod<[string, string], undefined>,
   'updateRiskEvent' : ActorMethod<[string, RiskEvent], boolean>,
+  'updateVolunteerProfile' : ActorMethod<[bigint, ProfileUpdate], boolean>,
   'upvoteCitizenReport' : ActorMethod<[string], boolean>,
   'verifyHandoff' : ActorMethod<[string], VerifyResult>,
   'verifyProvider' : ActorMethod<[string], undefined>,
+  'volunteerCount' : ActorMethod<[], bigint>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

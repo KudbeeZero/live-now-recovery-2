@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Play, X } from "lucide-react";
 import { type RefObject, useEffect, useRef, useState } from "react";
+import { SEO } from "../components/SEO";
 
 interface VideoItem {
   id: string;
@@ -199,8 +200,8 @@ function Lightbox({ video, onClose }: LightboxProps) {
             title={video.title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
             className="absolute inset-0 w-full h-full"
-            loading="lazy"
           />
         </div>
         {/* Caption */}
@@ -221,6 +222,13 @@ export function VideosPage() {
       className="min-h-screen"
       style={{ backgroundColor: "oklch(0.09 0 0)" }}
     >
+      {" "}
+      <SEO
+        title="Recovery Stories & Education | Live Now Recovery"
+        description="Watch peer support documentaries, personal recovery stories, and educational videos about medication-assisted treatment and harm reduction in Ohio."
+        keywords="recovery stories Ohio, MAT education videos, peer support documentaries, addiction recovery video"
+        canonical="/videos"
+      />
       {/* Breadcrumb */}
       <div
         className="border-b border-border/40"
@@ -238,7 +246,6 @@ export function VideosPage() {
           <span className="text-foreground font-medium">Videos</span>
         </div>
       </div>
-
       {/* Page Header */}
       <div
         className="relative overflow-hidden"
@@ -265,7 +272,6 @@ export function VideosPage() {
           </p>
         </div>
       </div>
-
       <div className="max-w-6xl mx-auto px-4 pb-20 space-y-16">
         {/* Featured Video */}
         <section>
@@ -375,7 +381,6 @@ export function VideosPage() {
           </Link>
         </section>
       </div>
-
       {/* Lightbox */}
       <Lightbox video={activeVideo} onClose={() => setActiveVideo(null)} />
     </div>

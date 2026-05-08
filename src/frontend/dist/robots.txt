@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /integration
+Disallow: /verify
+
+Sitemap: https://live-now-recovery-3f2.caffeine.xyz/sitemap.xml

@@ -85,7 +85,11 @@ export default {
         "on-dark": "oklch(0.72 0.03 225)",
         emergency: "oklch(var(--destructive) / <alpha-value>)",
         "trust-blue": "oklch(var(--primary) / <alpha-value>)",
-        "live-green": "oklch(var(--live) / <alpha-value>)",
+        "live-green": "oklch(var(--live) / <alpha-value>)",        // Credential tier colors — premium collectibles
+        "credential-community": "oklch(var(--credential-community) / <alpha-value>)",
+        "credential-peer": "oklch(var(--credential-peer) / <alpha-value>)",
+        "credential-clinical": "oklch(var(--credential-clinical) / <alpha-value>)",
+        "credential-leadership": "oklch(var(--credential-leadership) / <alpha-value>)",
         // Sentinel Risk Intelligence heat gradient
         "risk-safe": "oklch(var(--risk-safe))",
         "risk-low": "oklch(var(--risk-low))",

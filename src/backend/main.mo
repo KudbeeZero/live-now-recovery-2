@@ -10,6 +10,15 @@ import Int "mo:core/Int";
 import CoreTypes "mo:core/Types";
 import AccessControl "mo:caffeineai-authorization/access-control";
 import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
+import List "mo:core/List";
+import CredentialTypes "types/credentials";
+import CredLib "lib/credentials";
+import CredentialsApi "mixins/credentials-api";
+import VolunteerTypes "types/volunteer-profiles";
+import VolLib "lib/volunteer-profiles";
+import VolunteerProfilesApi "mixins/volunteer-profiles-api";
+
+
 
 actor {
   // Management canister actor type alias for ICP HTTP outcalls
@@ -33,7 +42,21 @@ actor {
 
   // Initialize access control
   let accessControlState = AccessControl.initState();
+  // ── Credential Layer State ────────────────────────────────────────────────────
+  // Soul-bound credentials — keyed by monotonic Nat ID.
+  // ownerIndex maps Principal → List<Nat> for O(log n) per-user lookups.
+  // impactIndex maps Principal → Nat for fast leaderboard aggregation.
+  // nextCredentialId wraps a mutable counter so the mixin can increment it.
+  let credentialsById   = Map.empty<Nat, CredentialTypes.Credential>();
+  let credOwnerIndex    = Map.empty<Principal, List.List<Nat>>();
+  let credImpactIndex   = Map.empty<Principal, Nat>();
+  let nextCredentialId  = { var value : Nat = 0 };
+  // ── Volunteer Profiles State ─────────────────────────────────────────────────
+  let volunteersById    = Map.empty<Nat, VolunteerTypes.VolunteerProfile>();
+  let nextVolunteerId   = { var value : Nat = 0 };
   include MixinAuthorization(accessControlState);
+  include CredentialsApi(credentialsById, credOwnerIndex, credImpactIndex, nextCredentialId, accessControlState);
+  include VolunteerProfilesApi(volunteersById, nextVolunteerId);
 
   // ICP management canister for HTTP outcalls
   let ic : ICManagement = actor "aaaaa-aa";
@@ -334,6 +357,9 @@ actor {
       case (?p) { p };
     };
     providers.add(id, { existing with is_verified = true });
+    // Auto-mint SentinelVerified for the provider's principal (use provider id as text-principal proxy,
+    // but since providers don't have a Principal, we mint for the admin caller as the verifier)
+    CredLib.autoMint(credentialsById, credOwnerIndex, credImpactIndex, nextCredentialId, caller, "verification", 1);
   };
 
   // setProviderActiveStatus — authenticated caller, updates is_active
@@ -870,6 +896,11 @@ actor {
       };
     };
 
+    // Seed mock volunteer profiles if none exist
+    if (volunteersById.isEmpty()) {
+      VolLib.seedMockVolunteers(volunteersById, nextVolunteerId);
+    };
+
     // Seed demo citizen reports if none exist
     if (citizenReports.isEmpty()) {
       let seedReports : [(Text, Text, Text, Text, Float, Float)] = [
@@ -1290,6 +1321,8 @@ actor {
     };
     let expiresAt : Int = Time.now() + 86_400_000_000_000; // 24h in nanoseconds
     citizenReportRiskBoosts := citizenReportRiskBoosts.concat([(zipCode, boostAmount, expiresAt)]);
+    // Note: submitCitizenReport allows anonymous callers, so credential auto-minting
+    // is handled separately via admin-triggered checkAndAutoMint for authenticated users.
     id;
   };
 
@@ -1472,14 +1505,27 @@ actor {
       Runtime.trap("Unauthorized: Only admins can approve testimonials");
     };
     var found = false;
+    var approvedAuthorId : ?Text = null;
     testimonials := testimonials.map<(Text, Testimonial), (Text, Testimonial)>(func((tid, t) : (Text, Testimonial)) : (Text, Testimonial) {
       if (tid == id) {
         found := true;
+        approvedAuthorId := ?t.authorId;
         (tid, { t with isApproved = true });
       } else {
         (tid, t);
       }
     });
+    // Auto-mint StorySharer for the testimonial author if they have a non-anonymous principal
+    switch (approvedAuthorId) {
+      case null {};
+      case (?aid) {
+        // authorId is either "anon-<id>" or a principal text
+        if (not aid.startsWith(#text "anon-")) {
+          let authorPrincipal = Principal.fromText(aid);
+          CredLib.autoMint(credentialsById, credOwnerIndex, credImpactIndex, nextCredentialId, authorPrincipal, "testimonial", 1);
+        };
+      };
+    };
     found;
   };
 
