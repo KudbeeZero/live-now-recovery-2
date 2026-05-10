@@ -28,6 +28,12 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SEO } from "../components/SEO";
 import {
+  COUNTY_CENTERS,
+  MOCK_SENTINEL_SCORES,
+  OHIO_STATEWIDE_AVERAGE,
+  TOP_RISK_COUNTIES,
+} from "../data/mockSentinelScores";
+import {
   useAllProviders,
   useGetAllReports,
   useGetApprovedTestimonials,
@@ -842,7 +848,7 @@ function ResourcesTab() {
 // ─── Bottom Drawer ────────────────────────────────────────────────────────────
 
 type DrawerState = "collapsed" | "peek" | "expanded";
-type DrawerTab = "feed" | "stories" | "resources";
+type DrawerTab = "feed" | "stories" | "resources" | "sentinel";
 
 interface DrawerProps {
   reports: CitizenReport[];
@@ -854,6 +860,7 @@ interface DrawerProps {
   setDrawerState: (s: DrawerState) => void;
   drawerTab: DrawerTab;
   setDrawerTab: (t: DrawerTab) => void;
+  selectedCounty: string | null;
 }
 
 function BottomDrawer({
@@ -866,6 +873,7 @@ function BottomDrawer({
   setDrawerState: setState,
   drawerTab: tab,
   setDrawerTab: setTab,
+  selectedCounty,
 }: DrawerProps) {
   const [showReportComposer, setShowReportComposer] = useState(false);
   const [showStoryComposer, setShowStoryComposer] = useState(false);
@@ -969,30 +977,34 @@ function BottomDrawer({
             className="flex shrink-0 border-b"
             style={{ borderColor: "rgba(255,255,255,0.08)" }}
           >
-            {(["feed", "stories", "resources"] as DrawerTab[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => {
-                  setTab(t);
-                  setShowReportComposer(false);
-                  setShowStoryComposer(false);
-                }}
-                className="flex-1 py-2.5 text-xs font-semibold transition-colors capitalize"
-                style={{
-                  color: tab === t ? TEAL : "rgba(255,255,255,0.35)",
-                  borderBottom:
-                    tab === t ? `2px solid ${TEAL}` : "2px solid transparent",
-                }}
-                data-ocid={`citizens.tab_${t}`}
-              >
-                {t === "feed"
-                  ? `Feed (${reports.length})`
-                  : t === "stories"
-                    ? `Stories (${testimonials.length})`
-                    : "Resources"}
-              </button>
-            ))}
+            {(["feed", "stories", "resources", "sentinel"] as DrawerTab[]).map(
+              (t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setTab(t);
+                    setShowReportComposer(false);
+                    setShowStoryComposer(false);
+                  }}
+                  className="flex-1 py-2.5 text-xs font-semibold transition-colors capitalize"
+                  style={{
+                    color: tab === t ? TEAL : "rgba(255,255,255,0.35)",
+                    borderBottom:
+                      tab === t ? `2px solid ${TEAL}` : "2px solid transparent",
+                  }}
+                  data-ocid={`citizens.tab_${t}`}
+                >
+                  {t === "feed"
+                    ? `Feed (${reports.length})`
+                    : t === "stories"
+                      ? `Stories (${testimonials.length})`
+                      : t === "sentinel"
+                        ? "Sentinel"
+                        : "Resources"}
+                </button>
+              ),
+            )}
           </div>
 
           {/* Scrollable content */}
@@ -1112,6 +1124,181 @@ function BottomDrawer({
             )}
 
             {tab === "resources" && <ResourcesTab />}
+
+            {tab === "sentinel" && (
+              <div
+                style={{
+                  padding: "12px 16px",
+                  overflowY: "auto",
+                  maxHeight: "100%",
+                }}
+              >
+                <div style={{ marginBottom: "12px" }}>
+                  <h3
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      color: "#f5f5f0",
+                    }}
+                  >
+                    {selectedCounty
+                      ? `${selectedCounty} County`
+                      : "Ohio Statewide"}{" "}
+                    — Signal Breakdown
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: "rgba(255,255,255,0.4)",
+                      marginTop: "2px",
+                    }}
+                  >
+                    {selectedCounty
+                      ? "Hover counties on map to switch"
+                      : "No county selected — showing statewide average"}
+                  </p>
+                </div>
+
+                {(() => {
+                  const data = selectedCounty
+                    ? MOCK_SENTINEL_SCORES[selectedCounty]
+                    : OHIO_STATEWIDE_AVERAGE;
+                  if (!data) return null;
+                  const signals: { name: string; value: number }[] = [
+                    {
+                      name: "Govt Payment Proximity",
+                      value: data.signals.governmentPaymentProximity,
+                    },
+                    { name: "Heat Index", value: data.signals.heatIndex },
+                    { name: "Cold Weather", value: data.signals.coldWeather },
+                    {
+                      name: "Unemployment Rate",
+                      value: data.signals.unemploymentRate,
+                    },
+                    {
+                      name: "Eviction Rate Index",
+                      value: data.signals.evictionRate,
+                    },
+                    {
+                      name: "Seasonal Depression",
+                      value: data.signals.seasonalDepression,
+                    },
+                    {
+                      name: "Provider Gap",
+                      value: data.signals.providerAvailabilityGap,
+                    },
+                  ];
+                  return signals.map((sig) => {
+                    const color =
+                      sig.value >= 70
+                        ? "#ef4444"
+                        : sig.value >= 50
+                          ? "#f59e0b"
+                          : "#00c896";
+                    return (
+                      <div key={sig.name} style={{ marginBottom: "10px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            marginBottom: "3px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              color: "rgba(255,255,255,0.7)",
+                            }}
+                          >
+                            {sig.name}
+                          </span>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "5px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                color,
+                              }}
+                            >
+                              {sig.value}
+                            </span>
+                            <div
+                              style={{
+                                width: "6px",
+                                height: "6px",
+                                borderRadius: "50%",
+                                background: color,
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            background: "rgba(255,255,255,0.08)",
+                            borderRadius: "3px",
+                            height: "4px",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              background: color,
+                              height: "100%",
+                              width: `${sig.value}%`,
+                              borderRadius: "3px",
+                              transition: "width 0.6s ease",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+
+                {selectedCounty &&
+                  MOCK_SENTINEL_SCORES[selectedCounty]?.compound_risk && (
+                    <div
+                      style={{
+                        marginTop: "12px",
+                        padding: "8px 10px",
+                        background: "rgba(239,68,68,0.12)",
+                        border: "1px solid rgba(239,68,68,0.3)",
+                        borderRadius: "8px",
+                        color: "#ef4444",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ⚠ COMPOUND RISK EVENT — Multiple converging signals
+                    </div>
+                  )}
+
+                <div
+                  style={{
+                    marginTop: "16px",
+                    paddingTop: "12px",
+                    borderTop: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <a
+                    href="/integration"
+                    style={{
+                      color: "#00c896",
+                      fontSize: "12px",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Learn about Sentinel →
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1161,6 +1348,7 @@ interface MapLayerState {
   narcan: boolean;
   clinics: boolean;
   ers: boolean;
+  sentinel: boolean;
 }
 
 interface ProviderData {
@@ -1177,10 +1365,12 @@ function CitizensMap({
   reports,
   providers,
   filters,
+  onCountySelect,
 }: {
   reports: CitizenReport[];
   providers: ProviderData[];
   filters: MapLayerState;
+  onCountySelect: (county: string | null) => void;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -1208,12 +1398,166 @@ function CitizensMap({
       }),
       "top-right",
     );
+    // Load Ohio county choropleth (Sentinel layer)
+    map.on("load", () => {
+      fetch(
+        "https://raw.githubusercontent.com/deldersveld/topojson/master/countries/us-states/OH-39-ohio-counties.json",
+      )
+        .then((r) => r.json())
+        .then((topology) => {
+          // Convert topojson to geojson using inline logic
+          // The topology object has an 'objects' key with county features
+          let geojson: object;
+          if (topology.type === "Topology" && topology.objects) {
+            // Use topojson-client if available, otherwise use a simple inline converter
+            const key = Object.keys(topology.objects)[0];
+            const arcArr: number[][][] = topology.arcs as number[][][];
+            function decodeArc(arc: number[][]): number[][] {
+              let x = 0;
+              let y = 0;
+              return arc.map(([dx, dy]) => {
+                x += dx;
+                y += dy;
+                return [x, y];
+              });
+            }
+            function toCoords(arcIdx: number): number[][] {
+              const idx = arcIdx < 0 ? ~arcIdx : arcIdx;
+              const pts = decodeArc(arcArr[idx]);
+              return arcIdx < 0 ? pts.slice().reverse() : pts;
+            }
+            function scalePoint(pt: number[]): number[] {
+              const t = topology.transform as {
+                scale: number[];
+                translate: number[];
+              };
+              if (!t) return pt;
+              return [
+                pt[0] * t.scale[0] + t.translate[0],
+                pt[1] * t.scale[1] + t.translate[1],
+              ];
+            }
+            const features = (
+              topology.objects[key] as {
+                geometries: Array<{
+                  type: string;
+                  arcs: number[][][];
+                  properties: Record<string, string>;
+                }>;
+              }
+            ).geometries.map((geom) => {
+              const coordinates = geom.arcs.map((ring: number[][]) =>
+                (ring as unknown as number[])
+                  .flatMap((arcIdx: number) => toCoords(arcIdx))
+                  .map(scalePoint),
+              );
+              return {
+                type: "Feature" as const,
+                properties: geom.properties ?? {},
+                geometry: { type: "Polygon" as const, coordinates },
+              };
+            });
+            geojson = { type: "FeatureCollection", features };
+          } else {
+            geojson = topology;
+          }
+
+          if (!map.getSource("ohio-counties")) {
+            map.addSource("ohio-counties", {
+              type: "geojson",
+              data: geojson as GeoJSON.FeatureCollection,
+            });
+          }
+
+          const matchParts: unknown[] = ["match", ["get", "NAME"]];
+          for (const [county, data] of Object.entries(MOCK_SENTINEL_SCORES)) {
+            let color: string;
+            if (data.score >= 90) color = "rgba(239,68,68,0.55)";
+            else if (data.score >= 70) color = "rgba(249,115,22,0.45)";
+            else if (data.score >= 40) color = "rgba(245,158,11,0.35)";
+            else color = "rgba(0,200,150,0.25)";
+            matchParts.push(county, color);
+          }
+          matchParts.push("rgba(0,200,150,0.15)");
+          const matchExpr =
+            matchParts as unknown as maplibregl.ExpressionSpecification;
+
+          if (!map.getLayer("sentinel-counties")) {
+            map.addLayer({
+              id: "sentinel-counties",
+              type: "fill",
+              source: "ohio-counties",
+              paint: { "fill-color": matchExpr },
+              layout: { visibility: "visible" },
+            });
+          }
+          if (!map.getLayer("sentinel-county-borders")) {
+            map.addLayer({
+              id: "sentinel-county-borders",
+              type: "line",
+              source: "ohio-counties",
+              paint: {
+                "line-color": "rgba(255,255,255,0.10)",
+                "line-width": 1,
+              },
+              layout: { visibility: "visible" },
+            });
+          }
+
+          // Hover popup
+          let sentinelPopup: maplibregl.Popup | null = null;
+          map.on("mouseenter", "sentinel-counties", (e) => {
+            map.getCanvas().style.cursor = "pointer";
+            if (!e.features || e.features.length === 0) return;
+            const countyName = e.features[0].properties?.NAME as string;
+            const data = MOCK_SENTINEL_SCORES[countyName];
+            if (!data) return;
+            onCountySelect(countyName);
+            const bucketColors: Record<string, string> = {
+              green: "#00c896",
+              amber: "#f59e0b",
+              orange: "#f97316",
+              red: "#ef4444",
+            };
+            const bucketLabels: Record<string, string> = {
+              green: "Low Risk",
+              amber: "Moderate Risk",
+              orange: "High Risk",
+              red: "Critical",
+            };
+            sentinelPopup = new maplibregl.Popup({
+              closeButton: false,
+              closeOnClick: false,
+            })
+              .setLngLat(e.lngLat)
+              .setHTML(`
+                <div style="background:#0d1a24;padding:12px 14px;border-radius:10px;min-width:200px;font-family:inherit;">
+                  <div style="font-weight:700;font-size:14px;color:#f5f5f0;margin-bottom:8px;">${countyName} County</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <span style="font-size:22px;font-weight:800;color:${bucketColors[data.bucket]}">${data.score}</span>
+                    <span style="background:${bucketColors[data.bucket]}22;color:${bucketColors[data.bucket]};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;">${bucketLabels[data.bucket]}</span>
+                  </div>
+                  <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:4px;">Primary signal: ${data.primarySignal}</div>
+                  ${data.compound_risk ? '<div style="color:#ef4444;font-size:11px;font-weight:600;margin-top:6px;">⚠ COMPOUND RISK EVENT</div>' : ""}
+                </div>
+              `)
+              .addTo(map);
+          });
+          map.on("mouseleave", "sentinel-counties", () => {
+            map.getCanvas().style.cursor = "";
+            sentinelPopup?.remove();
+            sentinelPopup = null;
+          });
+        })
+        .catch((err) => console.warn("Sentinel choropleth load failed:", err));
+    });
+
     mapRef.current = map;
     return () => {
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [onCountySelect]);
 
   // Render citizen report markers
   const renderReportMarkers = useCallback(() => {
@@ -1323,6 +1667,17 @@ function CitizensMap({
     }
   }, [providers, filters]);
 
+  // Sync sentinel layer visibility with filter state
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const vis = filters.sentinel ? "visible" : "none";
+    if (map.getLayer("sentinel-counties"))
+      map.setLayoutProperty("sentinel-counties", "visibility", vis);
+    if (map.getLayer("sentinel-county-borders"))
+      map.setLayoutProperty("sentinel-county-borders", "visibility", vis);
+  }, [filters.sentinel]);
+
   useEffect(() => {
     renderReportMarkers();
   }, [renderReportMarkers]);
@@ -1353,6 +1708,197 @@ function CitizensMap({
         className="absolute inset-0"
         aria-label="Community map"
       />
+
+      {/* Sentinel Signal Snapshot Widget — desktop */}
+      <div
+        style={{
+          position: "absolute",
+          top: "72px",
+          left: "12px",
+          zIndex: 20,
+          background: "rgba(6,13,20,0.92)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(0,200,150,0.2)",
+          borderRadius: "10px",
+          padding: "10px 12px",
+          minWidth: "180px",
+        }}
+        className="hidden md:block"
+      >
+        <div
+          style={{
+            color: "#00c896",
+            fontSize: "10px",
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            marginBottom: "8px",
+          }}
+        >
+          SENTINEL SIGNALS
+        </div>
+        {(
+          [
+            { name: "Payment Proximity", value: "3 days", dot: "#ef4444" },
+            { name: "Cold Weather", value: "Active", dot: "#f97316" },
+            { name: "Eviction Rate", value: "Elevated", dot: "#f59e0b" },
+            { name: "Provider Gap", value: "High", dot: "#f59e0b" },
+          ] as { name: string; value: string; dot: string }[]
+        ).map((sig) => (
+          <div
+            key={sig.name}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "8px",
+              marginBottom: "5px",
+            }}
+          >
+            <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.75)" }}>
+              {sig.name}
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <span
+                style={{ fontSize: "11px", color: "#f5f5f0", fontWeight: 600 }}
+              >
+                {sig.value}
+              </span>
+              <div
+                style={{
+                  width: "7px",
+                  height: "7px",
+                  borderRadius: "50%",
+                  background: sig.dot,
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Mobile: collapsed SENTINEL pill */}
+      <div
+        style={{ position: "absolute", top: "72px", left: "12px", zIndex: 20 }}
+        className="block md:hidden"
+      >
+        <button
+          type="button"
+          style={{
+            background: "rgba(6,13,20,0.92)",
+            border: "1px solid rgba(0,200,150,0.3)",
+            color: "#00c896",
+            borderRadius: "99px",
+            padding: "5px 12px",
+            fontSize: "11px",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+          aria-label="Sentinel signals"
+        >
+          SENTINEL ▾
+        </button>
+      </div>
+
+      {/* Top Risk Counties Widget — desktop only */}
+      <div
+        style={{
+          position: "absolute",
+          top: "96px",
+          right: "48px",
+          zIndex: 20,
+          background: "rgba(6,13,20,0.92)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "10px",
+          padding: "10px 12px",
+          minWidth: "180px",
+        }}
+        className="hidden md:block"
+      >
+        <div
+          style={{
+            color: "rgba(255,255,255,0.5)",
+            fontSize: "10px",
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            marginBottom: "8px",
+          }}
+        >
+          HIGHEST RISK NOW
+        </div>
+        {TOP_RISK_COUNTIES.map((county, i) => {
+          const bucketColors: Record<string, string> = {
+            green: "#00c896",
+            amber: "#f59e0b",
+            orange: "#f97316",
+            red: "#ef4444",
+          };
+          const bucketLabels: Record<string, string> = {
+            green: "Low",
+            amber: "Mod",
+            orange: "High",
+            red: "Critical",
+          };
+          return (
+            <button
+              key={county.name}
+              type="button"
+              onClick={() => {
+                const center = COUNTY_CENTERS[county.name];
+                if (center && mapRef.current)
+                  mapRef.current.flyTo({ center, zoom: 10, duration: 1200 });
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px 0",
+                gap: "8px",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "12px",
+                  color: "rgba(255,255,255,0.8)",
+                  fontWeight: 600,
+                }}
+              >
+                {i + 1}. {county.name}
+              </span>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "5px" }}
+              >
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 800,
+                    color: bucketColors[county.bucket],
+                  }}
+                >
+                  {county.score}
+                </span>
+                <span
+                  style={{
+                    background: `${bucketColors[county.bucket]}22`,
+                    color: bucketColors[county.bucket],
+                    padding: "1px 6px",
+                    borderRadius: "99px",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {bucketLabels[county.bucket]}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </>
   );
 }
@@ -1454,7 +2000,10 @@ export function CitizensPage() {
     narcan: true,
     clinics: true,
     ers: true,
+    sentinel: true,
   });
+  const [selectedCounty, setSelectedCounty] = useState<string | null>(null);
+  const [sentinelDismissed, setSentinelDismissed] = useState(false);
   const [drawerState, setDrawerState] = useState<DrawerState>("peek");
   const [drawerTab, setDrawerTab] = useState<DrawerTab>("feed");
 
@@ -1492,6 +2041,7 @@ export function CitizensPage() {
       { key: "narcan", label: "Narcan", dot: "234,179,8" },
       { key: "clinics", label: "Clinics", dot: "99,102,241" },
       { key: "ers", label: "ERs", dot: "239,68,68" },
+      { key: "sentinel", label: "Sentinel", dot: "0,200,150" },
     ];
 
   return (
@@ -1509,12 +2059,61 @@ export function CitizensPage() {
         keywords="community recovery reports, Narcan locations map, harm reduction community"
         canonical="/citizens"
       />
+      {/* ── Compound risk banner ─────────────────────────────────────── */}
+      {!sentinelDismissed && (
+        <div
+          style={{
+            background: "rgba(239,68,68,0.15)",
+            borderBottom: "1px solid rgba(239,68,68,0.4)",
+            color: "#ef4444",
+            padding: "8px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontSize: "13px",
+            fontWeight: 600,
+            zIndex: 30,
+            flexShrink: 0,
+          }}
+          data-ocid="citizens.compound_risk_banner"
+        >
+          <span>
+            <span
+              style={{
+                display: "inline-block",
+                animation: "pulse 3s ease-in-out infinite",
+              }}
+            >
+              ⚠
+            </span>{" "}
+            COMPOUND RISK EVENT — Cuyahoga, Franklin, Montgomery Counties
+          </span>
+          <button
+            type="button"
+            onClick={() => setSentinelDismissed(true)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#ef4444",
+              cursor: "pointer",
+              padding: "4px 8px",
+              fontSize: "16px",
+            }}
+            aria-label="Dismiss compound risk banner"
+            data-ocid="citizens.compound_risk_dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* ── Map fills remaining height below header ───────────────────── */}
       <div className="relative flex-1 min-h-0" style={{ overflow: "hidden" }}>
         <CitizensMap
           reports={reports}
           providers={providers}
           filters={filters}
+          onCountySelect={setSelectedCounty}
         />
 
         {/* ── Floating top bar ─────────────────────────────────────────── */}
@@ -1606,6 +2205,7 @@ export function CitizensPage() {
           setDrawerState={setDrawerState}
           drawerTab={drawerTab}
           setDrawerTab={setDrawerTab}
+          selectedCounty={selectedCounty}
         />
       </div>
     </div>

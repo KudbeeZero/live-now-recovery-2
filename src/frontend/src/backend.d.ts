@@ -216,6 +216,11 @@ export interface backendInterface {
     checkAndAutoMint(owner: Principal, actionType: string, count: bigint): Promise<void>;
     createRecoveryProfile(displayName: string, zip: string): Promise<string>;
     flagCitizenReport(id: string): Promise<boolean>;
+    /**
+     * / forceSetAdmin: callable by the canister controller only.
+     * / Directly registers any given principal as admin in AccessControl.
+     */
+    forceSetAdmin(p: Principal): Promise<void>;
     generateHandoffToken(zipCode: string): Promise<string>;
     getActiveRiskBoosts(): Promise<Array<[string, number]>>;
     getAllHelpers(): Promise<Array<Helper>>;
@@ -277,6 +282,12 @@ export interface backendInterface {
     hasCredential(principal: Principal, credType: CredentialType): Promise<boolean>;
     hideTestimonial(id: string): Promise<boolean>;
     incrementSimulationStats(handoffs: bigint, scans: bigint): Promise<void>;
+    /**
+     * / initAdminIfEmpty: self-service bootstrap.
+     * / If no admin has been assigned yet, sets the CALLER as admin and returns confirmation.
+     * / Returns "Admin already exists" if adminAssigned is already true.
+     */
+    initAdminIfEmpty(): Promise<string>;
     initSimulationTime(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
     markResourceUsed(resourceCategory: string): Promise<boolean>;

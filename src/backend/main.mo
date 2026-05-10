@@ -1666,6 +1666,31 @@ actor {
     results;
   };
 
+  // TEMPORARY — remove after admin is confirmed ─────────────────────────────────
+  /// forceSetAdmin: callable by the canister controller only.
+  /// Directly registers any given principal as admin in AccessControl.
+  public shared ({ caller }) func forceSetAdmin(p : Principal) : async () {
+    assert caller.isController();
+    accessControlState.userRoles.add(p, #admin);
+    accessControlState.adminAssigned := true;
+  };
+
+  /// initAdminIfEmpty: self-service bootstrap.
+  /// If no admin has been assigned yet, sets the CALLER as admin and returns confirmation.
+  /// Returns "Admin already exists" if adminAssigned is already true.
+  public shared ({ caller }) func initAdminIfEmpty() : async Text {
+    if (caller.isAnonymous()) {
+      return "Anonymous callers cannot become admin";
+    };
+    if (accessControlState.adminAssigned) {
+      return "Admin already exists";
+    };
+    accessControlState.userRoles.add(caller, #admin);
+    accessControlState.adminAssigned := true;
+    "Admin set: " # caller.toText();
+  };
+  // END TEMPORARY ───────────────────────────────────────────────────────────────
+
   // ── Admin: seed demo credentials (one-time, after deploy) ────────────────────
   /// Populates 18 demo credential records across all 12 types and 4 tiers.
   /// Guard: no-op if credentials already exist.

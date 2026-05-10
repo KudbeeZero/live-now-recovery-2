@@ -201,6 +201,11 @@ export interface _SERVICE {
   'checkAndAutoMint' : ActorMethod<[Principal, string, bigint], undefined>,
   'createRecoveryProfile' : ActorMethod<[string, string], string>,
   'flagCitizenReport' : ActorMethod<[string], boolean>,
+  /**
+   * / forceSetAdmin: callable by the canister controller only.
+   * / Directly registers any given principal as admin in AccessControl.
+   */
+  'forceSetAdmin' : ActorMethod<[Principal], undefined>,
   'generateHandoffToken' : ActorMethod<[string], string>,
   'getActiveRiskBoosts' : ActorMethod<[], Array<[string, number]>>,
   'getAllHelpers' : ActorMethod<[], Array<Helper>>,
@@ -273,6 +278,12 @@ export interface _SERVICE {
   'hasCredential' : ActorMethod<[Principal, CredentialType], boolean>,
   'hideTestimonial' : ActorMethod<[string], boolean>,
   'incrementSimulationStats' : ActorMethod<[bigint, bigint], undefined>,
+  /**
+   * / initAdminIfEmpty: self-service bootstrap.
+   * / If no admin has been assigned yet, sets the CALLER as admin and returns confirmation.
+   * / Returns "Admin already exists" if adminAssigned is already true.
+   */
+  'initAdminIfEmpty' : ActorMethod<[], string>,
   'initSimulationTime' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'markResourceUsed' : ActorMethod<[string], boolean>,

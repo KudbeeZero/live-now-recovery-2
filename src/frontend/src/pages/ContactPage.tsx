@@ -259,6 +259,8 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 // ─── Main ContactPage ─────────────────────────────────────────────────────────
 export function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [selectedInquiry, setSelectedInquiry] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [form, setForm] = useState({
@@ -277,19 +279,54 @@ export function ContactPage() {
     document.getElementById("form")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Wire to email extension when credentials are configured
-    console.log("Contact form submission:", {
-      ...form,
-      agreedToPrivacy,
-      submittedAt: new Date().toISOString(),
-    });
-    setSubmitted(true);
+    setSending(true);
+    setSendError(null);
+
+    const subject = `[Contact Form] ${form.subject || form.inquiryType || "General Inquiry"}`;
+    const body = [
+      `Inquiry Type: ${form.inquiryType || "Not specified"}`,
+      `Name: ${form.name}`,
+      `Email: ${form.email}`,
+      `Subject: ${form.subject || "(none)"}`,
+      "",
+      `Message:\n${form.message}`,
+      "",
+      `Submitted: ${new Date().toISOString()}`,
+    ].join("\n");
+
+    try {
+      const res = await fetch("/api/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: "admin@livenowrecovery.org",
+          subject,
+          body,
+        }),
+      });
+      if (!res.ok) throw new Error(`Email endpoint returned ${res.status}`);
+      setSubmitted(true);
+    } catch {
+      // Fallback: mailto link
+      try {
+        const mailto = `mailto:admin@livenowrecovery.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.location.href = mailto;
+        setSubmitted(true);
+      } catch {
+        setSendError(
+          "Unable to send your message. Please try again or email us directly.",
+        );
+      }
+    } finally {
+      setSending(false);
+    }
   };
 
   const resetForm = () => {
     setSubmitted(false);
+    setSendError(null);
     setForm({ name: "", email: "", inquiryType: "", subject: "", message: "" });
     setAgreedToPrivacy(false);
     setSelectedInquiry("");
@@ -768,12 +805,21 @@ export function ContactPage() {
               {/* Submit */}
               <Button
                 type="submit"
-                disabled={!agreedToPrivacy}
+                disabled={!agreedToPrivacy || sending}
                 className="w-full min-h-[48px] font-semibold text-base bg-teal-600 hover:bg-teal-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 data-ocid="contact.submit_button"
               >
-                Send Message
+                {sending ? "Sending…" : "Send Message"}
               </Button>
+
+              {sendError && (
+                <p
+                  className="text-center text-sm text-red-400 mt-2"
+                  data-ocid="contact.error_state"
+                >
+                  {sendError}
+                </p>
+              )}
 
               {/* Mailto fallback */}
               <p className="text-center text-xs text-muted-foreground">

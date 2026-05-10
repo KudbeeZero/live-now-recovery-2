@@ -73,10 +73,18 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
+    height: 100%;
   }
 
   body {
     overflow-x: hidden;
+    height: 100%;
+  }
+
+  #root {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Global focus ring for all interactive elements */

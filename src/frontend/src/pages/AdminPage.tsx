@@ -3464,6 +3464,207 @@ function CredentialsTab() {
   );
 }
 
+// ─── Not Authorized View ─────────────────────────────────────────────────────
+
+interface NotAuthorizedViewProps {
+  isSignedIn: boolean;
+  adminError: boolean;
+  principalText: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actor: any;
+  qc: ReturnType<typeof useQueryClient>;
+  clear: () => void;
+}
+
+function NotAuthorizedView({
+  isSignedIn,
+  adminError,
+  principalText,
+  actor,
+  qc,
+  clear,
+}: NotAuthorizedViewProps) {
+  const [claimStatus, setClaimStatus] = useState<
+    "idle" | "loading" | "success" | "already_exists" | "error"
+  >("idle");
+
+  const handleClaimAdmin = async () => {
+    if (!actor) return;
+    setClaimStatus("loading");
+    try {
+      // initAdminIfEmpty() may not yet appear in generated types — use cast.
+      const result: string = await (
+        actor as Record<string, (...args: unknown[]) => Promise<string>>
+      ).initAdminIfEmpty();
+      console.log("[AdminPage] initAdminIfEmpty() returned:", result);
+      if (result.startsWith("Admin set:")) {
+        setClaimStatus("success");
+        // Give the canister state a moment to settle, then re-check admin status.
+        setTimeout(() => {
+          void qc.invalidateQueries({ queryKey: ["isAdmin"] }).then(() => {
+            void qc.refetchQueries({ queryKey: ["isAdmin"] });
+          });
+        }, 800);
+      } else {
+        // "Admin already exists" — caller is not the registered admin.
+        setClaimStatus("already_exists");
+      }
+    } catch (err) {
+      console.error("[AdminPage] initAdminIfEmpty() failed:", err);
+      setClaimStatus("error");
+    }
+  };
+
+  return (
+    <main className="min-h-screen" data-ocid="admin.page">
+      <section className="bg-card border-b border-border px-4 py-16">
+        <div className="max-w-5xl mx-auto">
+          <h1 className="text-4xl font-bold text-foreground mb-3">
+            Admin <span className="text-live-green">Dashboard</span>
+          </h1>
+        </div>
+      </section>
+      <div className="max-w-5xl mx-auto px-4 py-16 flex flex-col items-center gap-6">
+        <div
+          className="w-full max-w-md rounded-2xl p-6 text-center flex flex-col items-center gap-4"
+          style={{
+            background: "oklch(0.18 0.012 218 / 0.5)",
+            border: "2px solid oklch(0.68 0.1 218 / 0.6)",
+            boxShadow: "0 0 24px oklch(0.68 0.1 218 / 0.12)",
+          }}
+          data-ocid="admin.error_state"
+        >
+          <Lock
+            className="w-10 h-10"
+            style={{ color: "oklch(0.68 0.1 218)" }}
+          />
+          <div>
+            <h2 className="text-xl font-bold text-foreground mb-2">
+              {adminError ? "Admin Check Failed" : "Not Authorized"}
+            </h2>
+            {adminError ? (
+              <p className="text-muted-foreground text-sm max-w-sm">
+                The admin verification call failed. This is usually a temporary
+                network issue. Click <strong>Retry Admin Check</strong> to try
+                again without signing out.
+              </p>
+            ) : isSignedIn ? (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-muted-foreground text-sm max-w-sm">
+                  Your account is not registered as an admin on this platform.
+                  If you believe this is an error, click{" "}
+                  <strong>Retry Admin Check</strong> — the verification
+                  sometimes needs a moment after sign-in.
+                </p>
+                {principalText && (
+                  <p className="text-xs text-muted-foreground font-mono break-all mt-1">
+                    Signed in as:{" "}
+                    <span className="text-foreground">{principalText}</span>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm max-w-sm">
+                Your Internet Identity does not have admin privileges. Ensure
+                you are signed in with the correct identity.
+              </p>
+            )}
+          </div>
+
+          {/* Claim status messages */}
+          {claimStatus === "success" && (
+            <p
+              className="text-sm font-semibold text-center"
+              style={{ color: "oklch(0.68 0.25 145)" }}
+              data-ocid="admin.success_state"
+            >
+              Admin access claimed — checking now…
+            </p>
+          )}
+          {claimStatus === "already_exists" && (
+            <p
+              className="text-sm text-center"
+              style={{ color: "oklch(0.72 0.18 30)" }}
+            >
+              An admin is already registered. You may be signed into the wrong
+              account.
+            </p>
+          )}
+          {claimStatus === "error" && (
+            <p className="text-sm text-center text-destructive">
+              Failed to claim admin access. Please try again.
+            </p>
+          )}
+
+          {/* Retry Admin Check */}
+          {isSignedIn && (
+            <Button
+              onClick={() => {
+                console.log(
+                  "[AdminPage] Manual retry — invalidating isAdmin cache",
+                );
+                void qc.invalidateQueries({ queryKey: ["isAdmin"] });
+              }}
+              className="min-h-[44px] w-full font-semibold"
+              style={{
+                background: "oklch(0.68 0.1 218)",
+                color: "oklch(0.14 0.008 240)",
+              }}
+              data-ocid="admin.retry_button"
+            >
+              Retry Admin Check
+            </Button>
+          )}
+
+          {/* Claim Admin Access — only shown when signed in and not yet claimed */}
+          {isSignedIn && claimStatus !== "success" && (
+            <Button
+              onClick={() => void handleClaimAdmin()}
+              disabled={claimStatus === "loading" || !actor}
+              className="min-h-[44px] w-full font-semibold"
+              style={{
+                background:
+                  claimStatus === "loading"
+                    ? "oklch(0.68 0.25 145 / 0.5)"
+                    : "oklch(0.68 0.25 145)",
+                color: "oklch(0.14 0.008 240)",
+              }}
+              data-ocid="admin.claim_admin_button"
+            >
+              {claimStatus === "loading" ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Claiming…
+                </span>
+              ) : (
+                "Claim Admin Access"
+              )}
+            </Button>
+          )}
+
+          {principalText && (
+            <p className="text-[11px] text-muted-foreground font-mono break-all">
+              Principal: {principalText}
+            </p>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => clear()}
+            className="min-h-[40px]"
+            style={{
+              borderColor: "oklch(0.68 0.1 218 / 0.5)",
+              color: "oklch(0.68 0.1 218)",
+            }}
+            data-ocid="admin.secondary_button"
+          >
+            Sign Out &amp; Try Again
+          </Button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 // ─── Main AdminPage ───────────────────────────────────────────────────────────
 
 export function AdminPage() {
@@ -3474,6 +3675,7 @@ export function AdminPage() {
     isError: adminError,
   } = useIsAdmin();
   const qc = useQueryClient();
+  const { actor } = useActor(createActor);
   const { data: providers = [] } = useAllProviders();
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
 
@@ -3610,99 +3812,14 @@ export function AdminPage() {
   if (!isAdmin) {
     const isSignedIn = loginStatus === "success";
     return (
-      <main className="min-h-screen" data-ocid="admin.page">
-        <section className="bg-card border-b border-border px-4 py-16">
-          <div className="max-w-5xl mx-auto">
-            <h1 className="text-4xl font-bold text-foreground mb-3">
-              Admin <span className="text-live-green">Dashboard</span>
-            </h1>
-          </div>
-        </section>
-        <div className="max-w-5xl mx-auto px-4 py-16 flex flex-col items-center gap-6">
-          <div
-            className="w-full max-w-md rounded-2xl p-6 text-center flex flex-col items-center gap-4"
-            style={{
-              background: "oklch(0.18 0.012 218 / 0.5)",
-              border: "2px solid oklch(0.68 0.1 218 / 0.6)",
-              boxShadow: "0 0 24px oklch(0.68 0.1 218 / 0.12)",
-            }}
-            data-ocid="admin.error_state"
-          >
-            <Lock
-              className="w-10 h-10"
-              style={{ color: "oklch(0.68 0.1 218)" }}
-            />
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-2">
-                {adminError ? "Admin Check Failed" : "Not Authorized"}
-              </h2>
-              {adminError ? (
-                <p className="text-muted-foreground text-sm max-w-sm">
-                  The admin verification call failed. This is usually a
-                  temporary network issue. Click{" "}
-                  <strong>Retry Admin Check</strong> to try again without
-                  signing out.
-                </p>
-              ) : isSignedIn ? (
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-muted-foreground text-sm max-w-sm">
-                    Your account is not registered as an admin on this platform.
-                    If you believe this is an error, click{" "}
-                    <strong>Retry Admin Check</strong> — the verification
-                    sometimes needs a moment after sign-in.
-                  </p>
-                  {principalText && (
-                    <p className="text-xs text-muted-foreground font-mono break-all mt-1">
-                      Signed in as:{" "}
-                      <span className="text-foreground">{principalText}</span>
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-sm max-w-sm">
-                  Your Internet Identity does not have admin privileges. Ensure
-                  you are signed in with the correct identity.
-                </p>
-              )}
-            </div>
-            {isSignedIn && (
-              <Button
-                onClick={() => {
-                  console.log(
-                    "[AdminPage] Manual retry — invalidating isAdmin cache",
-                  );
-                  void qc.invalidateQueries({ queryKey: ["isAdmin"] });
-                }}
-                className="min-h-[44px] w-full font-semibold"
-                style={{
-                  background: "oklch(0.68 0.1 218)",
-                  color: "oklch(0.14 0.008 240)",
-                }}
-                data-ocid="admin.retry_button"
-              >
-                Retry Admin Check
-              </Button>
-            )}
-            {principalText && (
-              <p className="text-[11px] text-muted-foreground font-mono break-all">
-                Principal: {principalText}
-              </p>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => clear()}
-              className="min-h-[40px]"
-              style={{
-                borderColor: "oklch(0.68 0.1 218 / 0.5)",
-                color: "oklch(0.68 0.1 218)",
-              }}
-              data-ocid="admin.secondary_button"
-            >
-              Sign Out &amp; Try Again
-            </Button>
-          </div>
-        </div>
-      </main>
+      <NotAuthorizedView
+        isSignedIn={isSignedIn}
+        adminError={adminError}
+        principalText={principalText}
+        actor={actor}
+        qc={qc}
+        clear={clear}
+      />
     );
   }
 

@@ -366,4 +366,6 @@ export const mockBackend: backendInterface = {
   registerVolunteerProfile: async () => BigInt(1),
   updateVolunteerProfile: async () => true,
   volunteerCount: async () => BigInt(15),
+  forceSetAdmin: async () => undefined,
+  initAdminIfEmpty: async () => "Admin set: mock-principal",
 };

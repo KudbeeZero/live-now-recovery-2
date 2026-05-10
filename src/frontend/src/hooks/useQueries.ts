@@ -160,10 +160,15 @@ export function useIsAdmin() {
         console.log(`[useIsAdmin] isCallerAdmin() returned: ${result}`);
         return result;
       } catch (err) {
-        console.error("[useIsAdmin] isCallerAdmin() threw an error:", err);
-        // Re-throw so React Query surfaces this as an error state
-        // rather than silently caching false.
-        throw err;
+        // AccessControl.isAdmin() calls Runtime.trap() for unregistered principals,
+        // which throws instead of returning false. Treat any thrown error as
+        // "not admin" so the Not Authorized UI renders cleanly rather than an
+        // error state that hides the Claim Admin Access button.
+        console.warn(
+          "[useIsAdmin] isCallerAdmin() threw — treating as not-admin:",
+          err,
+        );
+        return false;
       }
     },
     enabled: !!actor && !isFetching,

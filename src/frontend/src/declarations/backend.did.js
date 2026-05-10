@@ -207,6 +207,7 @@ export const idlService = IDL.Service({
   'checkAndAutoMint' : IDL.Func([IDL.Principal, IDL.Text, IDL.Nat], [], []),
   'createRecoveryProfile' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
   'flagCitizenReport' : IDL.Func([IDL.Text], [IDL.Bool], []),
+  'forceSetAdmin' : IDL.Func([IDL.Principal], [], []),
   'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
   'getActiveRiskBoosts' : IDL.Func(
       [],
@@ -338,6 +339,7 @@ export const idlService = IDL.Service({
     ),
   'hideTestimonial' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'incrementSimulationStats' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+  'initAdminIfEmpty' : IDL.Func([], [IDL.Text], []),
   'initSimulationTime' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'markResourceUsed' : IDL.Func([IDL.Text], [IDL.Bool], []),
@@ -624,6 +626,7 @@ export const idlFactory = ({ IDL }) => {
     'checkAndAutoMint' : IDL.Func([IDL.Principal, IDL.Text, IDL.Nat], [], []),
     'createRecoveryProfile' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
     'flagCitizenReport' : IDL.Func([IDL.Text], [IDL.Bool], []),
+    'forceSetAdmin' : IDL.Func([IDL.Principal], [], []),
     'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
     'getActiveRiskBoosts' : IDL.Func(
         [],
@@ -775,6 +778,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'hideTestimonial' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'incrementSimulationStats' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+    'initAdminIfEmpty' : IDL.Func([], [IDL.Text], []),
     'initSimulationTime' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'markResourceUsed' : IDL.Func([IDL.Text], [IDL.Bool], []),

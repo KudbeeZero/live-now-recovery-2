@@ -64,7 +64,7 @@ function ScrollToTop() {
 // Root layout
 function RootLayout() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col">
       <ScrollToTop />
       <EmergencyBanner />
       <Header />
