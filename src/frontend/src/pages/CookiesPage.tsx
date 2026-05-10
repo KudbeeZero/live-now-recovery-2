@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 import { toast } from "sonner";
+import { SEO } from "../components/SEO";
 
 const COOKIE_TABLE = [
   {
@@ -39,15 +40,35 @@ export function CookiesPage() {
 
   return (
     <div className="min-h-screen">
+      <SEO
+        title="Cookie Policy | Live Now Recovery"
+        description="Live Now Recovery uses only essential, non-tracking cookies. Read our full cookie policy and consent options."
+        keywords="Live Now Recovery cookies, cookie policy, essential cookies only"
+        canonical="/cookies"
+      />
       {/* Header */}
-      <section className="bg-[oklch(0.14_0.018_225)] border-b border-border py-16 px-4">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold text-[oklch(0.62_0.17_155)] mb-2">
+      <section
+        className="relative overflow-hidden border-b border-border"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.12 0.04 210) 0%, oklch(0.16 0.06 195) 60%, oklch(0.11 0.03 240) 100%)",
+        }}
+      >
+        <div className="max-w-4xl mx-auto px-4 py-14 md:py-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 mb-4">
+            <span className="w-2 h-2 rounded-full bg-teal-400" />
+            <span className="text-xs font-semibold text-teal-300 uppercase tracking-widest">
+              Legal
+            </span>
+          </div>
+          <h1 className="text-4xl font-bold text-brand-teal mb-2">
             Cookie Policy
           </h1>
-          <p className="text-[oklch(0.72_0.03_225)] text-lg">
-            Effective April 2026
+          <p className="text-muted-foreground text-lg">
+            We use only essential cookies. No tracking, no advertising, no
+            third-party data sharing.
           </p>
+          <p className="text-teal-300/60 text-sm mt-2">Effective April 2026</p>
         </div>
       </section>
 

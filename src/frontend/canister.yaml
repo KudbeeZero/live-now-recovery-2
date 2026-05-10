@@ -22,6 +22,14 @@ build:
       url: https://github.com/dfinity/sdk/raw/refs/tags/0.27.0/src/distributed/assetstorage.wasm.gz
       sha256: 865eb25df5a6d857147e078bb33c727797957247f7af2635846d65c5397b36a6
 
+http_headers:
+  - name: Content-Security-Policy
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; media-src 'self' blob: https:; connect-src 'self' https:; font-src 'self' data: https:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; worker-src blob:;"
+  - name: X-Content-Type-Options
+    value: nosniff
+  - name: X-Frame-Options
+    value: SAMEORIGIN
+
 sync:
   steps:
     - type: assets

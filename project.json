@@ -1,29 +1,26 @@
 {
-  "overview": "Live Now Recovery is a privacy-first, real-time recovery and resource platform for MAT and harm reduction in Ohio. It connects people to providers, naloxone, peer support, and community volunteers while earning on-chain credentials for every contribution — no medical data ever stored.",
+  "overview": "Live Now Recovery is a privacy-first, real-time recovery and resource platform for Medication-Assisted Treatment, harm reduction, and long-term support — built on the Internet Computer Protocol. Now featuring a private investor pitch page showcasing the platform's infrastructure, Sentinel prediction engine, and community impact.",
   "features": [
-    "Soul-bound on-chain credential badges for volunteers, counselors, and providers",
-    "Searchable volunteer directory with filterable profile cards",
-    "Full volunteer profiles with credential timeline, impact stats, and Share on X",
-    "Become a Volunteer redesign with role selector cards and clear step-by-step signup path",
-    "Privacy controls — volunteers choose public or anonymous mode",
-    "Mock seed data with 15+ realistic Ohio volunteer profiles",
-    "Public leaderboard of top contributors by impact score",
-    "Citizens Hub full-screen community reporting map",
-    "Sentinel Prediction Engine with real-time risk overlays",
-    "National hot zone visualization for expansion pitch"
+    "Private investor pitch page at /pitch with seven immersive sections",
+    "Live stat counters pulling from canister (providers, handoffs, volunteers)",
+    "Sentinel prediction engine showcased with 7-signal risk stack",
+    "Contact form sending directly to admin@livenowrecovery.org",
+    "Premium editorial design with serif headlines and grain texture",
+    "Soul-bound on-chain credentials and volunteer credentialing system",
+    "Real-time Citizens Hub with live canister data",
+    "Admin dashboard with live provider and volunteer management"
   ],
-  "category": "health-wellness",
+  "category": "healthcare",
   "tags": [
     "recovery",
+    "healthcare",
     "harm-reduction",
-    "mat",
-    "opioid",
     "ohio",
-    "volunteers",
-    "credentials",
+    "investor-pitch",
     "icp",
-    "blockchain",
-    "public-health"
+    "nonprofit",
+    "mat",
+    "overdose-prevention"
   ],
-  "last_updated": "2026-05-08T06:25:05.040Z"
+  "last_updated": "2026-05-10T04:38:12.331Z"
 }

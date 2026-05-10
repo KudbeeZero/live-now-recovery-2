@@ -1,12 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  AlertCircle,
-  CheckCircle,
-  ExternalLink,
-  QrCode,
-  Shield,
-} from "lucide-react";
+import { AlertCircle, CheckCircle, QrCode, Shield } from "lucide-react";
 import { useState } from "react";
 import { useGenerateHandoffToken } from "../hooks/useQueries";
 import { isProviderStale } from "../utils/providerUtils";
@@ -251,62 +245,7 @@ function LocationCard({
           </Badge>
         </div>
 
-        {/* Price bridge */}
-        <div
-          className="rounded-xl p-3"
-          style={{
-            background: "rgba(39,174,96,0.06)",
-            border: "1px solid rgba(39,174,96,0.15)",
-          }}
-        >
-          <p
-            className="text-xs mb-1"
-            style={{ color: "rgba(255,255,255,0.45)" }}
-          >
-            Medication Cost
-          </p>
-          <p className="text-sm font-semibold">
-            <span
-              className="line-through"
-              style={{ color: "oklch(0.62 0.18 25)" }}
-            >
-              $185
-            </span>
-            <span className="mx-2" style={{ color: "rgba(255,255,255,0.3)" }}>
-              →
-            </span>
-            <span className="font-bold" style={{ color: "#27ae60" }}>
-              $45.37
-            </span>
-            <span
-              className="text-xs ml-1"
-              style={{ color: "rgba(255,255,255,0.45)" }}
-            >
-              with Cost Plus Drugs
-            </span>
-          </p>
-        </div>
-
         <div className="flex gap-2">
-          <Button
-            asChild
-            size="sm"
-            variant="outline"
-            className="flex-1 min-h-[44px] text-xs"
-            style={{
-              borderColor: "rgba(34,211,238,0.35)",
-              color: "#22d3ee",
-              background: "transparent",
-            }}
-          >
-            <a
-              href="https://costplusdrugs.com?ncpdp=5755167"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Request Script <ExternalLink className="ml-1 w-3 h-3" />
-            </a>
-          </Button>
           <Button
             size="sm"
             variant="outline"

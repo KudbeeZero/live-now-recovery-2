@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { CredentialType } from "../backend";
+import { SEO } from "../components/SEO";
 import { VolunteerCard } from "../components/VolunteerCard";
 import type { VolunteerProfile } from "../components/VolunteerCard";
 import type { Credential } from "../types/credentials";
@@ -510,26 +510,12 @@ export function VolunteersDirectoryPage() {
 
   return (
     <>
-      <Helmet>
-        <title>Ohio Recovery Volunteers | Live Now Recovery</title>
-        <meta
-          name="description"
-          content="Meet Ohio's peer support specialists, recovery coaches, and harm reduction workers on the front lines of the opioid crisis. Join the movement."
-        />
-        <meta
-          property="og:title"
-          content="Ohio Recovery Volunteers | Live Now Recovery"
-        />
-        <meta
-          property="og:description"
-          content="Real people doing real work. Browse our verified volunteer directory."
-        />
-        <link rel="canonical" href="https://livenowrecovery.org/volunteers" />
-      </Helmet>
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: structured data
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      <SEO
+        title="Ohio Recovery Volunteers | Find Community Helpers — Live Now Recovery"
+        description="Browse Ohio's verified recovery volunteers — peer support workers, outreach coordinators, harm reduction specialists, and recovery coaches. All credentialed on-chain."
+        keywords="Ohio recovery volunteers, peer support specialists Ohio, harm reduction workers Ohio, recovery coaches Ohio, ICP credentials volunteers"
+        canonical="/volunteers"
+        jsonLd={jsonLd}
       />
 
       <main className="min-h-screen bg-background">

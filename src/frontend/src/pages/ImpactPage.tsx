@@ -79,16 +79,17 @@ export function ImpactPage() {
   return (
     <main className="min-h-screen bg-background" data-ocid="impact.page">
       <SEO
-        title="Platform Impact | Live Now Recovery"
-        description="Real-time impact metrics from the Live Now Recovery platform — badges minted on ICP, handoffs completed, and the nonprofit milestone timeline."
-        keywords="recovery platform impact, MAT handoff statistics, opioid crisis Ohio blockchain credentials"
+        title="Real Change Live | Recovery Impact Milestones — Live Now Recovery"
+        description="Watch the Live Now Recovery impact grow in real time — total handoffs coordinated, credentials earned, Narcan distributed, and lives touched across Ohio."
+        keywords="recovery impact Ohio, MAT handoffs, live recovery stats, harm reduction impact, ICP credentials earned"
         canonical="/impact"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "WebPage",
-          name: "Live Now Recovery Impact Dashboard",
+          name: "Live Now Recovery Real Change Live Impact Dashboard",
           description:
-            "Transparent, on-chain impact metrics for the Live Now Recovery platform",
+            "Transparent, on-chain impact metrics for the Live Now Recovery platform — handoffs, credentials minted, and nonprofit milestone timeline.",
+          url: "https://live-now-recovery-3f2.caffeine.xyz/impact",
         }}
       />
 

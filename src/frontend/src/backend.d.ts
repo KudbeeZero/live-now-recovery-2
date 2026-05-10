@@ -205,6 +205,12 @@ export interface backendInterface {
     addProviderPost(providerId: string, content: string, imageUrl: string | null): Promise<string>;
     addRiskEvent(event: RiskEvent): Promise<string>;
     adminMintCredential(owner: Principal, credType: CredentialType, metadata: string | null): Promise<bigint>;
+    /**
+     * / Populates 18 demo credential records across all 12 types and 4 tiers.
+     * / Guard: no-op if credentials already exist.
+     * / Call once after fresh deploy to populate the leaderboard and gallery.
+     */
+    adminSeedCredentials(): Promise<string>;
     approveTestimonial(id: string): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     checkAndAutoMint(owner: Principal, actionType: string, count: bigint): Promise<void>;

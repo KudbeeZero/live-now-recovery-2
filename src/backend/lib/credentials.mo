@@ -8,6 +8,7 @@ import Time "mo:core/Time";
 import Nat "mo:core/Nat";
 import Int "mo:core/Int";
 import Types "../types/credentials";
+import Principal "mo:core/Principal";
 
 module {
 
@@ -305,6 +306,103 @@ module {
       acc + v
     });
     { totalBadgesMinted; activeContributors; totalImpactScore };
+  };
+
+
+  // ── Seed data (admin-callable, NOT called at install time) ──────────────────
+  /// Inserts 18 demo credential records across all 12 types and 4 tiers.
+  /// Only call this once — guarded by the caller with credentialsById.isEmpty().
+  /// Timestamps are spread across the past 30 days using Time.now() offsets.
+  /// Uses Principal.fromBlob() instead of Principal.fromText() to eliminate
+  /// ALL text-parse trap risk at install time.
+  public func seedMockCredentials(
+    credentialsById : Map.Map<Nat, Credential>,
+    ownerIndex      : Map.Map<Principal, List.List<Nat>>,
+    impactIndex     : Map.Map<Principal, Nat>,
+    nextId          : { var value : Nat },
+  ) : () {
+    let now = Time.now();
+    let day : Int = 86_400_000_000_000; // 1 day in nanoseconds
+
+    // Pseudonymous seed principals — well-known NNS canister IDs, all guaranteed valid.
+    // Safe to use Principal.fromText here since this function is only called by admin,
+    // never at install time.
+    let p1  = Principal.fromText("rkp4c-7iaaa-aaaaa-aaaca-cai");
+    let p2  = Principal.fromText("renrk-eyaaa-aaaaa-aaada-cai");
+    let p3  = Principal.fromText("rrkah-pqaaa-aaaaa-aaaaq-cai");
+    let p4  = Principal.fromText("qoctq-giaaa-aaaaa-aaaea-cai");
+    let p5  = Principal.fromText("qjdve-lqaaa-aaaaa-aaaeq-cai");
+    let p6  = Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai");
+    let p7  = Principal.fromText("r7inp-6aaaa-aaaaa-aaabq-cai");
+    let p8  = Principal.fromText("rdmx6-jaaaa-aaaaa-aaadq-cai");
+    let p9  = Principal.fromText("rno2w-sqaaa-aaaaa-aaacq-cai");
+    let p10 = Principal.fromText("qaa6y-5yaaa-aaaaa-aaafa-cai");
+
+    // Helper: mint with a backdated timestamp by directly constructing the record.
+    let mintAt = func(
+      owner    : Principal,
+      credType : CredentialType,
+      metadata : ?Text,
+      daysAgo  : Int,
+    ) : () {
+      if (not hasCredential(credentialsById, ownerIndex, owner, credType)) {
+        let id = nextId.value;
+        nextId.value += 1;
+        let score = impactScore(credType);
+        let cred : Credential = {
+          id;
+          owner;
+          credentialType = credType;
+          tier           = tier(credType);
+          name           = name(credType);
+          description    = description(credType);
+          earnedAt       = now - (daysAgo * day);
+          metadata;
+          verifier       = null;
+          badgeSvg       = null;
+          cardMetadata   = null;
+          impactScore    = score;
+        };
+        credentialsById.add(id, cred);
+        let existingList = switch (ownerIndex.get(owner)) {
+          case null { List.empty<Nat>() };
+          case (?lst) { lst };
+        };
+        existingList.add(id);
+        ownerIndex.add(owner, existingList);
+        let currentImpact = switch (impactIndex.get(owner)) {
+          case null { 0 };
+          case (?v) { v };
+        };
+        impactIndex.add(owner, currentImpact + score);
+      };
+    };
+
+    // ── Community tier (FirstResponder, CommunitySentinel) ─────────────────
+    mintAt(p1,  #FirstResponder,     ?"displayName:Maria S.",           28);
+    mintAt(p2,  #FirstResponder,     ?"displayName:James O.",           25);
+    mintAt(p5,  #FirstResponder,     null,                              20);
+    mintAt(p6,  #FirstResponder,     null,                              18);
+    mintAt(p1,  #CommunitySentinel,  ?"displayName:Maria S.",           14);
+    mintAt(p5,  #CommunitySentinel,  null,                               7);
+
+    // ── Peer Support tier (NarcanHero, RecoveryAlly, ThirtyDayGuide, StorySharer)
+    mintAt(p2,  #NarcanHero,         ?"displayName:James O.",           22);
+    mintAt(p7,  #NarcanHero,         null,                              16);
+    mintAt(p3,  #RecoveryAlly,       ?"displayName:Dr. Amara W.",       19);
+    mintAt(p8,  #RecoveryAlly,       null,                              12);
+    mintAt(p6,  #ThirtyDayGuide,     null,                              10);
+    mintAt(p4,  #StorySharer,        ?"displayName:Sarah K.",            8);
+
+    // ── Clinical tier (MATChampion, BridgeProvider, RecoveryNavigator, SentinelVerified)
+    mintAt(p3,  #MATChampion,        null,                              17);
+    mintAt(p9,  #BridgeProvider,     null,                              13);
+    mintAt(p10, #RecoveryNavigator,  null,                               5);
+    mintAt(p3,  #SentinelVerified,   null,                               3);
+
+    // ── Leadership tier (CommunityArchitect, PolicyPioneer) ────────────────
+    mintAt(p10, #CommunityArchitect, null,                               6);
+    mintAt(p4,  #PolicyPioneer,      null,                               2);
   };
 
 

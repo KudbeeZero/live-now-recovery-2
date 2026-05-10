@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Calendar } from "lucide-react";
+import { SEO } from "../components/SEO";
 import { BLOG_POSTS } from "./BlogPage";
 
 const FULL_CONTENT: Record<string, string[]> = {
@@ -11,12 +12,7 @@ const FULL_CONTENT: Record<string, string[]> = {
     "Our Proof of Presence system adds a community-powered layer. Peer specialists and volunteers on the ground can generate one-time QR codes tied to a ZIP code. When scanned at a verified provider location, the system anonymously increments the presence count for that ZIP — giving policymakers and advocates real data about where care is actually happening.",
     "The data is not a solution in itself. The solution requires more providers, better reimbursement, less stigma, and systemic change. But you can't fix what you can't see. Live Now Recovery makes the invisible visible — for patients in crisis, for advocates driving policy, and for anyone fighting to close the MAT access gap in Region 13.",
   ],
-  "cost-plus-drugs-suboxone": [
-    "Buprenorphine/naloxone 8mg/2mg film — the generic version of Suboxone — costs approximately $185 per month at most retail pharmacies. That price, for a medication that is the clinical standard of care for opioid use disorder, creates a $2,220 annual barrier to recovery. For someone rebuilding their life on a fixed income or minimum wage, that number can be the difference between staying in treatment and dropping out entirely.",
-    "Mark Cuban Cost Plus Drugs offers the same medication — 60 films of generic buprenorphine/naloxone 8mg/2mg, a 30-day supply — for $45.37 per month. The savings are $139.63 per month, or $1,675 per year. MCCPD's NCPDP ID is 5755167. Any prescriber can call that in, and any patient can initiate a prescription transfer through the Cost Plus Drugs website at costplusdrugs.com.",
-    "The transfer process is straightforward. Call your prescriber and ask them to send the prescription to Mark Cuban Cost Plus Drugs, NCPDP 5755167. Alternatively, use the Cost Plus Drugs website to initiate the transfer directly. Medications ship in discreet packaging within two to three business days with free standard shipping, and same-day processing is available in most cases.",
-    "Live Now Recovery includes the Cost Plus price bridge on every provider page because it's a clinical obligation, not a marketing feature. If a provider is sending patients to a pharmacy where they'll pay $185 instead of $45, and no one told them a cheaper option existed, that's a systemic failure. Price transparency is a public health intervention — and it's one of the simplest, highest-impact changes any provider can make today.",
-  ],
+
   "peer-recovery-proof-of-presence": [
     "Peer recovery specialists occupy a unique position in the MAT ecosystem — they have the trust that clinical systems often don't, and the community presence that institutional settings frequently miss. They meet people at emergency rooms, at sober houses, in parking lots outside treatment centers, and at kitchen tables. They know which providers are actually open and actively serving patients before any database does.",
     "The Proof of Presence (PoP) system was designed specifically for this community. A peer specialist can open Live Now Recovery, enter the ZIP code of the location where they're helping someone access care, and generate a one-time QR code valid for five minutes — long enough for a quick scan, short enough to prevent replay abuse. The entire interaction takes less than 30 seconds and requires no account, no login, and no personal information.",
@@ -72,9 +68,9 @@ const FULL_CONTENT: Record<string, string[]> = {
     "Zero-PHI means more than legal compliance. HIPAA sets a floor, not a ceiling. Live Now Recovery's architecture goes beyond HIPAA requirements by design: we don't collect the data that HIPAA would require us to protect, because we never needed it in the first place. Provider listings contain logistics information only — name, location, availability status, provider type. No patient names, no diagnoses, no treatment history, no insurance information. The system is a supply-side directory, not a patient management system, and that distinction is fundamental to what makes it trustworthy for the communities it serves.",
   ],
   "economics-of-addiction": [
-    "The economic barriers to addiction treatment are as lethal as the pharmacological ones. A patient with opioid use disorder who cannot afford $185 per month for their medication has effectively been denied treatment by the market. Generic buprenorphine/naloxone is not a patented specialty drug — it has been off-patent for years. The retail price is a markup artifact, not a reflection of production cost. Mark Cuban Cost Plus Drugs prices the same medication at $45.37 per month: $1.51 per film, with a $3 pharmacy dispensing fee. The gap between those prices is a systemic failure that a transparency intervention can partially close.",
-    "The information gap compounds the price problem. In surveys of patients on buprenorphine, a substantial majority report that they were never told about lower-cost pharmacy options by their prescriber. The prescriber may not know, or may not consider it their responsibility, or may not have time. The result is that patients who could afford $45 per month are paying $185 because no one told them there was an alternative. This is not a minor inconvenience — for someone on disability income or working a service industry job, the $140 difference can determine whether they stay in treatment or drop out.",
-    "Price transparency changes treatment outcomes. When patients can compare real costs and find affordable options, treatment retention improves. The evidence from pharmacy benefit research shows that even modest co-pay reductions significantly improve adherence for chronic disease medications, and buprenorphine behaves like other chronic disease medications in this respect. Live Now Recovery includes the Mark Cuban Cost Plus Drugs price comparison on every provider profile page because visibility of the price gap is the first step toward patients acting on it.",
+    "The economic barriers to addiction treatment are as lethal as the pharmacological ones. A patient with opioid use disorder who cannot access affordable medication has effectively been denied treatment by the market. The financial burden of chronic disease management — particularly for people rebuilding their lives on modest incomes — can be the difference between staying in treatment and dropping out entirely.",
+    "The information gap compounds the access problem. Many patients on buprenorphine are not aware of the full range of financial assistance programs available to them — Medicaid coverage, state-funded treatment slots, sliding-scale fees, and pharmaceutical patient assistance programs. Providers often lack the time or awareness to navigate these options with their patients. The result is preventable treatment dropout.",
+    "Addressing the cost barrier requires systemic solutions: expanded Medicaid coverage, state block grant funding for treatment, and advocacy for parity enforcement. Live Now Recovery supports patients in finding providers who offer financially accessible treatment options, because keeping someone in treatment saves lives and saves money — $4 to $7 returned for every $1 invested.",
     "The broader economics of addiction treatment illustrate why the cost transparency argument extends beyond individual patients. Every dollar invested in MAT yields an estimated $4 to $7 in reduced drug-related crime, criminal justice costs, and healthcare costs — and some estimates put the return higher when long-term productivity gains are included. The economic case for expanding access to affordable MAT is not a social justice argument dressed in numbers — it's a straightforward cost-benefit analysis. Solving the information and cost barriers is not charitable; it's fiscally rational. Live Now Recovery exists at the intersection of those two arguments.",
   ],
   "peer-support-specialists": [
@@ -88,7 +84,7 @@ const FULL_CONTENT: Record<string, string[]> = {
     "What the 72-hour rule means in practice is this: if you or someone you know walks into an Ohio emergency room in active opioid withdrawal tonight, the physician on duty has the legal authority to start a buprenorphine induction — administer the first dose in the ED and provide a bridge prescription for up to three days — without any special certification, without a prior established relationship, and without a referral. The purpose is to stabilize the patient and create enough of a bridge to connect them to an ongoing MAT provider before the prescription runs out. In the fentanyl era, where relapse after a period of abstinence is increasingly lethal, those 72 hours can be the difference between a patient who connects to long-term treatment and one who doesn't.",
     "Northeast Ohio is ahead of the national curve on ER bridge protocols. The Ohio Addiction and Prescription Drug Action Committee (OAAP) has actively supported ER-initiated buprenorphine programs, and several major hospital systems in the region — including MetroHealth Medical Center in Cleveland, Summa Health in Akron, and UH Cleveland Medical Center — have implemented bridge protocols that include peer recovery specialist support during and after the ER visit. These programs are not universal, and access varies significantly by county and by shift. Live Now Recovery is building the visibility layer that tells someone at 11pm which ERs in their area are actively participating in bridge protocols tonight.",
     "The 72-hour window is a starting point, not a solution. After the bridge prescription runs out, the patient needs a path to a regular MAT prescriber. This is where the warm handoff becomes critical. The best ER bridge programs include a peer specialist who starts the connection to an outpatient provider before the patient is discharged — not a list of phone numbers, but an actual appointment confirmation while the patient is still in the room. Live Now Recovery's volunteer network can fill the transportation gap: if a patient needs a ride from the ER to their first MAT appointment, the platform can connect them with a local volunteer who will show up.",
-    "If you work in an emergency department in Ohio and your facility has the capacity to participate in bridge protocols, register your ER on Live Now Recovery. When you toggle your status to active during a shift where bridge prescribing is available, you become visible to the peer specialists and family members searching right now for an ER that will actually help. The medication cost for a 72-hour bridge through Cost Plus Drugs is approximately $3 — buprenorphine through Mark Cuban's pharmacy costs $22 per month for a full 30-day supply, which means the three-day bridge costs less than $3. Cost is not the barrier. Visibility is.",
+    "If you work in an emergency department in Ohio and your facility has the capacity to participate in bridge protocols, register your ER on Live Now Recovery. When you toggle your status to active during a shift where bridge prescribing is available, you become visible to the peer specialists and family members searching right now for an ER that will actually help. Buprenorphine is cost-effective and widely covered by Medicaid and most insurance plans. Cost is not the barrier. Visibility is.",
   ],
   "volunteer-warm-handoff": [
     "A warm handoff is not a referral. A referral is paperwork — a phone number on a discharge sheet, a website URL, a list of providers printed from a database that may be months out of date. Research on opioid treatment uptake consistently shows that cold referrals result in treatment engagement rates of 10 to 20 percent. Most people never make the call. A warm handoff is something different: it is a human being staying present with another human being through the transition from crisis to care. Someone who walks into a clinic because a person they trust walked them through the door has a fundamentally different experience than someone who navigated the phone tree alone.",
@@ -105,10 +101,7 @@ const SUBHEADINGS: Record<string, Record<number, string>> = {
     1: "The Access Gap in Numbers",
     3: "What Region 13 Is Doing Differently",
   },
-  "cost-plus-drugs-suboxone": {
-    1: "The Real Cost of Suboxone",
-    3: "How to Use Cost Plus Drugs",
-  },
+
   "peer-recovery-proof-of-presence": {
     1: "How the PoP System Works",
     3: "Early Results from the Field",
@@ -185,56 +178,103 @@ export function BlogPostPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background" data-ocid="blog_post.page">
-      {/* Dark hero header — double bg-navy wrapper prevents any parent color bleed */}
-      <div className="bg-navy w-full">
-        <section className="bg-navy px-4 py-14">
-          <div className="max-w-2xl mx-auto">
+    <>
+      <SEO
+        title={`${post.title} | Live Now Recovery Recovery Blog`}
+        description={post.excerpt}
+        keywords={`${post.category}, MAT Ohio, opioid crisis, Live Now Recovery blog, recovery resources`}
+        canonical={`/blog/${post.slug}`}
+        ogType="article"
+      />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: structured data
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: post.title,
+            description: post.excerpt,
+            articleSection: post.category,
+            datePublished: post.date,
+            author: {
+              "@type": "Organization",
+              name: "Live Now Recovery",
+            },
+            publisher: {
+              "@type": "Organization",
+              name: "Live Now Recovery",
+              url: "https://livenowrecovery.org",
+            },
+            url: `https://livenowrecovery.org/blog/${post.slug}`,
+          }),
+        }}
+      />
+      <main className="min-h-screen bg-background" data-ocid="blog_post.page">
+        {/* Animated hero header */}
+        <section
+          className="relative overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(135deg, oklch(0.12 0.04 210) 0%, oklch(0.16 0.06 195) 50%, oklch(0.11 0.03 240) 100%)",
+          }}
+        >
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 60% at 40% 50%, oklch(0.62 0.12 218 / 0.07) 0%, transparent 70%)",
+            }}
+          />
+          <div className="relative z-10 max-w-2xl mx-auto px-4 py-14 md:py-20">
             <Link
               to="/blog"
-              className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white mb-6 transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-teal-300/70 hover:text-teal-300 mb-6 transition-colors"
               data-ocid="blog_post.link"
             >
               <ArrowLeft className="w-4 h-4" /> Back to blog
             </Link>
             <div className="flex items-center gap-3 mb-4">
-              <Badge className="bg-live-green/20 text-live-green border border-live-green/30 hover:bg-live-green/20 text-xs font-semibold">
+              <Badge className="bg-teal-500/20 text-teal-300 border border-teal-500/30 hover:bg-teal-500/20 text-xs font-semibold">
                 {post.category}
               </Badge>
-              <div className="flex items-center gap-1 text-xs text-white/60">
+              <div className="flex items-center gap-1 text-xs text-teal-200/60">
                 <Calendar className="w-3 h-3" />
                 {post.date}
               </div>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight">
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">
               {post.title}
             </h1>
-          </div>
-        </section>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="prose prose-slate max-w-none">
-          {content.length === 0 ? (
-            <p className="text-muted-foreground leading-relaxed mb-5 text-base">
+            <p className="mt-4 text-muted-foreground text-base leading-relaxed max-w-xl">
               {post.excerpt}
             </p>
-          ) : (
-            content.map((para, index) => (
-              <div key={para.slice(0, 40)}>
-                {subheadings[index] && (
-                  <h2 className="text-xl font-bold text-foreground mt-8 mb-3">
-                    {subheadings[index]}
-                  </h2>
-                )}
-                <p className="text-muted-foreground leading-relaxed mb-5 text-base">
-                  {para}
-                </p>
-              </div>
-            ))
-          )}
+          </div>
+        </section>
+
+        <div className="max-w-2xl mx-auto px-4 py-12">
+          <div className="prose prose-slate max-w-none">
+            {content.length === 0 ? (
+              <p className="text-muted-foreground leading-relaxed mb-5 text-base">
+                {post.excerpt}
+              </p>
+            ) : (
+              content.map((para, index) => (
+                <div key={para.slice(0, 40)}>
+                  {subheadings[index] && (
+                    <h2 className="text-xl font-bold text-foreground mt-8 mb-3">
+                      {subheadings[index]}
+                    </h2>
+                  )}
+                  <p className="text-muted-foreground leading-relaxed mb-5 text-base">
+                    {para}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }

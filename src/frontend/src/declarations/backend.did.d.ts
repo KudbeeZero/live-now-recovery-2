@@ -190,6 +190,12 @@ export interface _SERVICE {
     [Principal, CredentialType, [] | [string]],
     bigint
   >,
+  /**
+   * / Populates 18 demo credential records across all 12 types and 4 tiers.
+   * / Guard: no-op if credentials already exist.
+   * / Call once after fresh deploy to populate the leaderboard and gallery.
+   */
+  'adminSeedCredentials' : ActorMethod<[], string>,
   'approveTestimonial' : ActorMethod<[string], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'checkAndAutoMint' : ActorMethod<[Principal, string, bigint], undefined>,

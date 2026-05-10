@@ -288,6 +288,12 @@ export interface backendInterface {
     addProviderPost(providerId: string, content: string, imageUrl: string | null): Promise<string>;
     addRiskEvent(event: RiskEvent): Promise<string>;
     adminMintCredential(owner: Principal, credType: CredentialType, metadata: string | null): Promise<bigint>;
+    /**
+     * / Populates 18 demo credential records across all 12 types and 4 tiers.
+     * / Guard: no-op if credentials already exist.
+     * / Call once after fresh deploy to populate the leaderboard and gallery.
+     */
+    adminSeedCredentials(): Promise<string>;
     approveTestimonial(id: string): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     checkAndAutoMint(owner: Principal, actionType: string, count: bigint): Promise<void>;
@@ -455,6 +461,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.adminMintCredential(arg0, to_candid_CredentialType_n2(this._uploadFile, this._downloadFile, arg1), to_candid_opt_n1(this._uploadFile, this._downloadFile, arg2));
+            return result;
+        }
+    }
+    async adminSeedCredentials(): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.adminSeedCredentials();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.adminSeedCredentials();
             return result;
         }
     }

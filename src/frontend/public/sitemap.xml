@@ -4,451 +4,333 @@
   <!-- Core pages -->
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+
+  <!-- High-priority platform pages -->
   <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/donate</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>monthly</changefreq>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/hub</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/ohio-stats</loc>
-    <lastmod>2026-05-07</lastmod>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/leaderboard</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/gallery</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/donate</loc>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/national-impact</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteers</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/helper</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/dashboard</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Important pages -->
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/mission</loc>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/citizens</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/about</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/integration</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/impact</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/videos</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/resources</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/how-it-works</loc>
-    <lastmod>2026-05-07</lastmod>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/ohio-stats</loc>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/mission</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/about</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/founder</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
+
+  <!-- Secondary pages -->
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/contact</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/dashboard</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/faq</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/how-it-works</loc>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/blog</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/helper</loc>
-    <lastmod>2026-05-07</lastmod>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/founder</loc>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/register</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/signup</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/my-recovery</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
+
+  <!-- Legal & utility -->
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/privacy</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/terms</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/cookies</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Secondary utility pages -->
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/citizens</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/sitemap</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
+    <priority>0.5</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/verify</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
+    <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/integration</loc>
-    <lastmod>2026-05-07</lastmod>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/register</loc>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/signup</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/my-recovery</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 
-  <!-- Credential / Impact / Gallery pages -->
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/gallery</loc>
-    <lastmod>2026-05-08</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/leaderboard</loc>
-    <lastmod>2026-05-08</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/impact</loc>
-    <lastmod>2026-05-08</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Volunteer pages -->
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteers</loc>
-    <lastmod>2026-05-08</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
+  <!-- Volunteer profiles -->
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/1</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/2</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/3</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/4</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/5</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/6</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/7</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/8</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/9</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/10</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/11</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/12</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/13</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/14</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/volunteer/15</loc>
-    <lastmod>2026-05-08</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
 
-  <!-- Ohio city pages -->
+  <!-- Ohio city/location pages -->
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/location/cleveland</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/cleveland</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/location/akron</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/akron</loc>
-    <lastmod>2026-05-07</lastmod>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/columbus</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/cincinnati</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/dayton</loc>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/location/youngstown</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/youngstown</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/toledo</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/toledo</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://live-now-recovery-3f2.caffeine.xyz/location/canton</loc>
-    <lastmod>2026-05-07</lastmod>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/canton</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/lorain</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/lorain</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/elyria</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/elyria</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/lakewood</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/lakewood</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/parma</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/parma</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/mentor</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/mentor</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/strongsville</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/strongsville</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/euclid</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/euclid</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/sandusky</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/sandusky</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/warren</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/warren</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/medina</loc>
-    <lastmod>2026-05-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://live-now-recovery-3f2.caffeine.xyz/medina</loc>
-    <lastmod>2026-05-07</lastmod>
+    <loc>https://live-now-recovery-3f2.caffeine.xyz/location/toledo</loc>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

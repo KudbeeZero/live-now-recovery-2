@@ -17,8 +17,10 @@ import {
   Award,
   BarChart3,
   BedDouble,
+  Building2,
   CheckCircle2,
   Clock,
+  Copy,
   Database,
   DollarSign,
   Download,
@@ -26,6 +28,7 @@ import {
   FileText,
   Flag,
   Heart,
+  LayoutDashboard,
   Loader2,
   Lock,
   Medal,
@@ -36,7 +39,9 @@ import {
   Shield,
   ShieldCheck,
   Star,
+  TrendingDown,
   TrendingUp,
+  UserCheck,
   Users,
   X,
   Zap,
@@ -53,6 +58,7 @@ import {
   usePendingPhysicalFulfillments,
 } from "../hooks/useCredentials";
 import {
+  useAllHelpers,
   useAllProviders,
   useApproveTestimonial,
   useFlagCitizenReport,
@@ -85,6 +91,7 @@ import { isProviderStale, statusLabel } from "../utils/providerUtils";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type AdminTab =
+  | "dashboard"
   | "overview"
   | "providers"
   | "reports"
@@ -213,6 +220,11 @@ function formatTime(ts: bigint | number): string {
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 
 const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: <LayoutDashboard className="w-4 h-4" />,
+  },
   {
     id: "overview",
     label: "Overview",
@@ -429,6 +441,880 @@ const SEED_PROVIDERS = [
     providerType: "Telehealth MAT",
   },
 ];
+
+// ─── Mock data for AdminDashboardTab ─────────────────────────────────────────
+
+const _DASHBOARD_MOCK_PROVIDERS = [
+  {
+    id: "dm-1",
+    name: "Signature Health – Cleveland",
+    city: "Cleveland",
+    type: "MAT Clinic",
+    status: "Active",
+    verified: true,
+  },
+  {
+    id: "dm-2",
+    name: "Oriana House – Akron",
+    city: "Akron",
+    type: "Outpatient",
+    status: "Active",
+    verified: true,
+  },
+  {
+    id: "dm-3",
+    name: "FrontLine Service",
+    city: "Cleveland",
+    type: "Harm Reduction",
+    status: "Pending",
+    verified: false,
+  },
+  {
+    id: "dm-4",
+    name: "Meridian Health – Youngstown",
+    city: "Youngstown",
+    type: "MAT Clinic",
+    status: "Active",
+    verified: false,
+  },
+  {
+    id: "dm-5",
+    name: "Quest Recovery – Canton",
+    city: "Canton",
+    type: "Narcan Distribution",
+    status: "Inactive",
+    verified: true,
+  },
+];
+
+const _DASHBOARD_MOCK_VOLUNTEERS = [
+  {
+    id: "dv-1",
+    name: "Marcus T.",
+    county: "Cuyahoga",
+    role: "Peer Support",
+    joined: "Jan 14, 2025",
+    status: "Active",
+  },
+  {
+    id: "dv-2",
+    name: "Alicia R.",
+    county: "Summit",
+    role: "Outreach Worker",
+    joined: "Feb 3, 2025",
+    status: "Pending",
+  },
+  {
+    id: "dv-3",
+    name: "Devon M.",
+    county: "Mahoning",
+    role: "Recovery Coach",
+    joined: "Mar 8, 2025",
+    status: "Active",
+  },
+  {
+    id: "dv-4",
+    name: "Sandra K.",
+    county: "Stark",
+    role: "Transportation",
+    joined: "Apr 1, 2025",
+    status: "Suspended",
+  },
+];
+
+const _DASHBOARD_ACTIVITY = [
+  {
+    id: 1,
+    type: "verified",
+    desc: "Signature Health – Cleveland verified",
+    time: "4 min ago",
+    borderColor: "bg-live-green",
+  },
+  {
+    id: 2,
+    type: "incident",
+    desc: "Suspected overdose reported — Columbus, Franklin Co.",
+    time: "11 min ago",
+    borderColor: "bg-red-400",
+  },
+  {
+    id: 3,
+    type: "volunteer",
+    desc: "New volunteer pending approval — Alicia R., Summit Co.",
+    time: "23 min ago",
+    borderColor: "bg-amber-400",
+  },
+  {
+    id: 4,
+    type: "registered",
+    desc: "New provider registered — FrontLine Service, Cleveland",
+    time: "37 min ago",
+    borderColor: "bg-blue-400",
+  },
+  {
+    id: 5,
+    type: "incident",
+    desc: "Narcan deployed — Dayton, Montgomery Co.",
+    time: "52 min ago",
+    borderColor: "bg-red-400",
+  },
+  {
+    id: 6,
+    type: "deactivated",
+    desc: "Quest Recovery – Canton marked inactive",
+    time: "1 hr ago",
+    borderColor: "bg-muted-foreground/30",
+  },
+  {
+    id: 7,
+    type: "verified",
+    desc: "Oriana House – Akron verification renewed",
+    time: "2 hr ago",
+    borderColor: "bg-live-green",
+  },
+  {
+    id: 8,
+    type: "registered",
+    desc: "New provider registered — Spero Health, Toledo",
+    time: "3 hr ago",
+    borderColor: "bg-blue-400",
+  },
+];
+
+// ─── AdminDashboardTab ───────────────────────────────────────────────────────
+
+function AdminDashboardTab({
+  providers,
+  setTab,
+  principalText,
+}: {
+  providers: ProviderWithStatus[];
+  setTab: (t: AdminTab) => void;
+  principalText: string;
+}) {
+  const [providerSearch, setProviderSearch] = useState("");
+  const [providerFilter, setProviderFilter] = useState<
+    "All" | "Active" | "Pending" | "Unverified"
+  >("All");
+  const [volunteerSearch, setVolunteerSearch] = useState("");
+  const [volunteerFilter, setVolunteerFilter] = useState<
+    "All" | "Active" | "Pending" | "Suspended"
+  >("All");
+  const [copied, setCopied] = useState(false);
+
+  // ── Live data hooks ─────────────────────────────────────────────────────
+  const {
+    data: helpers = [],
+    isLoading: helpersLoading,
+    isError: helpersError,
+  } = useAllHelpers();
+
+  const {
+    data: reports = [],
+    isLoading: reportsLoading,
+    isError: reportsError,
+  } = useGetAllReports();
+
+  // ── Derived stats ────────────────────────────────────────────────────────
+  const totalProviders = providers.length;
+  const activeIncidents = reports.filter(
+    (r) =>
+      r.activityType === "suspected-od" || r.activityType === "narcan-used",
+  ).length;
+  const totalVolunteers = helpers.length;
+  const pendingVerifications = providers.filter((p) => !p.is_verified).length;
+
+  // ── Activity feed from reports ───────────────────────────────────────────
+  const activityEntries = reports
+    .slice()
+    .sort(
+      (a, b) =>
+        (typeof b.createdAt === "bigint"
+          ? Number(b.createdAt) / 1_000_000
+          : Number(b.createdAt)) -
+        (typeof a.createdAt === "bigint"
+          ? Number(a.createdAt) / 1_000_000
+          : Number(a.createdAt)),
+    )
+    .slice(0, 12)
+    .map((r, i) => {
+      const ms =
+        typeof r.createdAt === "bigint"
+          ? Number(r.createdAt) / 1_000_000
+          : Number(r.createdAt);
+      const diff = Date.now() - ms;
+      const mins = Math.floor(diff / 60_000);
+      const timeAgo =
+        mins < 1
+          ? "just now"
+          : mins < 60
+            ? `${mins} min ago`
+            : mins < 1440
+              ? `${Math.floor(mins / 60)} hr ago`
+              : `${Math.floor(mins / 1440)} days ago`;
+      const label =
+        REPORT_TYPE_LABELS[r.activityType] ?? r.activityType.replace(/-/g, " ");
+      const borderColor =
+        r.activityType === "suspected-od" || r.activityType === "narcan-used"
+          ? "bg-red-400"
+          : r.activityType === "bad-batch-alert"
+            ? "bg-amber-400"
+            : r.activityType === "check-in"
+              ? "bg-live-green"
+              : "bg-blue-400";
+      return {
+        id: `${r.id}-${i}`,
+        desc: `${label} — ${r.zipCode || "Unknown area"}`,
+        time: timeAgo,
+        borderColor,
+      };
+    });
+
+  const handleCopyPrincipal = () => {
+    if (principalText) {
+      navigator.clipboard.writeText(principalText).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
+  };
+
+  // ── Filtered providers (live data from prop) ─────────────────────────────
+  const filteredProviders = providers.filter((p) => {
+    const matchSearch = p.name
+      .toLowerCase()
+      .includes(providerSearch.toLowerCase());
+    if (!matchSearch) return false;
+    if (providerFilter === "Active") return p.is_active;
+    if (providerFilter === "Pending") return !p.is_active && !p.is_verified;
+    if (providerFilter === "Unverified") return !p.is_verified;
+    return true;
+  });
+
+  // ── Filtered helpers (live data from hook) ───────────────────────────────
+  const filteredHelpers = helpers.filter((v) => {
+    const matchSearch =
+      `${v.firstName} ${v.lastName}`
+        .toLowerCase()
+        .includes(volunteerSearch.toLowerCase()) ||
+      v.zip.toLowerCase().includes(volunteerSearch.toLowerCase());
+    if (!matchSearch) return false;
+    // All helpers from backend don't have an explicit status field;
+    // treat all as Active. Filter "Pending"/"Suspended" returns none.
+    if (volunteerFilter === "Active") return true;
+    if (volunteerFilter === "Pending") return false;
+    if (volunteerFilter === "Suspended") return false;
+    return true;
+  });
+
+  // ── Skeleton row helper ──────────────────────────────────────────────────
+  const SkeletonRows = ({
+    cols,
+    rows = 3,
+  }: { cols: number; rows?: number }) => (
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows are positional
+        <tr key={`skel-${i}`}>
+          {Array.from({ length: cols }).map((__, j) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton cols are positional
+            <td key={j} className="px-4 py-3">
+              <Skeleton className="h-4 w-full rounded" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+
+  return (
+    <div className="space-y-6" data-ocid="admin.dashboard_tab">
+      {/* Principal copy strip */}
+      {principalText && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/30 border border-border w-fit">
+          <span className="text-xs text-muted-foreground">Principal:</span>
+          <span className="font-mono text-xs text-foreground">
+            {principalText.slice(0, 10)}&hellip;{principalText.slice(-6)}
+          </span>
+          <button
+            type="button"
+            onClick={handleCopyPrincipal}
+            className="ml-1 flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+            aria-label="Copy full principal"
+            data-ocid="admin.copy_principal"
+          >
+            <Copy className="w-3 h-3" />
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+      )}
+
+      {/* Stats bar */}
+      <div
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        data-ocid="admin.stats_bar"
+      >
+        {/* Total Providers */}
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-live-green/10 border border-live-green/20 flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-live-green" />
+            </div>
+            <span className="text-sm text-muted-foreground font-medium">
+              Total Providers
+            </span>
+          </div>
+          <div className="flex items-end justify-between">
+            <p className="text-3xl font-bold text-live-green">
+              {totalProviders}
+            </p>
+            <span className="flex items-center gap-0.5 text-xs text-live-green">
+              <TrendingUp className="w-3 h-3" />
+              {providers.filter((p) => p.is_active).length} active
+            </span>
+          </div>
+        </div>
+
+        {/* Active Incidents */}
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-900/20 border border-amber-700/20 flex items-center justify-center">
+              <Activity className="w-4 h-4 text-amber-400" />
+            </div>
+            <span className="text-sm text-muted-foreground font-medium">
+              Active Incidents
+            </span>
+          </div>
+          <div className="flex items-end justify-between">
+            {reportsLoading ? (
+              <Skeleton
+                className="h-8 w-12"
+                data-ocid="admin.incidents_loading_state"
+              />
+            ) : (
+              <p className="text-3xl font-bold text-amber-400">
+                {activeIncidents}
+              </p>
+            )}
+            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+              <Activity className="w-3 h-3" /> {reports.length} total
+            </span>
+          </div>
+        </div>
+
+        {/* Volunteers */}
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-live-green/10 border border-live-green/20 flex items-center justify-center">
+              <Users className="w-4 h-4 text-live-green" />
+            </div>
+            <span className="text-sm text-muted-foreground font-medium">
+              Volunteers / Helpers
+            </span>
+          </div>
+          <div className="flex items-end justify-between">
+            {helpersLoading ? (
+              <Skeleton
+                className="h-8 w-12"
+                data-ocid="admin.helpers_loading_state"
+              />
+            ) : (
+              <p className="text-3xl font-bold text-live-green">
+                {totalVolunteers}
+              </p>
+            )}
+            <span className="flex items-center gap-0.5 text-xs text-live-green">
+              <TrendingUp className="w-3 h-3" /> registered
+            </span>
+          </div>
+        </div>
+
+        {/* Pending Verifications */}
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-red-900/20 border border-red-700/20 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-red-400" />
+            </div>
+            <span className="text-sm text-muted-foreground font-medium">
+              Pending Verifications
+            </span>
+          </div>
+          <div className="flex items-end justify-between">
+            <p className="text-3xl font-bold text-red-400">
+              {pendingVerifications}
+            </p>
+            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+              <Clock className="w-3 h-3" /> Review
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Two-column main: tables + activity feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: tables */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Providers table */}
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <Shield className="w-4 h-4 text-live-green" />
+              <h3 className="font-semibold text-foreground">Providers</h3>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {filteredProviders.length} shown
+              </span>
+            </div>
+            <div className="px-5 py-3 border-b border-border flex flex-wrap gap-2">
+              <Input
+                placeholder="Search name or city"
+                value={providerSearch}
+                onChange={(e) => setProviderSearch(e.target.value)}
+                className="max-w-[200px] h-8 text-sm"
+                data-ocid="admin.provider_search"
+              />
+              <select
+                value={providerFilter}
+                onChange={(e) =>
+                  setProviderFilter(
+                    e.target.value as
+                      | "All"
+                      | "Active"
+                      | "Pending"
+                      | "Unverified",
+                  )
+                }
+                className="h-8 text-sm px-2 rounded-md bg-muted border border-border text-foreground"
+                data-ocid="admin.provider_filter"
+              >
+                <option value="All">All</option>
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Unverified">Unverified</option>
+              </select>
+            </div>
+            <div
+              className="overflow-x-auto"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              <table className="w-full text-sm min-w-[560px]">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Provider
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Type
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Status
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Verified
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProviders.slice(0, 10).map((p, i) => (
+                    <tr
+                      key={p.id}
+                      className="border-b border-border/50 hover:bg-muted/20 transition-colors"
+                      data-ocid={`admin.provider_row.${i + 1}`}
+                    >
+                      <td
+                        className="px-4 py-3 font-medium text-foreground max-w-[160px] truncate"
+                        title={p.name}
+                      >
+                        {p.name}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                            PROVIDER_TYPE_COLORS[p.providerType] ??
+                            "bg-muted text-muted-foreground border-border"
+                          }`}
+                        >
+                          {p.providerType}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                            p.is_active
+                              ? "bg-live-green/10 text-live-green border-live-green/30"
+                              : "bg-muted text-muted-foreground border-border"
+                          }`}
+                        >
+                          {p.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {p.is_verified ? (
+                          <span className="text-live-green font-bold text-lg">
+                            ✓
+                          </span>
+                        ) : (
+                          <span className="text-red-400 font-bold text-lg">
+                            ✗
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setTab("providers")}
+                            className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/70 text-foreground transition-colors"
+                            data-ocid={`admin.view_provider.${i + 1}`}
+                          >
+                            View
+                          </button>
+                          {!p.is_verified && (
+                            <button
+                              type="button"
+                              onClick={() => setTab("providers")}
+                              className="text-xs px-2 py-1 rounded bg-live-green/10 hover:bg-live-green/20 text-live-green transition-colors"
+                              data-ocid={`admin.verify_provider.${i + 1}`}
+                            >
+                              Verify
+                            </button>
+                          )}
+                          {p.is_active && (
+                            <button
+                              type="button"
+                              onClick={() => setTab("providers")}
+                              className="text-xs px-2 py-1 rounded bg-red-900/20 hover:bg-red-900/30 text-red-400 transition-colors"
+                              data-ocid={`admin.deactivate_provider.${i + 1}`}
+                            >
+                              Deactivate
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredProviders.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-8 text-center text-muted-foreground text-sm"
+                        data-ocid="admin.providers_empty_state"
+                      >
+                        No providers match your filter.
+                      </td>
+                    </tr>
+                  )}
+                  {filteredProviders.length > 10 && (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-3 text-center text-xs text-muted-foreground"
+                      >
+                        Showing 10 of {filteredProviders.length} —{" "}
+                        <button
+                          type="button"
+                          onClick={() => setTab("providers")}
+                          className="text-primary underline"
+                        >
+                          View all in Providers tab
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Volunteers / Helpers table */}
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-live-green" />
+              <h3 className="font-semibold text-foreground">
+                Volunteers / Helpers
+              </h3>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {helpersLoading ? "…" : `${filteredHelpers.length} shown`}
+              </span>
+            </div>
+            {helpersError && (
+              <div
+                className="mx-5 my-3 px-4 py-3 rounded-xl border border-primary/40 bg-primary/5 text-sm text-primary"
+                data-ocid="admin.helpers_error_state"
+              >
+                Unable to load volunteers right now. Try refreshing.
+              </div>
+            )}
+            <div className="px-5 py-3 border-b border-border flex flex-wrap gap-2">
+              <Input
+                placeholder="Search name or ZIP"
+                value={volunteerSearch}
+                onChange={(e) => setVolunteerSearch(e.target.value)}
+                className="max-w-[200px] h-8 text-sm"
+                data-ocid="admin.volunteer_search"
+              />
+              <select
+                value={volunteerFilter}
+                onChange={(e) =>
+                  setVolunteerFilter(
+                    e.target.value as
+                      | "All"
+                      | "Active"
+                      | "Pending"
+                      | "Suspended",
+                  )
+                }
+                className="h-8 text-sm px-2 rounded-md bg-muted border border-border text-foreground"
+                data-ocid="admin.volunteer_filter"
+              >
+                <option value="All">All</option>
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+            </div>
+            <div
+              className="overflow-x-auto"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              <table className="w-full text-sm min-w-[520px]">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Name
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      ZIP
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Role
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Joined
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Status
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium whitespace-nowrap">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {helpersLoading && !helpersError ? (
+                    <SkeletonRows cols={6} rows={3} />
+                  ) : (
+                    <>
+                      {filteredHelpers.slice(0, 10).map((v, i) => {
+                        const ms =
+                          typeof v.createdAt === "bigint"
+                            ? Number(v.createdAt) / 1_000_000
+                            : Number(v.createdAt);
+                        const joined = ms
+                          ? new Date(ms).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "—";
+                        return (
+                          <tr
+                            key={v.id}
+                            className="border-b border-border/50 hover:bg-muted/20 transition-colors"
+                            data-ocid={`admin.volunteer_row.${i + 1}`}
+                          >
+                            <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
+                              {v.firstName} {v.lastName}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                              {v.zip || "—"}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted border border-border text-muted-foreground">
+                                {v.helpType || "Helper"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                              {joined}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-live-green/10 text-live-green border-live-green/30">
+                                Active
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setTab("helpers")}
+                                  className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/70 text-foreground transition-colors"
+                                  data-ocid={`admin.view_volunteer.${i + 1}`}
+                                >
+                                  View
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {filteredHelpers.length === 0 && !helpersLoading && (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="px-4 py-8 text-center text-muted-foreground text-sm"
+                            data-ocid="admin.volunteers_empty_state"
+                          >
+                            No helpers registered yet.
+                          </td>
+                        </tr>
+                      )}
+                      {filteredHelpers.length > 10 && (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="px-4 py-3 text-center text-xs text-muted-foreground"
+                          >
+                            Showing 10 of {filteredHelpers.length} —{" "}
+                            <button
+                              type="button"
+                              onClick={() => setTab("helpers")}
+                              className="text-primary underline"
+                            >
+                              View all in Helpers tab
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Activity feed */}
+        <div className="bg-card rounded-2xl border border-border overflow-hidden flex flex-col">
+          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-live-green animate-pulse" />
+            <h3 className="font-semibold text-foreground">Activity Log</h3>
+            <span className="ml-1 text-xs text-live-green font-medium">
+              Live
+            </span>
+          </div>
+          {reportsError && (
+            <div
+              className="mx-4 mt-3 px-4 py-3 rounded-xl border border-primary/40 bg-primary/5 text-sm text-primary"
+              data-ocid="admin.reports_error_state"
+            >
+              Unable to load activity right now. Try refreshing.
+            </div>
+          )}
+          <div
+            className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+            style={{ maxHeight: "600px" }}
+            data-ocid="admin.activity_feed"
+          >
+            {reportsLoading && !reportsError ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: positional skeleton
+                  key={`skel-act-${i}`}
+                  className="flex gap-2.5 p-3 rounded-xl bg-muted/20 border border-border/50"
+                  data-ocid="admin.activity_loading_state"
+                >
+                  <Skeleton className="w-1 self-stretch rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                </div>
+              ))
+            ) : activityEntries.length > 0 ? (
+              activityEntries.map((entry, i) => (
+                <div
+                  key={entry.id}
+                  className="flex gap-2.5 p-3 rounded-xl bg-muted/20 border border-border/50"
+                  data-ocid={`admin.activity_item.${i + 1}`}
+                >
+                  <div
+                    className={`shrink-0 w-1 self-stretch rounded-full mt-1 ${entry.borderColor}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-foreground leading-snug">
+                      {entry.desc}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {entry.time}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div
+                className="text-center text-sm text-muted-foreground py-8"
+                data-ocid="admin.activity_empty_state"
+              >
+                No activity yet.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick actions bar */}
+      <div className="bg-card rounded-2xl border border-border p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="w-4 h-4 text-live-green" />
+          <h3 className="text-sm font-semibold text-foreground">
+            Quick Actions
+          </h3>
+        </div>
+        <div
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+          data-ocid="admin.quick_actions"
+        >
+          <button
+            type="button"
+            onClick={() => setTab("providers")}
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-live-green/40 bg-live-green/5 text-live-green text-sm font-medium hover:bg-live-green/10 transition-colors"
+            data-ocid="admin.add_provider_button"
+          >
+            <Plus className="w-4 h-4" /> Add Provider
+          </button>
+          <button
+            type="button"
+            onClick={() => setProviderFilter("Pending")}
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-live-green/40 bg-live-green/5 text-live-green text-sm font-medium hover:bg-live-green/10 transition-colors"
+            data-ocid="admin.review_pending_button"
+          >
+            <CheckCircle2 className="w-4 h-4" /> Review Pending
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              console.log("[AdminDashboard] Export data triggered");
+              toast.info("Export initiated — data logged to console.");
+            }}
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-live-green/40 bg-live-green/5 text-live-green text-sm font-medium hover:bg-live-green/10 transition-colors"
+            data-ocid="admin.export_data_button"
+          >
+            <Download className="w-4 h-4" /> Export Data
+          </button>
+          <button
+            type="button"
+            onClick={() => toast.info("Settings — coming soon.")}
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-live-green/40 bg-live-green/5 text-live-green text-sm font-medium hover:bg-live-green/10 transition-colors"
+            data-ocid="admin.settings_button"
+          >
+            <Settings className="w-4 h-4" /> Settings
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Sub-tab components ───────────────────────────────────────────────────────
 
@@ -1928,6 +2814,38 @@ function CredentialsTab() {
   const { actor, isFetching } = useActor(createActor);
   const qc = useQueryClient();
 
+  // ── Seed Demo Data ───────────────────────────────────────────────────────
+  const [seedState, setSeedState] = useState<
+    "idle" | "seeding" | "success" | "error"
+  >("idle");
+  const [seedError, setSeedError] = useState<string | null>(null);
+
+  const handleSeedCredentials = async () => {
+    if (!actor) return;
+    setSeedState("seeding");
+    setSeedError(null);
+    try {
+      await (
+        actor as unknown as Record<
+          string,
+          (...args: unknown[]) => Promise<unknown>
+        >
+      ).adminSeedCredentials();
+      setSeedState("success");
+      void qc.invalidateQueries({ queryKey: ["allPublicBadges"] });
+      void qc.invalidateQueries({ queryKey: ["globalImpactStats"] });
+      void qc.invalidateQueries({ queryKey: ["topContributors"] });
+      toast.success(
+        "Successfully seeded 18 credential records! Head to /gallery and /leaderboard to see them live.",
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setSeedError(msg);
+      setSeedState("error");
+      toast.error(`Seed failed: ${msg}`);
+    }
+  };
+
   // Stats
   const { data: globalStats, isLoading: statsLoading } = useGlobalImpactStats();
 
@@ -2035,6 +2953,176 @@ function CredentialsTab() {
 
   return (
     <div className="space-y-8" data-ocid="admin.credentials_tab">
+      {/* 0. Seed Demo Data card */}
+      <div
+        className="rounded-2xl border p-6"
+        style={{
+          background:
+            seedState === "success"
+              ? "oklch(0.62 0.15 155 / 0.06)"
+              : "oklch(0.14 0.03 240)",
+          borderColor:
+            seedState === "error"
+              ? "oklch(0.52 0.18 28 / 0.5)"
+              : seedState === "success"
+                ? "oklch(0.62 0.15 155 / 0.4)"
+                : "oklch(0.24 0.04 240)",
+        }}
+        data-ocid="admin.seed_credentials_card"
+      >
+        <div className="flex items-start gap-4">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+            style={{
+              background: "oklch(0.62 0.15 155 / 0.12)",
+              border: "1px solid oklch(0.62 0.15 155 / 0.3)",
+            }}
+          >
+            <Database
+              className="w-5 h-5"
+              style={{ color: "oklch(0.62 0.15 155)" }}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3
+              className="font-bold text-base mb-1"
+              style={{ color: "oklch(0.92 0.01 210)" }}
+            >
+              Initialize Credential Demo Data
+            </h3>
+            <p
+              className="text-sm mb-4"
+              style={{ color: "oklch(0.62 0.02 220)" }}
+            >
+              Populate the leaderboard and gallery with 15+ realistic credential
+              records across all 12 badge types and all 4 tiers — ready for
+              pitches and demos. This is a one-time operation.
+            </p>
+
+            {seedState === "idle" && (
+              <Button
+                onClick={handleSeedCredentials}
+                disabled={!actor || isFetching}
+                className="min-h-[44px] font-semibold"
+                style={{
+                  background: "oklch(0.62 0.15 155)",
+                  color: "oklch(0.10 0 0)",
+                }}
+                data-ocid="admin.seed_credentials_button"
+              >
+                <Award className="w-4 h-4 mr-2" />
+                Seed Credential Data
+              </Button>
+            )}
+
+            {seedState === "seeding" && (
+              <div
+                className="flex items-center gap-3"
+                data-ocid="admin.seed_credentials_loading_state"
+              >
+                <Loader2
+                  className="w-5 h-5 animate-spin"
+                  style={{ color: "oklch(0.62 0.15 155)" }}
+                />
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: "oklch(0.62 0.15 155)" }}
+                >
+                  Seeding credentials…
+                </span>
+              </div>
+            )}
+
+            {seedState === "success" && (
+              <div
+                className="flex flex-col gap-3"
+                data-ocid="admin.seed_credentials_success_state"
+              >
+                <div className="flex items-center gap-2">
+                  <CheckCircle2
+                    className="w-5 h-5"
+                    style={{ color: "oklch(0.62 0.15 155)" }}
+                  />
+                  <span
+                    className="text-sm font-semibold"
+                    style={{ color: "oklch(0.62 0.15 155)" }}
+                  >
+                    Successfully seeded 18 credential records!
+                  </span>
+                </div>
+                <p
+                  className="text-xs"
+                  style={{ color: "oklch(0.55 0.04 155)" }}
+                >
+                  Head to{" "}
+                  <a
+                    href="/gallery"
+                    className="underline"
+                    style={{ color: "oklch(0.62 0.15 155)" }}
+                  >
+                    /gallery
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="/leaderboard"
+                    className="underline"
+                    style={{ color: "oklch(0.62 0.15 155)" }}
+                  >
+                    /leaderboard
+                  </a>{" "}
+                  to see them live.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSeedState("idle")}
+                  className="w-fit text-xs"
+                  style={{
+                    borderColor: "oklch(0.62 0.15 155 / 0.4)",
+                    color: "oklch(0.62 0.15 155)",
+                  }}
+                >
+                  Seed Again
+                </Button>
+              </div>
+            )}
+
+            {seedState === "error" && (
+              <div
+                className="flex flex-col gap-3"
+                data-ocid="admin.seed_credentials_error_state"
+              >
+                <div className="flex items-center gap-2">
+                  <X className="w-5 h-5 text-destructive" />
+                  <span className="text-sm font-medium text-destructive">
+                    Seed failed
+                  </span>
+                </div>
+                {seedError && (
+                  <p className="text-xs text-destructive/70 font-mono">
+                    {seedError}
+                  </p>
+                )}
+                <Button
+                  size="sm"
+                  onClick={() => handleSeedCredentials()}
+                  disabled={!actor || isFetching}
+                  className="w-fit"
+                  style={{
+                    background: "oklch(0.62 0.15 155)",
+                    color: "oklch(0.10 0 0)",
+                  }}
+                  data-ocid="admin.seed_credentials_retry_button"
+                >
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5" />
+                  Try Again
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 1. Global Stats Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-card rounded-2xl border border-border p-5">
@@ -2380,11 +3468,30 @@ function CredentialsTab() {
 
 export function AdminPage() {
   const { login, loginStatus, identity, clear } = useInternetIdentity();
-  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
+  const {
+    data: isAdmin,
+    isLoading: adminLoading,
+    isError: adminError,
+  } = useIsAdmin();
+  const qc = useQueryClient();
   const { data: providers = [] } = useAllProviders();
-  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
 
   const principalText = identity?.getPrincipal().toText() ?? "";
+
+  // ── Re-run admin check whenever login completes ──────────────────────────
+  // Without this, the isAdmin query is cached with the anonymous identity
+  // result and never refreshed after Internet Identity login succeeds.
+  useEffect(() => {
+    if (loginStatus === "success") {
+      console.log(
+        "[AdminPage] Login succeeded — invalidating and refetching isAdmin cache with authenticated identity",
+      );
+      void qc.invalidateQueries({ queryKey: ["isAdmin"] }).then(() => {
+        void qc.refetchQueries({ queryKey: ["isAdmin"] });
+      });
+    }
+  }, [loginStatus, qc]);
 
   // ── Auth states ──────────────────────────────────────────────────────────
 
@@ -2456,9 +3563,27 @@ export function AdminPage() {
               Sign In with Internet Identity
             </Button>
             {loginStatus === "loginError" && (
-              <p className="text-sm text-destructive text-center max-w-xs">
-                Sign in failed. Make sure popups are allowed, then try again.
-              </p>
+              <div className="flex flex-col items-center gap-3 w-full">
+                <p className="text-sm text-destructive text-center max-w-xs">
+                  Sign in was cancelled or failed. Please try again.
+                </p>
+                <p className="text-xs text-muted-foreground text-center max-w-xs">
+                  Tip: Internet Identity opens in a popup window. If nothing
+                  appeared, check your browser&apos;s popup blocker settings.
+                </p>
+                <Button
+                  onClick={() => login()}
+                  variant="outline"
+                  className="min-h-[44px] w-full font-semibold"
+                  style={{
+                    borderColor: "oklch(0.68 0.1 218 / 0.6)",
+                    color: "oklch(0.68 0.1 218)",
+                  }}
+                  data-ocid="admin.retry_button"
+                >
+                  Try Again
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -2483,6 +3608,7 @@ export function AdminPage() {
   }
 
   if (!isAdmin) {
+    const isSignedIn = loginStatus === "success";
     return (
       <main className="min-h-screen" data-ocid="admin.page">
         <section className="bg-card border-b border-border px-4 py-16">
@@ -2500,6 +3626,7 @@ export function AdminPage() {
               border: "2px solid oklch(0.68 0.1 218 / 0.6)",
               boxShadow: "0 0 24px oklch(0.68 0.1 218 / 0.12)",
             }}
+            data-ocid="admin.error_state"
           >
             <Lock
               className="w-10 h-10"
@@ -2507,14 +3634,60 @@ export function AdminPage() {
             />
             <div>
               <h2 className="text-xl font-bold text-foreground mb-2">
-                Not Authorized
+                {adminError ? "Admin Check Failed" : "Not Authorized"}
               </h2>
-              <p className="text-muted-foreground text-sm max-w-sm">
-                Your Internet Identity does not have admin privileges. If you
-                believe this is an error, ensure you are signed in with the
-                correct identity.
-              </p>
+              {adminError ? (
+                <p className="text-muted-foreground text-sm max-w-sm">
+                  The admin verification call failed. This is usually a
+                  temporary network issue. Click{" "}
+                  <strong>Retry Admin Check</strong> to try again without
+                  signing out.
+                </p>
+              ) : isSignedIn ? (
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-muted-foreground text-sm max-w-sm">
+                    Your account is not registered as an admin on this platform.
+                    If you believe this is an error, click{" "}
+                    <strong>Retry Admin Check</strong> — the verification
+                    sometimes needs a moment after sign-in.
+                  </p>
+                  {principalText && (
+                    <p className="text-xs text-muted-foreground font-mono break-all mt-1">
+                      Signed in as:{" "}
+                      <span className="text-foreground">{principalText}</span>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm max-w-sm">
+                  Your Internet Identity does not have admin privileges. Ensure
+                  you are signed in with the correct identity.
+                </p>
+              )}
             </div>
+            {isSignedIn && (
+              <Button
+                onClick={() => {
+                  console.log(
+                    "[AdminPage] Manual retry — invalidating isAdmin cache",
+                  );
+                  void qc.invalidateQueries({ queryKey: ["isAdmin"] });
+                }}
+                className="min-h-[44px] w-full font-semibold"
+                style={{
+                  background: "oklch(0.68 0.1 218)",
+                  color: "oklch(0.14 0.008 240)",
+                }}
+                data-ocid="admin.retry_button"
+              >
+                Retry Admin Check
+              </Button>
+            )}
+            {principalText && (
+              <p className="text-[11px] text-muted-foreground font-mono break-all">
+                Principal: {principalText}
+              </p>
+            )}
             <Button
               variant="outline"
               onClick={() => clear()}
@@ -2523,6 +3696,7 @@ export function AdminPage() {
                 borderColor: "oklch(0.68 0.1 218 / 0.5)",
                 color: "oklch(0.68 0.1 218)",
               }}
+              data-ocid="admin.secondary_button"
             >
               Sign Out &amp; Try Again
             </Button>
@@ -2548,8 +3722,8 @@ export function AdminPage() {
                 Admin Dashboard
               </h1>
               {principalText && (
-                <p className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]">
-                  {principalText.slice(0, 20)}…
+                <p className="text-[11px] text-muted-foreground font-mono truncate max-w-[160px] sm:max-w-[220px]">
+                  {principalText.slice(0, 12)}…{principalText.slice(-5)}
                 </p>
               )}
             </div>
@@ -2607,6 +3781,13 @@ export function AdminPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {activeTab === "dashboard" && (
+          <AdminDashboardTab
+            providers={providers}
+            setTab={setActiveTab}
+            principalText={principalText}
+          />
+        )}
         {activeTab === "overview" && (
           <OverviewTab providers={providers} setTab={setActiveTab} />
         )}

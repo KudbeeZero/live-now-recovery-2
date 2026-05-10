@@ -9,7 +9,48 @@ import {
   Zap,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { SEO } from "../components/SEO";
+
+/* ─── AnimatedCounter for hero ─────────────────────────────────── */
+function MissionCounter({
+  target,
+  suffix = "",
+}: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !started.current) {
+          started.current = true;
+          const steps = 60;
+          const increment = target / steps;
+          let current = 0;
+          const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+              setCount(target);
+              clearInterval(timer);
+            } else setCount(Math.floor(current));
+          }, 1800 / steps);
+        }
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target]);
+  return (
+    <span ref={ref}>
+      {count.toLocaleString()}
+      {suffix}
+    </span>
+  );
+}
 
 /* ─── Animation Variants ─────────────────────────────────────── */
 const fadeUp = {
@@ -51,9 +92,9 @@ const pillars = [
   {
     icon: Shield,
     title: "Real Cost. No Surprises.",
-    desc: "A single non-fatal overdose costs the healthcare system an average of $25,000 in ER, ICU, and EMS expenses. MAT costs $115–$5,500 per year.",
+    desc: "A single non-fatal overdose costs the healthcare system an average of $25,000 in ER, ICU, and EMS expenses. MAT costs $115–$5,500 per year — a fraction of the alternative.",
     evidence:
-      "$4–$7 in economic return for every $1 invested in MAT. Live Now Recovery surfaces Cost Plus Drugs transparent pricing directly on provider pages.",
+      "$4–$7 in economic return for every $1 invested in MAT. Accessible, affordable treatment saves lives and saves money — for individuals and communities alike.",
   },
   {
     icon: Heart,
@@ -115,57 +156,105 @@ export function MissionPage() {
     <main className="min-h-screen" data-ocid="mission.page">
       {" "}
       <SEO
-        title="Our Mission | Live Now Recovery"
-        description="Connecting Ohioans to life-saving addiction treatment resources in real time. Zero PHI. Privacy-first. Built on the Internet Computer."
-        keywords="recovery mission, MAT access Ohio, opioid crisis Ohio, addiction treatment mission"
+        title="Our Mission | Live Now Recovery — Preventing Overdose Deaths in Ohio"
+        description="We are building real-time recovery coordination infrastructure to connect Ohioans to MAT, Narcan, and peer support before overdose, before incarceration, before it's too late."
+        keywords="Live Now Recovery mission, MAT access Ohio, opioid crisis Ohio, harm reduction mission, recovery coordination, overdose prevention Ohio"
         canonical="/mission"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Live Now Recovery",
+            url: "https://live-now-recovery-3f2.caffeine.xyz",
+            description:
+              "Real-time, privacy-first MAT provider and harm reduction resource platform. No PHI. Piloted in Ohio, built for national scale.",
+            mission:
+              "To close the gap between opioid crisis and treatment access through real-time coordination technology.",
+            areaServed: { "@type": "State", name: "Ohio" },
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "AboutPage",
+            name: "Our Mission — Live Now Recovery",
+            url: "https://live-now-recovery-3f2.caffeine.xyz/mission",
+            description:
+              "The mission behind Live Now Recovery: real-time overdose prevention through warm handoffs, MAT coordination, and harm reduction across Ohio.",
+          },
+        ]}
       />
       {/* ── HERO ── */}
-      <section className="bg-[oklch(0.12_0.01_240)] px-4 py-20 text-center border-b border-border">
-        <div className="max-w-3xl mx-auto">
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.11 0.04 210) 0%, oklch(0.15 0.06 195) 50%, oklch(0.10 0.03 240) 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 60% at 60% 40%, oklch(0.62 0.12 218 / 0.09) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative z-10 max-w-4xl mx-auto px-4 py-20 md:py-28 text-center">
+          {/* Badge */}
           <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 mb-6"
           >
-            <motion.p
-              variants={fadeUp}
-              className="text-xs font-bold uppercase tracking-widest text-brand-teal mb-3"
-            >
+            <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+            <span className="text-xs font-semibold text-teal-300 uppercase tracking-widest">
               Our Purpose
-            </motion.p>
-            <motion.h1
-              variants={fadeUp}
-              className="text-4xl md:text-5xl font-bold text-foreground mb-4 leading-tight"
-            >
+            </span>
+          </motion.div>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.1 }}
+            className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight"
+          >
+            <span className="text-foreground">
               Make Recovery Infrastructure{" "}
-              <span className="text-brand-teal">Real</span>
-            </motion.h1>
-            <motion.div
-              variants={fadeUp}
-              className="h-0.5 w-16 bg-brand-teal rounded-full mx-auto mb-6"
-            />
-            <motion.p
-              variants={fadeUp}
-              className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-4"
-            >
-              The overdose crisis is not a moral failure. It's a coordination
-              failure.
-            </motion.p>
-            <motion.p
-              variants={fadeUp}
-              className="text-base text-muted-foreground leading-relaxed max-w-2xl mx-auto"
-            >
-              Medication-Assisted Treatment reduces overdose mortality by{" "}
-              <strong className="text-brand-teal">73–80%</strong>. The treatment
-              exists. The science is settled. The only thing missing is a
-              real-time logistics layer that connects the people who need it to
-              the providers who have it — right now, not next Tuesday.{" "}
-              <span className="text-foreground font-medium">
-                Live Now Recovery fixes the coordination.
-              </span>
-            </motion.p>
+            </span>
+            <span className="text-brand-teal">Real</span>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.2 }}
+            className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto mb-3 leading-relaxed"
+          >
+            The overdose crisis is not a moral failure. It’s a{" "}
+            <strong className="text-foreground">coordination failure.</strong>{" "}
+            MAT reduces overdose mortality by{" "}
+            <strong className="text-brand-teal">73–80%</strong>. The treatment
+            exists. The only thing missing is real-time logistics.
+          </motion.p>
+          {/* Animated stat counters */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.3 }}
+            className="grid grid-cols-3 gap-4 max-w-lg mx-auto mt-10"
+          >
+            {[
+              { target: 5232, suffix: "", label: "Ohio Deaths 2023" },
+              { target: 80, suffix: "%", label: "Mortality Reduction w/ MAT" },
+              { target: 7, suffix: "x", label: "ROI per $1 in MAT" },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="bg-card/60 backdrop-blur-sm border border-border rounded-xl py-4 px-2 text-center"
+              >
+                <p className="text-2xl md:text-3xl font-extrabold text-brand-teal">
+                  <MissionCounter target={s.target} suffix={s.suffix} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+              </div>
+            ))}
           </motion.div>
         </div>
       </section>

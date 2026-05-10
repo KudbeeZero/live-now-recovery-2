@@ -1,88 +1,195 @@
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, Play, X } from "lucide-react";
+import { BookOpen, ChevronRight, Heart, Play, Shield, X } from "lucide-react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { SEO } from "../components/SEO";
 
 interface VideoItem {
   id: string;
   title: string;
-  duration: string;
+  source: string;
+  description: string;
+  category: "recovery" | "mat" | "harm-reduction" | "family";
   badge?: string;
-  description?: string;
 }
 
+const CATEGORY_CONFIG = {
+  recovery: {
+    label: "Recovery Stories",
+    color: "bg-emerald-600/20 text-emerald-400 border-emerald-600/30",
+    dot: "bg-emerald-500",
+    heading: "text-emerald-400",
+    bar: "bg-emerald-500",
+    icon: Heart,
+  },
+  mat: {
+    label: "Understanding MAT",
+    color: "bg-blue-600/20 text-blue-400 border-blue-600/30",
+    dot: "bg-blue-500",
+    heading: "text-blue-400",
+    bar: "bg-blue-500",
+    icon: BookOpen,
+  },
+  "harm-reduction": {
+    label: "Harm Reduction",
+    color: "bg-amber-600/20 text-amber-400 border-amber-600/30",
+    dot: "bg-amber-500",
+    heading: "text-amber-400",
+    bar: "bg-amber-500",
+    icon: Shield,
+  },
+  family: {
+    label: "Family & Community",
+    color: "bg-purple-600/20 text-purple-400 border-purple-600/30",
+    dot: "bg-purple-500",
+    heading: "text-purple-400",
+    bar: "bg-purple-500",
+    icon: Heart,
+  },
+} as const;
+
 const FEATURED_VIDEO: VideoItem = {
-  id: "j_xPEn73Jq4",
-  title: "Real Stories of Addiction and Hope",
-  duration: "56 min",
+  id: "8qQw2yy9p20",
+  title: "A Woman's 17-Year Journey from Addiction to Recovery",
+  source: "PBS Independent Lens",
   description:
-    "Raw, first-person accounts from people who have walked the road of addiction and found their way to recovery. These are the stories that remind us why this work matters.",
+    "An intimate documentary following one woman's 17-year journey through addiction and into lasting recovery — a reminder that recovery is always possible.",
+  category: "recovery",
 };
 
-const PEER_SUPPORT_VIDEOS: VideoItem[] = [
+const RECOVERY_STORIES: VideoItem[] = [
   {
-    id: "9_PdIJOVFyI",
-    title: "How Opioid Addiction Changed a Mother's Life",
-    duration: "15 min",
-    description: "Tahira's story of founding a recovery home for women.",
+    id: "8qQw2yy9p20",
+    title: "A Woman's 17-Year Journey from Addiction to Recovery",
+    source: "PBS Independent Lens",
+    description:
+      "An intimate documentary following one woman's 17-year journey through addiction and into lasting recovery, produced by PBS Independent Lens.",
+    category: "recovery",
+    badge: "Featured",
   },
   {
-    id: "8CF5rjGQ_Ks",
-    title: "Untreated & Unheard: The Addiction Crisis in America",
-    duration: "77 min",
+    id: "fHk32gVWwis",
+    title: "Recovery Story Highlights the Power of Treatment",
+    source: "9NEWS",
     description:
-      "Families on the frontline of the opioid crisis, turning toward hope.",
+      "A firsthand account of how medication-assisted treatment transformed one person's path to recovery, featured on 9NEWS.",
+    category: "recovery",
   },
   {
-    id: "pAbzLCL6gls",
-    title: "Cleveland Recovery Voices: Life After Opioid Addiction",
-    duration: "22 min",
-    badge: "Ohio Story",
+    id: "hcUf9jrgjek",
+    title: "Recovery Journey: Finding Help in Ohio",
+    source: "Community Partners",
     description:
-      "Northeast Ohio community members share their journeys through recovery.",
+      "A powerful personal account of navigating Ohio's recovery system, finding MAT treatment, and rebuilding a life in recovery.",
+    category: "recovery",
   },
 ];
 
-const EDUCATION_VIDEOS: VideoItem[] = [
+const MAT_VIDEOS: VideoItem[] = [
   {
-    id: "YSTxz7RatPo",
-    title: "What is Medication-Assisted Treatment (MAT)?",
-    duration: "8 min",
+    id: "kyUF7T-qhMA",
+    title: "Understanding Medication-Assisted Treatment",
+    source: "Recovery Resources",
     description:
-      "An accessible introduction to how MAT works and why it saves lives.",
+      "A comprehensive overview of how MAT works, why it is the gold standard for opioid use disorder treatment, and what to expect when starting treatment.",
+    category: "mat",
   },
   {
-    id: "gkHU7KhHLI0",
-    title: "How Buprenorphine Works: The Science Behind MAT",
-    duration: "12 min",
+    id: "mwHIVZvUTCA",
+    title: "The Science of Addiction and Recovery",
+    source: "Dr. Russell Surasky",
     description:
-      "A clear look at the science of buprenorphine-naloxone and why it's effective.",
+      "Dr. Russell Surasky explains the neuroscience of addiction — why it's a brain disease, not a moral failing, and how MAT works at the cellular level.",
+    category: "mat",
   },
   {
-    id: "DblVjqtABn4",
-    title: "Naloxone (Narcan): Recognizing and Reversing an Overdose",
-    duration: "7 min",
+    id: "J7yn4tJEmJU",
+    title: "Tools for Overcoming Substance & Behavioral Addictions",
+    source: "Huberman Lab",
     description:
-      "Every person should know how to use Narcan. This video could save a life.",
+      "A deep dive into evidence-based tools for overcoming addiction, featuring neuroscience research and clinical recovery frameworks.",
+    category: "mat",
   },
+  {
+    id: "ZTxpIBk2F4c",
+    title: "Dopamine and Addiction: Navigating Pleasure, Pain, and Recovery",
+    source: "Medical Education",
+    description:
+      "How dopamine drives addictive behavior and the neurological path from dependency to sustainable recovery.",
+    category: "mat",
+  },
+];
+
+const HARM_REDUCTION_VIDEOS: VideoItem[] = [
+  {
+    id: "bUtYpbdUSus",
+    title: "How to Use Narcan with the DOPE Project",
+    source: "National Harm Reduction Coalition",
+    description:
+      "Step-by-step Narcan/naloxone training from the National Harm Reduction Coalition's Drug Overdose Prevention and Education Project.",
+    category: "harm-reduction",
+    badge: "Essential",
+  },
+  {
+    id: "8eUUf5ssH_4",
+    title: "How to Reverse Opioid Overdose: Naloxone and Rescue Breathing",
+    source: "Johns Hopkins Bloomberg School of Public Health",
+    description:
+      "Johns Hopkins Bloomberg School of Public Health demonstrates naloxone administration and rescue breathing to reverse opioid overdose.",
+    category: "harm-reduction",
+  },
+  {
+    id: "Clg7jU15VZc",
+    title: "How to Use a Fentanyl Test Strip",
+    source: "Grayken Center for Addiction",
+    description:
+      "A clear demonstration of how to use fentanyl test strips to detect fentanyl in a substance before use — a critical harm reduction tool.",
+    category: "harm-reduction",
+  },
+];
+
+const FAMILY_VIDEOS: VideoItem[] = [
+  {
+    id: "ZTxpIBk2F4c",
+    title: "Understanding Addiction Science to Support Your Loved One",
+    source: "Medical Education",
+    description:
+      "Understanding the science behind addiction helps families and communities support their loved ones with compassion and evidence-based approaches.",
+    category: "family",
+  },
+  {
+    id: "J7yn4tJEmJU",
+    title: "Recovery Tools for Families and Community Members",
+    source: "Huberman Lab",
+    description:
+      "Evidence-based tools families can use to support someone in recovery — covering communication, boundaries, and the role of community in long-term sobriety.",
+    category: "family",
+  },
+];
+
+const ALL_VIDEOS_FOR_SCHEMA = [
+  FEATURED_VIDEO,
+  ...RECOVERY_STORIES,
+  ...MAT_VIDEOS,
+  ...HARM_REDUCTION_VIDEOS,
+  ...FAMILY_VIDEOS,
 ];
 
 function VideoThumbnail({
   videoId,
   title,
 }: { videoId: string; title: string }) {
-  const [imgError, setImgError] = useState(false);
+  const [imgSrc, setImgSrc] = useState(
+    `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+  );
   return (
     <img
-      src={
-        imgError
-          ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
-          : `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-      }
+      src={imgSrc}
       alt={title}
       className="w-full h-full object-cover"
-      onError={() => setImgError(true)}
+      onError={() =>
+        setImgSrc(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`)
+      }
       loading="lazy"
     />
   );
@@ -94,51 +201,85 @@ interface VideoCardProps {
 }
 
 function VideoCard({ video, onPlay }: VideoCardProps) {
+  const cat = CATEGORY_CONFIG[video.category];
   return (
     <button
       type="button"
       onClick={() => onPlay(video)}
-      className="group relative flex flex-col bg-card border border-border rounded-xl overflow-hidden text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_32px_oklch(0.62_0.17_155_/_0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[oklch(var(--live))]"
-      data-ocid="video-card"
-      aria-label={`Play ${video.title}`}
+      className="group relative flex flex-col bg-card border border-border rounded-xl overflow-hidden text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_32px_oklch(0.62_0.17_155_/_0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      data-ocid="videos.video_card"
+      aria-label={`Play: ${video.title}`}
     >
       {/* Thumbnail */}
-      <div className="relative aspect-video w-full overflow-hidden bg-[oklch(0.1_0_0)]">
+      <div className="relative aspect-video w-full overflow-hidden bg-black">
         <VideoThumbnail videoId={video.id} title={video.title} />
         {/* Play overlay */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[oklch(0.62_0.17_155)] shadow-[0_0_24px_oklch(0.62_0.17_155_/_0.6)]">
+          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary shadow-[0_0_24px_oklch(0.62_0.17_155_/_0.6)]">
             <Play className="w-6 h-6 text-white fill-white ml-0.5" />
           </div>
         </div>
-        {/* Duration badge */}
-        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-white text-xs font-medium">
-          {video.duration}
+        {/* Category badge */}
+        <div className="absolute top-2 left-2">
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-semibold ${cat.color}`}
+          >
+            {video.badge ?? cat.label}
+          </span>
         </div>
-        {video.badge && (
-          <div className="absolute top-2 left-2">
-            <Badge className="bg-[oklch(0.62_0.17_155)] text-white border-0 text-xs">
-              {video.badge}
-            </Badge>
-          </div>
-        )}
       </div>
       {/* Card body */}
       <div className="flex flex-col flex-1 p-4 gap-1.5">
-        <h3 className="text-sm font-semibold text-foreground leading-snug line-clamp-2 group-hover:text-[oklch(0.72_0.2_142)] transition-colors">
+        <h3 className="text-sm font-semibold text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
           {video.title}
         </h3>
-        {video.description && (
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-            {video.description}
-          </p>
-        )}
-        <div className="mt-auto pt-2 flex items-center gap-1 text-xs text-[oklch(0.62_0.17_155)] font-medium">
+        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+          {video.description}
+        </p>
+        <p className="text-xs text-muted-foreground/60 mt-1">{video.source}</p>
+        <div className="mt-auto pt-2 flex items-center gap-1 text-xs text-primary font-medium">
           <Play className="w-3 h-3 fill-current" />
-          <span>Watch now</span>
+          <span>Watch Now</span>
         </div>
       </div>
     </button>
+  );
+}
+
+interface SectionProps {
+  category: keyof typeof CATEGORY_CONFIG;
+  videos: VideoItem[];
+  subtitle: string;
+  onPlay: (video: VideoItem) => void;
+}
+
+function VideoSection({ category, videos, subtitle, onPlay }: SectionProps) {
+  const cat = CATEGORY_CONFIG[category];
+  const Icon = cat.icon;
+  return (
+    <section>
+      <div className="flex items-center gap-3 mb-2">
+        <div className={`w-1 h-6 rounded-full ${cat.bar}`} />
+        <div className="flex items-center gap-2">
+          <Icon className={`w-4 h-4 ${cat.heading}`} />
+          <h2
+            className={`text-sm font-bold uppercase tracking-widest ${cat.heading}`}
+          >
+            {cat.label}
+          </h2>
+        </div>
+      </div>
+      <p className="text-muted-foreground text-sm mb-6 ml-4">{subtitle}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {videos.map((video) => (
+          <VideoCard
+            key={`${video.category}-${video.id}`}
+            video={video}
+            onPlay={onPlay}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -178,22 +319,22 @@ function Lightbox({ video, onClose }: LightboxProps) {
       onKeyDown={(e) => {
         if (e.key === "Escape") onClose();
       }}
+      data-ocid="videos.lightbox"
       aria-label={video.title}
-      data-ocid="video-lightbox"
     >
       <div className="relative w-full max-w-5xl">
-        {/* Close button */}
+        {/* Close */}
         <button
           type="button"
           onClick={onClose}
           className="absolute -top-10 right-0 flex items-center gap-1.5 text-white/70 hover:text-white transition-colors text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white rounded"
           aria-label="Close video"
-          data-ocid="video-lightbox-close"
+          data-ocid="videos.close_button"
         >
           <X className="w-5 h-5" />
           <span>Close</span>
         </button>
-        {/* Video embed */}
+        {/* Embed */}
         <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-[0_0_80px_black]">
           <iframe
             src={embedUrl}
@@ -207,163 +348,205 @@ function Lightbox({ video, onClose }: LightboxProps) {
         {/* Caption */}
         <div className="mt-3 text-center">
           <p className="text-white/80 text-sm font-medium">{video.title}</p>
-          <p className="text-white/40 text-xs mt-0.5">{video.duration}</p>
+          <p className="text-white/40 text-xs mt-0.5">{video.source}</p>
         </div>
       </div>
     </dialog>
   );
 }
 
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Learning Media Center | Live Now Recovery",
+    description:
+      "Evidence-based education for recovery, MAT, and harm reduction — because knowledge saves lives.",
+    url: "https://livenowrecovery.org/videos",
+    publisher: {
+      "@type": "Organization",
+      name: "Live Now Recovery",
+      url: "https://livenowrecovery.org",
+    },
+    hasPart: ALL_VIDEOS_FOR_SCHEMA.map((v) => ({
+      "@type": "VideoObject",
+      name: v.title,
+      description: v.description,
+      thumbnailUrl: `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${v.id}`,
+      uploadDate: "2024-01-01",
+      publisher: { "@type": "Organization", name: v.source },
+    })),
+  },
+];
+
 export function VideosPage() {
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: "oklch(0.09 0 0)" }}
-    >
-      {" "}
+    <div className="min-h-screen bg-[oklch(0.09_0_0)]">
       <SEO
-        title="Recovery Stories & Education | Live Now Recovery"
-        description="Watch peer support documentaries, personal recovery stories, and educational videos about medication-assisted treatment and harm reduction in Ohio."
-        keywords="recovery stories Ohio, MAT education videos, peer support documentaries, addiction recovery video"
+        title="Learning Media Center | Live Now Recovery"
+        description="Evidence-based recovery education — watch peer support documentaries, MAT science, harm reduction training, and family resources. Knowledge saves lives."
+        keywords="MAT education videos, Narcan training, opioid recovery documentary, harm reduction Ohio, addiction science"
         canonical="/videos"
+        jsonLd={jsonLd}
       />
+
       {/* Breadcrumb */}
-      <div
-        className="border-b border-border/40"
-        style={{ backgroundColor: "oklch(0.11 0.005 240)" }}
-      >
+      <div className="border-b border-border/40 bg-[oklch(0.11_0.005_240)]">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Link
             to="/"
             className="hover:text-foreground transition-colors"
-            data-ocid="breadcrumb-home"
+            data-ocid="videos.breadcrumb_home"
           >
             Home
           </Link>
           <ChevronRight className="w-3 h-3" />
-          <span className="text-foreground font-medium">Videos</span>
+          <span className="text-foreground font-medium">
+            Learning Media Center
+          </span>
         </div>
       </div>
-      {/* Page Header */}
+
+      {/* Hero — IMAX cinema style */}
       <div
         className="relative overflow-hidden"
         style={{
           background:
-            "linear-gradient(180deg, oklch(0.13 0.015 240) 0%, oklch(0.09 0 0) 100%)",
+            "linear-gradient(180deg, oklch(0.10 0.025 230) 0%, oklch(0.08 0.01 240) 60%, oklch(0.09 0 0) 100%)",
         }}
       >
-        <div className="max-w-6xl mx-auto px-4 py-14 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[oklch(0.62_0.17_155_/_0.4)] bg-[oklch(0.62_0.17_155_/_0.08)] mb-5">
-            <div className="w-2 h-2 rounded-full bg-[oklch(0.62_0.17_155)] animate-pulse" />
-            <span className="text-xs font-semibold text-[oklch(0.72_0.2_142)] tracking-wide uppercase">
-              Peer Support & Education
+        {/* Radial glow accent */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 60% at 50% 30%, oklch(0.62 0.15 218 / 0.12) 0%, transparent 65%)",
+          }}
+        />
+        <div className="max-w-6xl mx-auto px-4 py-16 md:py-24 text-center relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/40 bg-primary/10 mb-6">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs font-semibold text-primary tracking-wide uppercase">
+              Evidence-Based Education
             </span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-4 leading-tight">
-            Stories of Recovery.{" "}
-            <span className="text-[oklch(0.72_0.2_142)]">Tools to Heal.</span>
+          <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight mb-4 leading-tight">
+            Learning Media Center
           </h1>
-          <p className="max-w-2xl mx-auto text-base sm:text-lg text-white/60 leading-relaxed">
-            Real stories and information to help you or someone you care about
-            find a path to recovery. Sometimes hearing someone else's story is
-            what makes recovery feel possible.
+          <p className="max-w-2xl mx-auto text-base sm:text-lg text-white/60 leading-relaxed mb-3">
+            Evidence-based education for recovery, MAT, and harm reduction —
+            because{" "}
+            <strong className="text-white/80">knowledge saves lives</strong>.
+            Real stories, real science, real tools.
           </p>
+          <p className="text-xs text-white/30 mb-8">
+            All videos use privacy-enhanced YouTube embeds. No tracking cookies.
+          </p>
+          {/* Section quick-nav */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {(
+              [
+                ["recovery", "Recovery Stories"],
+                ["mat", "Understanding MAT"],
+                ["harm-reduction", "Harm Reduction"],
+                ["family", "Family Resources"],
+              ] as const
+            ).map(([key, label]) => (
+              <a
+                key={key}
+                href={`#${key}`}
+                className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${CATEGORY_CONFIG[key].color}`}
+                data-ocid={`videos.nav_${key}`}
+              >
+                {label}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
+
       <div className="max-w-6xl mx-auto px-4 pb-20 space-y-16">
-        {/* Featured Video */}
+        {/* Featured Film — always visible embed */}
         <section>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-6 rounded-full bg-[oklch(0.72_0.2_142)]" />
-            <h2 className="text-xl font-bold text-[oklch(0.72_0.2_142)] uppercase tracking-widest text-sm">
+            <div className="w-1 h-6 rounded-full bg-primary" />
+            <h2 className="text-sm font-bold text-primary uppercase tracking-widest">
               Featured Documentary
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={() => setActiveVideo(FEATURED_VIDEO)}
-            className="group relative w-full rounded-2xl overflow-hidden bg-card border border-border text-left transition-all duration-300 hover:shadow-[0_0_60px_oklch(0.62_0.17_155_/_0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[oklch(var(--live))]"
-            data-ocid="featured-video"
-            aria-label={`Play featured documentary: ${FEATURED_VIDEO.title}`}
-          >
-            <div className="relative aspect-video w-full overflow-hidden bg-[oklch(0.07_0_0)]">
-              <VideoThumbnail
-                videoId={FEATURED_VIDEO.id}
+          <div className="w-full rounded-2xl overflow-hidden border border-border shadow-[0_0_60px_oklch(0.62_0.17_155_/_0.2)]">
+            {/* Letterbox embed — always playing inline */}
+            <div className="relative aspect-video w-full bg-black">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${FEATURED_VIDEO.id}?rel=0&modestbranding=1`}
                 title={FEATURED_VIDEO.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="absolute inset-0 w-full h-full"
               />
-              {/* Cinematic gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              {/* Play button */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex items-center justify-center w-20 h-20 rounded-full border-2 border-white/30 bg-black/40 backdrop-blur-sm group-hover:bg-[oklch(0.62_0.17_155_/_0.8)] group-hover:border-[oklch(0.72_0.2_142)] transition-all duration-300 shadow-[0_0_40px_black]">
-                  <Play className="w-9 h-9 text-white fill-white ml-1" />
-                </div>
-              </div>
-              {/* Duration */}
-              <div className="absolute top-4 right-4 px-3 py-1 rounded bg-black/70 text-white text-sm font-medium backdrop-blur-sm">
-                {FEATURED_VIDEO.duration}
-              </div>
             </div>
-            {/* Caption bar */}
-            <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div className="p-5 bg-card flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
               <div>
-                <h3 className="text-lg sm:text-xl font-bold text-white group-hover:text-[oklch(0.72_0.2_142)] transition-colors">
+                <h3 className="text-lg font-bold text-foreground">
                   {FEATURED_VIDEO.title}
                 </h3>
-                <p className="text-sm text-white/50 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {FEATURED_VIDEO.description}
                 </p>
               </div>
-              <div className="shrink-0 flex items-center gap-2 text-[oklch(0.62_0.17_155)] font-semibold text-sm">
-                <Play className="w-4 h-4 fill-current" />
-                <span>Watch Documentary</span>
-              </div>
+              <Badge className="shrink-0 bg-primary/20 text-primary border-primary/40">
+                PBS Independent Lens
+              </Badge>
             </div>
-          </button>
-        </section>
-
-        {/* Peer Support Stories */}
-        <section>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-1 h-6 rounded-full bg-[oklch(0.72_0.2_142)]" />
-            <h2 className="text-xl font-bold text-[oklch(0.72_0.2_142)] uppercase tracking-widest text-sm">
-              Peer Support Stories
-            </h2>
-          </div>
-          <p className="text-muted-foreground text-sm mb-6 ml-4">
-            Real voices from people who have lived it — and found their way
-            through.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {PEER_SUPPORT_VIDEOS.map((video) => (
-              <VideoCard key={video.id} video={video} onPlay={setActiveVideo} />
-            ))}
           </div>
         </section>
 
-        {/* MAT Education */}
-        <section>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-1 h-6 rounded-full bg-[oklch(0.62_0.12_218)]" />
-            <h2 className="text-xl font-bold text-[oklch(0.62_0.12_218)] uppercase tracking-widest text-sm">
-              Understanding MAT &amp; Treatment
-            </h2>
-          </div>
-          <p className="text-muted-foreground text-sm mb-6 ml-4">
-            Evidence-based information about Medication-Assisted Treatment,
-            naloxone, and the recovery process.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {EDUCATION_VIDEOS.map((video) => (
-              <VideoCard key={video.id} video={video} onPlay={setActiveVideo} />
-            ))}
-          </div>
+        {/* Recovery Stories */}
+        <section id="recovery">
+          <VideoSection
+            category="recovery"
+            videos={RECOVERY_STORIES}
+            subtitle="Real voices from people who have lived it — and found their way through."
+            onPlay={setActiveVideo}
+          />
         </section>
 
-        {/* CTA strip */}
-        <section className="rounded-2xl border border-[oklch(0.62_0.17_155_/_0.3)] bg-[oklch(0.12_0.01_240)] p-8 text-center">
+        {/* MAT */}
+        <section id="mat">
+          <VideoSection
+            category="mat"
+            videos={MAT_VIDEOS}
+            subtitle="Evidence-based information about Medication-Assisted Treatment, the neuroscience of addiction, and the clinical tools that work."
+            onPlay={setActiveVideo}
+          />
+        </section>
+
+        {/* Harm Reduction */}
+        <section id="harm-reduction">
+          <VideoSection
+            category="harm-reduction"
+            videos={HARM_REDUCTION_VIDEOS}
+            subtitle="Life-saving skills anyone can learn — Narcan administration, fentanyl test strip use, and overdose reversal."
+            onPlay={setActiveVideo}
+          />
+        </section>
+
+        {/* Family & Community */}
+        <section id="family">
+          <VideoSection
+            category="family"
+            videos={FAMILY_VIDEOS}
+            subtitle="Resources for families and communities — how to understand addiction science and support your loved one with compassion."
+            onPlay={setActiveVideo}
+          />
+        </section>
+
+        {/* CTA */}
+        <section className="rounded-2xl border border-primary/30 bg-[oklch(0.12_0.01_240)] p-8 text-center">
           <h3 className="text-xl font-bold text-white mb-2">
             Ready to find a provider near you?
           </h3>
@@ -373,14 +556,15 @@ export function VideosPage() {
           </p>
           <Link
             to="/"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[oklch(0.62_0.17_155)] hover:bg-[oklch(0.68_0.18_155)] text-white font-semibold text-sm transition-colors"
-            data-ocid="videos-cta-find-provider"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold text-sm transition-colors"
+            data-ocid="videos.find_provider_link"
           >
             Find a Provider
             <ChevronRight className="w-4 h-4" />
           </Link>
         </section>
       </div>
+
       {/* Lightbox */}
       <Lightbox video={activeVideo} onClose={() => setActiveVideo(null)} />
     </div>

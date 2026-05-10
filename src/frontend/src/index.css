@@ -72,6 +72,11 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
+  body {
+    overflow-x: hidden;
   }
 
   /* Global focus ring for all interactive elements */
@@ -235,6 +240,50 @@
 
   .gallery-filter-button {
     @apply px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 border border-border bg-muted/20 text-foreground hover:bg-muted/40 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary;
+  }
+}
+
+/* ── Navigation drawer — cross-browser transitions ──────────────────────── */
+/* Uses .nav-drawer + .open class toggle so the drawer is always in the DOM  */
+/* Prevents iOS Safari stuck-open/stuck-closed rendering bugs                */
+.nav-drawer {
+  -webkit-transform: translateX(100%);
+  transform: translateX(100%);
+  -webkit-transition: -webkit-transform 0.3s ease-in-out;
+  transition: transform 0.3s ease-in-out;
+  will-change: transform;
+  /* Ensure hardware-accelerated compositing on iOS */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.nav-drawer.open {
+  -webkit-transform: translateX(0);
+  transform: translateX(0);
+}
+
+/* Body scroll lock when mobile menu is open */
+/* position: fixed prevents iOS Safari rubber-band scroll behind drawer */
+body.menu-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  /* Preserve scroll position so page doesn't jump to top */
+  top: calc(-1 * var(--scroll-y, 0px));
+}
+
+/* Landscape orientation fallback — force hamburger on landscape phones + small tablets */
+/* Covers any browser that doesn't support Tailwind's compound landscape: modifier */
+@media screen and (orientation: landscape) and (max-width: 1023px) {
+  .landscape-nav-hidden {
+    display: none !important;
+  }
+  .landscape-nav-visible {
+    display: flex !important;
+  }
+  /* Enforce overflow safety on all landscape narrow screens */
+  header {
+    overflow-x: hidden;
   }
 }
 

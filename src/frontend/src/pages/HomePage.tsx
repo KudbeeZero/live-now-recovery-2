@@ -15,9 +15,7 @@ import {
   DollarSign,
   Globe,
   Heart,
-  Info,
   MapPin,
-  Pill,
   Radio,
   Search,
   Server,
@@ -34,7 +32,7 @@ import { ProviderStatus } from "../backend";
 import { EnhancedRecoveryMap } from "../components/EnhancedRecoveryMap";
 import { HandoffImpact } from "../components/HandoffImpact";
 import { ImpactDashboard } from "../components/ImpactDashboard";
-import { PriceComparisonCard } from "../components/PriceComparisonCard";
+import { ProviderCard } from "../components/ProviderCard";
 import { SEO } from "../components/SEO";
 import { useActivitySimulation } from "../hooks/useActivitySimulation";
 import { useTopContributors } from "../hooks/useCredentials";
@@ -118,7 +116,25 @@ function formatMinutesAgo(setAt: number): string {
 
 export function HomePage() {
   // SEO
-  const { data: providers = [], isLoading } = useAllProviders();
+  const {
+    data: providers = [],
+    isLoading,
+    isError,
+    isFetching: providersFetching,
+  } = useAllProviders();
+
+  // If we've been loading for > 12 seconds without data, surface an error UI
+  const [loadTimeout, setLoadTimeout] = useState(false);
+  useEffect(() => {
+    if (!isLoading && !providersFetching) {
+      setLoadTimeout(false);
+      return;
+    }
+    const t = setTimeout(() => setLoadTimeout(true), 12_000);
+    return () => clearTimeout(t);
+  }, [isLoading, providersFetching]);
+
+  const showError = isError || loadTimeout;
   const { data: canisterState } = useCanisterState();
   const { data: isAdmin } = useIsAdmin();
   const { data: totalHandoffs, isLoading: handoffsLoading } =
@@ -182,11 +198,6 @@ export function HomePage() {
     const real = totalHandoffs !== undefined ? Number(totalHandoffs) : 0;
     return real + backendTotalHandoffs + currentSessionHandoffs;
   }, [totalHandoffs, backendTotalHandoffs, currentSessionHandoffs]);
-
-  // Provider card expanded tabs
-  type CardTab = "meds" | "services" | "cost" | "insurance";
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
-  const [cardTab, setCardTab] = useState<Record<string, CardTab>>({});
 
   // Provider self-service toggle state
   const [selfLiveState, setSelfLiveState] = useState<{
@@ -312,55 +323,55 @@ export function HomePage() {
     setSelfToggleModal(false);
   };
 
-  function providerStatusInfo(p: (typeof providers)[0]) {
-    if (p.status === ProviderStatus.Live && !isProviderStale(p.lastVerified)) {
-      return {
-        label: "LIVE NOW",
-        dotClass: "bg-live-green animate-pulse",
-        textClass: "text-live-green",
-      };
-    }
-    if (p.status === ProviderStatus.Offline) {
-      return {
-        label: "OFFLINE",
-        dotClass: "bg-muted-foreground",
-        textClass: "text-muted-foreground",
-      };
-    }
-    return {
-      label: "Status Unverified",
-      dotClass: "bg-amber-recovery",
-      textClass: "text-amber-recovery",
-    };
-  }
-
   return (
     <main className="min-h-screen bg-background" data-ocid="home.page">
       {" "}
       <SEO
-        title="Live Now Recovery | Real-Time MAT Provider Map in Ohio"
-        description="Find medication-assisted treatment (MAT) providers, Narcan kiosks, and harm reduction resources in Ohio — anonymous, privacy-first, available 24/7."
-        keywords="MAT providers Ohio, medication-assisted treatment, Narcan locations Ohio, addiction treatment near me, buprenorphine clinic Ohio"
+        title="Live Now Recovery | Real-Time MAT & Harm Reduction Network — Ohio"
+        description="Find medication-assisted treatment, Narcan kiosks, and warm handoffs in real time across Ohio. Free, private, no PHI. Powered by the Internet Computer."
+        keywords="MAT providers Ohio, medication-assisted treatment Ohio, Narcan locations Ohio, harm reduction Ohio, buprenorphine clinic Ohio, opioid treatment near me, warm handoff recovery"
         canonical="/"
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          name: "Live Now Recovery",
-          url: "https://live-now-recovery-3f2.caffeine.xyz",
-          logo: "https://live-now-recovery-3f2.caffeine.xyz/favicon.ico",
-          description:
-            "Privacy-first real-time MAT provider and harm reduction resource platform in Ohio",
-          address: {
-            "@type": "PostalAddress",
-            addressRegion: "OH",
-            addressCountry: "US",
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Live Now Recovery",
+            url: "https://live-now-recovery-3f2.caffeine.xyz",
+            logo: "https://live-now-recovery-3f2.caffeine.xyz/favicon.ico",
+            description:
+              "Privacy-first real-time MAT provider and harm reduction resource platform in Ohio. No PHI stored. Warm handoffs coordinated in real time.",
+            areaServed: { "@type": "State", name: "Ohio" },
+            contactPoint: [
+              {
+                "@type": "ContactPoint",
+                telephone: "833-234-6343",
+                contactType: "crisis support",
+                availableLanguage: "English",
+              },
+              {
+                "@type": "ContactPoint",
+                contactType: "customer support",
+                url: "https://live-now-recovery-3f2.caffeine.xyz/contact",
+              },
+            ],
+            sameAs: [
+              "https://twitter.com/livenowrecovery",
+              "https://livenowrecovery.org",
+            ],
           },
-          contactPoint: {
-            "@type": "ContactPoint",
-            telephone: "833-234-6343",
-            contactType: "crisis support",
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Live Now Recovery",
+            url: "https://live-now-recovery-3f2.caffeine.xyz",
+            potentialAction: {
+              "@type": "SearchAction",
+              target:
+                "https://live-now-recovery-3f2.caffeine.xyz/?q={search_term_string}",
+              "query-input": "required name=search_term_string",
+            },
           },
-        }}
+        ]}
       />
       {/* ── Hero Section ── */}
       <section
@@ -830,20 +841,77 @@ export function HomePage() {
                 </h2>
               </div>
 
-              {isLoading ? (
+              {/* Count badge */}
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground">
+                  Showing{" "}
+                  <span className="font-bold text-brand-teal">
+                    {filtered.length}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-semibold text-foreground">
+                    {providers.length}
+                  </span>{" "}
+                  providers
+                </span>
+              </div>
+
+              {isLoading && !loadTimeout ? (
                 <div className="space-y-3" data-ocid="home.loading_state">
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="bg-card rounded-xl p-4 border border-border animate-pulse"
+                      className="bg-card rounded-2xl border border-border/60 overflow-hidden animate-pulse"
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 rounded-full bg-muted" />
-                        <div className="h-3 w-16 rounded bg-muted" />
+                      <div className="h-1 w-full bg-muted" />
+                      <div className="p-5 space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-full bg-muted" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-3 w-3/4 rounded bg-muted" />
+                            <div className="h-3 w-1/3 rounded bg-muted" />
+                          </div>
+                        </div>
+                        <div className="h-3 w-1/2 rounded bg-muted" />
+                        <div className="flex gap-1">
+                          <div className="h-4 w-14 rounded-full bg-muted" />
+                          <div className="h-4 w-16 rounded-full bg-muted" />
+                          <div className="h-4 w-12 rounded-full bg-muted" />
+                        </div>
+                        <div className="h-8 w-full rounded-lg bg-muted mt-2" />
                       </div>
-                      <div className="h-4 w-3/4 rounded bg-muted" />
                     </div>
                   ))}
+                </div>
+              ) : showError ? (
+                <div
+                  className="flex flex-col items-center justify-center gap-3 rounded-2xl p-6 border"
+                  style={{
+                    background: "oklch(0.18 0.03 196 / 0.3)",
+                    borderColor: "oklch(0.65 0.12 196 / 0.35)",
+                  }}
+                  data-ocid="home.error_state"
+                >
+                  <Shield
+                    className="w-8 h-8"
+                    style={{ color: "oklch(0.72 0.15 196)" }}
+                  />
+                  <p
+                    className="text-sm font-semibold text-center"
+                    style={{ color: "oklch(0.85 0.08 196)" }}
+                  >
+                    Providers are temporarily unavailable — please refresh.
+                  </p>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Please try again or call{" "}
+                    <a
+                      href="tel:8332346343"
+                      className="underline text-brand-teal"
+                    >
+                      833-234-6343
+                    </a>{" "}
+                    for immediate help.
+                  </p>
                 </div>
               ) : filtered.length === 0 ? (
                 <div
@@ -852,306 +920,18 @@ export function HomePage() {
                 >
                   <MapPin className="w-8 h-8 mb-2 text-muted-foreground" />
                   <p className="text-muted-foreground text-sm">
-                    No providers are live right now. Check back soon or call
-                    833-234-6343.
+                    No providers found. Check back soon or call 833-234-6343.
                   </p>
                 </div>
               ) : (
-                <div className="max-h-[400px] lg:max-h-[480px] overflow-y-auto space-y-3 pr-1">
-                  {filtered.map((provider, idx) => {
-                    const info = providerStatusInfo(provider);
-                    const emergencyStatus = emergencyStatuses[provider.id];
-                    const pType = (
-                      (provider as unknown as { providerType?: string })
-                        .providerType ?? ""
-                    ).toLowerCase();
-                    const isExpanded = expandedCard === provider.id;
-                    const activeTab = cardTab[provider.id] ?? "meds";
-
-                    // Derive data from provider type
-                    const medsMap: Record<string, string[]> = {
-                      "mat clinic": [
-                        "Buprenorphine-Naloxone",
-                        "Methadone",
-                        "Naltrexone",
-                        "Vivitrol",
-                      ],
-                      "narcan distribution": [
-                        "Naloxone (Narcan)",
-                        "NEXT naloxone",
-                      ],
-                      "emergency room": ["Naloxone", "Buprenorphine (bridge)"],
-                      "naloxone kiosk": [
-                        "Naloxone (free)",
-                        "Fentanyl test strips",
-                      ],
-                      "telehealth mat": [
-                        "Buprenorphine-Naloxone",
-                        "Naltrexone",
-                        "Suboxone",
-                      ],
-                    };
-                    const servicesMap: Record<string, string[]> = {
-                      "mat clinic": [
-                        "Individual counseling",
-                        "Group therapy",
-                        "Case management",
-                        "Peer support",
-                      ],
-                      "narcan distribution": [
-                        "Free Narcan kits",
-                        "Training",
-                        "Referrals",
-                      ],
-                      "emergency room": [
-                        "Crisis stabilization",
-                        "Bridge prescription",
-                        "Warm handoff",
-                      ],
-                      "naloxone kiosk": [
-                        "24/7 access",
-                        "Anonymous pickup",
-                        "No ID required",
-                      ],
-                      "telehealth mat": [
-                        "Video visits",
-                        "e-Prescribing",
-                        "Remote monitoring",
-                      ],
-                    };
-                    const costMap: Record<string, string[]> = {
-                      "mat clinic": [
-                        "Buprenorphine via CostPlusDrugs: ~$20/mo",
-                        "Sliding-scale fees available",
-                        "Medicaid accepted",
-                      ],
-                      "narcan distribution": ["Free Narcan — no cost"],
-                      "emergency room": [
-                        "Covered under emergency Medicaid",
-                        "Bridge scripts billed to insurance",
-                      ],
-                      "naloxone kiosk": ["Naloxone: FREE (grant-funded)"],
-                      "telehealth mat": [
-                        "~$50–$100/visit without insurance",
-                        "Most major insurance accepted",
-                      ],
-                    };
-                    const insuranceMap: Record<string, string[]> = {
-                      "mat clinic": [
-                        "Medicaid",
-                        "Medicare",
-                        "BCBS",
-                        "Aetna",
-                        "Anthem",
-                        "Uninsured welcome",
-                      ],
-                      "narcan distribution": ["No insurance needed"],
-                      "emergency room": ["All insurance", "Uninsured", "CHIP"],
-                      "naloxone kiosk": ["No insurance needed — free"],
-                      "telehealth mat": [
-                        "Medicaid",
-                        "BCBS",
-                        "Aetna",
-                        "Out-of-pocket",
-                      ],
-                    };
-
-                    const meds = medsMap[pType] ?? ["Contact for details"];
-                    const services = servicesMap[pType] ?? [
-                      "Contact for details",
-                    ];
-                    const costs = costMap[pType] ?? ["Contact for details"];
-                    const insurances = insuranceMap[pType] ?? [
-                      "Contact provider",
-                    ];
-
-                    const TABS: {
-                      key: CardTab;
-                      label: string;
-                      icon: React.ReactNode;
-                      color: string;
-                    }[] = [
-                      {
-                        key: "meds",
-                        label: "Meds",
-                        icon: <Pill className="w-3 h-3" />,
-                        color: "#818cf8",
-                      },
-                      {
-                        key: "services",
-                        label: "Services",
-                        icon: <Heart className="w-3 h-3" />,
-                        color: "#6ee7d0",
-                      },
-                      {
-                        key: "cost",
-                        label: "Cost",
-                        icon: <DollarSign className="w-3 h-3" />,
-                        color: "#00ff88",
-                      },
-                      {
-                        key: "insurance",
-                        label: "Insurance",
-                        icon: <Shield className="w-3 h-3" />,
-                        color: "#fbbf24",
-                      },
-                    ];
-
-                    const tabContent: Record<CardTab, string[]> = {
-                      meds,
-                      services,
-                      cost: costs,
-                      insurance: insurances,
-                    };
-
-                    return (
-                      <div
-                        key={provider.id}
-                        className="bg-card rounded-xl shadow-card border border-border transition-colors hover:border-primary/40"
-                        data-ocid={`home.item.${idx + 1}`}
-                      >
-                        {/* Card header — click to expand or navigate */}
-                        <div className="flex items-start gap-2 p-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span
-                                className={`w-2 h-2 rounded-full shrink-0 ${info.dotClass}`}
-                              />
-                              <span
-                                className={`text-xs font-bold ${info.textClass}`}
-                              >
-                                {info.label}
-                              </span>
-                              {emergencyStatus === "open_bed" && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                  <BedDouble className="w-3 h-3" /> OPEN BED
-                                </span>
-                              )}
-                              {emergencyStatus === "72hr_bridge" && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                                  <Clock className="w-3 h-3" /> 72HR BRIDGE
-                                </span>
-                              )}
-                            </div>
-                            <p className="font-semibold text-sm text-foreground leading-snug truncate">
-                              {provider.name}
-                            </p>
-                            {pType && (
-                              <p
-                                className="text-[10px] mt-0.5 capitalize"
-                                style={{ color: "oklch(0.60 0.08 185)" }}
-                              >
-                                {pType}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {/* Expand/info button */}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setExpandedCard(isExpanded ? null : provider.id)
-                              }
-                              className="rounded-lg p-2 min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors"
-                              style={{
-                                background: isExpanded
-                                  ? "oklch(0.72 0.20 142 / 0.15)"
-                                  : "oklch(0.25 0.04 225 / 0.6)",
-                                color: isExpanded
-                                  ? "oklch(0.80 0.20 142)"
-                                  : "oklch(0.55 0.04 220)",
-                              }}
-                              aria-label={
-                                isExpanded ? "Collapse details" : "Show details"
-                              }
-                              data-ocid={`home.info_button.${idx + 1}`}
-                            >
-                              <Info className="w-3.5 h-3.5" />
-                            </button>
-                            {/* View profile */}
-                            <Link
-                              to="/provider/$id"
-                              params={{ id: provider.id }}
-                              className="bg-primary rounded-lg p-2.5 min-h-[36px] min-w-[36px] flex items-center justify-center hover:-translate-y-0.5 transition-all duration-150"
-                              aria-label={`View ${provider.name}`}
-                            >
-                              <ArrowRight className="w-4 h-4 text-white" />
-                            </Link>
-                          </div>
-                        </div>
-
-                        {/* Expandable tab panel */}
-                        {isExpanded && (
-                          <div
-                            style={{
-                              borderTop: "1px solid oklch(0.24 0.04 225 / 0.5)",
-                            }}
-                          >
-                            {/* Tab bar */}
-                            <div
-                              className="flex gap-1 px-3 pt-2"
-                              role="tablist"
-                            >
-                              {TABS.map((t) => (
-                                <button
-                                  key={t.key}
-                                  type="button"
-                                  role="tab"
-                                  aria-selected={activeTab === t.key}
-                                  onClick={() =>
-                                    setCardTab((prev) => ({
-                                      ...prev,
-                                      [provider.id]: t.key,
-                                    }))
-                                  }
-                                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all duration-150"
-                                  style={{
-                                    background:
-                                      activeTab === t.key
-                                        ? `${t.color}20`
-                                        : "transparent",
-                                    color:
-                                      activeTab === t.key
-                                        ? t.color
-                                        : "oklch(0.50 0.03 220)",
-                                    borderBottom:
-                                      activeTab === t.key
-                                        ? `2px solid ${t.color}`
-                                        : "2px solid transparent",
-                                  }}
-                                >
-                                  {t.icon}
-                                  {t.label}
-                                </button>
-                              ))}
-                            </div>
-                            {/* Tab content */}
-                            <div className="px-4 py-3">
-                              <ul className="space-y-1">
-                                {tabContent[activeTab].map((item) => (
-                                  <li
-                                    key={item}
-                                    className="flex items-start gap-2 text-xs"
-                                    style={{ color: "oklch(0.78 0.04 210)" }}
-                                  >
-                                    <span
-                                      className="mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full"
-                                      style={{
-                                        background:
-                                          TABS.find((t) => t.key === activeTab)
-                                            ?.color ?? "#6ee7d0",
-                                      }}
-                                    />
-                                    {item}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="max-h-[500px] lg:max-h-[560px] overflow-y-auto space-y-3 pr-1">
+                  {filtered.map((provider, idx) => (
+                    <ProviderCard
+                      key={provider.id}
+                      provider={provider}
+                      index={idx}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -1904,23 +1684,12 @@ export function HomePage() {
           </div>
         </motion.div>
       </section>
-      {/* ── Impact + Costs ── */}
+      {/* ── Impact ── */}
       <section
         className="py-16 px-4 max-w-7xl mx-auto"
         data-ocid="home.section"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <HandoffImpact />
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="w-4 h-4 text-primary" />
-              <h2 className="text-xl font-bold text-foreground">
-                Know Your Costs
-              </h2>
-            </div>
-            <PriceComparisonCard />
-          </div>
-        </div>
+        <HandoffImpact />
       </section>
       {/* ── Cities ── */}
       {(() => {

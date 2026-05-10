@@ -28,6 +28,8 @@ import {
 import { useState } from "react";
 import { AchievementTimeline } from "../components/AchievementTimeline";
 import { BadgeGrid } from "../components/BadgeGrid";
+import { CredentialAwardModal } from "../components/CredentialAwardModal";
+import { useCredentialAward } from "../hooks/useCredentialAward";
 import { useUserCredentials, useUserTimeline } from "../hooks/useCredentials";
 import {
   useAddFavoriteProvider,
@@ -731,6 +733,7 @@ function PhysicalRewardClaimCard({ credName }: { credName: string }) {
 
 // --- Recovery credentials section ---
 function RecoveryCredentialsSection() {
+  const { awardedCredential, dismissAward } = useCredentialAward();
   const { identity } = useInternetIdentity();
   const principal = identity ? identity.getPrincipal() : null;
   const { data: credentials = [], isLoading: credsLoading } =
@@ -743,6 +746,10 @@ function RecoveryCredentialsSection() {
 
   return (
     <section data-ocid="recovery.credentials_section" className="space-y-4">
+      <CredentialAwardModal
+        credential={awardedCredential}
+        onDismiss={dismissAward}
+      />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Award className="w-5 h-5 text-amber-400" />

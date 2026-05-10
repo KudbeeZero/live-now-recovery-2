@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useInternetIdentity } from "@caffeineai/core-infrastructure";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
   Heart,
   Loader2,
@@ -17,16 +17,68 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGetRecoveryProfile } from "../hooks/useQueries";
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [showPopupHint, setShowPopupHint] = useState(false);
   const { login, clear, loginStatus, identity } = useInternetIdentity();
   const isLoggedIn = loginStatus === "success" && !!identity;
   const isLoggingIn = loginStatus === "logging-in";
   const { data: recoveryProfile } = useGetRecoveryProfile();
+  const location = useLocation();
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const firstDrawerItemRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on route change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname change triggers close
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  // Body scroll lock — prevents iOS Safari background scroll
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.classList.add("menu-open");
+    } else {
+      document.body.classList.remove("menu-open");
+    }
+    return () => {
+      document.body.classList.remove("menu-open");
+    };
+  }, [menuOpen]);
+
+  // Escape key closes menu from anywhere
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && menuOpen) {
+        setMenuOpen(false);
+        hamburgerRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [menuOpen]);
+
+  // Focus management — move focus into drawer when opened
+  useEffect(() => {
+    if (menuOpen) {
+      // Small timeout so the drawer is visually open before focus moves
+      const t = setTimeout(() => {
+        const first =
+          firstDrawerItemRef.current?.querySelector<HTMLElement>("a, button");
+        first?.focus();
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, [menuOpen]);
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+    hamburgerRef.current?.focus();
+  };
 
   const navLinks = [
     { to: "/", label: "Home" },
@@ -41,6 +93,9 @@ export function Header() {
 
   const handleLogin = async () => {
     setLoginError(null);
+    setShowPopupHint(true);
+    // Small delay so the hint renders before the popup opens
+    await new Promise((r) => setTimeout(r, 120));
     try {
       await login();
     } catch (err) {
@@ -48,7 +103,18 @@ export function Header() {
         err instanceof Error
           ? err.message
           : "Sign in failed. Please try again.";
-      setLoginError(msg);
+      // Detect popup-blocked error
+      const isPopupBlocked =
+        msg.toLowerCase().includes("popup") ||
+        msg.toLowerCase().includes("blocked") ||
+        msg.toLowerCase().includes("window");
+      setLoginError(
+        isPopupBlocked
+          ? "Popup was blocked — please allow popups for this site and try again."
+          : msg,
+      );
+    } finally {
+      setShowPopupHint(false);
     }
   };
 
@@ -58,7 +124,8 @@ export function Header() {
       data-ocid="nav.panel"
     >
       {/* ── LANDSCAPE MOBILE: compact bar — logo + phone only, no hamburger ── */}
-      <div className="hidden landscape:flex md:landscape:hidden h-12 px-4">
+      {/* Visible on landscape below 1024px (phones + small tablets in landscape) */}
+      <div className="hidden landscape:flex lg:landscape:hidden h-12 px-4">
         <div className="flex items-center justify-between h-full w-full">
           <Link
             to="/"
@@ -84,8 +151,8 @@ export function Header() {
         </div>
       </div>
 
-      {/* ── PORTRAIT MOBILE + DESKTOP: full header ── */}
-      <div className="landscape:hidden md:landscape:flex max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+      {/* ── PORTRAIT MOBILE + TABLET + DESKTOP: shown on portrait, and on landscape ≥1024px ── */}
+      <div className="landscape:hidden lg:landscape:flex max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
           {/* Brand */}
           <Link
@@ -102,9 +169,9 @@ export function Header() {
             </span>
           </Link>
 
-          {/* Desktop nav — constrained so items never stretch on widescreen */}
+          {/* Desktop nav — only visible at lg (1024px+), hamburger below that */}
           <nav
-            className="hidden md:flex items-center gap-1 shrink-0"
+            className="hidden lg:flex items-center gap-1 min-w-0 shrink"
             aria-label="Main navigation"
           >
             {navLinks.map((link) => (
@@ -119,7 +186,7 @@ export function Header() {
               </Link>
             ))}
             <Link
-              to="/citizens"
+              to="/hub"
               className="text-sm font-medium transition-colors min-h-[44px] inline-flex items-center gap-1.5 px-3 rounded-md text-teal-light hover:text-white hover:bg-white/5"
               activeProps={{ className: "text-teal-light font-semibold" }}
               data-ocid="nav.link"
@@ -159,14 +226,15 @@ export function Header() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Emergency phone */}
+            {/* Emergency phone — compact below lg, full at lg+ */}
             <a
               href="tel:833-234-6343"
-              className="hidden md:inline-flex items-center gap-1.5 bg-destructive text-destructive-foreground px-3 py-2 rounded-lg text-xs font-bold min-h-[44px] transition-opacity hover:opacity-90"
+              className="inline-flex items-center gap-1.5 bg-destructive text-destructive-foreground px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-lg text-xs font-bold min-h-[44px] transition-opacity hover:opacity-90 shrink-0"
               data-ocid="nav.button"
             >
               <Phone className="w-3.5 h-3.5" />
-              833-234-6343
+              <span className="hidden lg:inline">833-234-6343</span>
+              <span className="lg:hidden">Call</span>
             </a>
 
             {isLoggedIn ? (
@@ -202,7 +270,7 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="hidden md:flex flex-col items-end gap-0.5">
+              <div className="hidden lg:flex flex-col items-end gap-0.5">
                 <Button
                   variant="default"
                   size="sm"
@@ -220,20 +288,28 @@ export function Header() {
                     "Sign In"
                   )}
                 </Button>
+                {showPopupHint && !loginError && (
+                  <p className="text-[10px] text-muted-foreground max-w-[160px] text-right leading-tight animate-in fade-in slide-in-from-top-1 duration-200">
+                    Allow the popup to sign in securely.
+                  </p>
+                )}
                 {loginStatus === "loginError" || loginError ? (
-                  <p className="text-[10px] text-destructive font-medium max-w-[140px] text-right leading-tight">
+                  <p className="text-[10px] text-destructive font-medium max-w-[160px] text-right leading-tight">
                     {loginError ?? "Sign in failed. Try again."}
                   </p>
                 ) : null}
               </div>
             )}
 
-            {/* Mobile portrait hamburger only */}
+            {/* Hamburger — visible below lg (1024px) including landscape phones */}
             <button
+              ref={hamburgerRef}
               type="button"
-              className="md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors text-on-dark hover:text-white"
+              className="lg:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors text-on-dark hover:text-white"
               onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Toggle menu"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
               data-ocid="nav.toggle"
             >
               {menuOpen ? (
@@ -246,256 +322,288 @@ export function Header() {
         </div>
       </div>
 
-      {/* ── PORTRAIT MOBILE DRAWER: full-height side-drawer style, sectioned ── */}
-      {menuOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="landscape:hidden md:landscape:hidden fixed inset-0 bg-black/50 z-30"
-            onClick={() => setMenuOpen(false)}
-            onKeyDown={(e) => e.key === "Escape" && setMenuOpen(false)}
-            aria-hidden="true"
-          />
-          {/* Drawer panel */}
-          <div className="landscape:hidden md:landscape:hidden fixed top-0 right-0 bottom-0 z-40 w-72 bg-navy border-l border-border flex flex-col shadow-card overflow-y-auto">
-            {/* Drawer header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-              <span className="font-bold text-sm text-teal-light">Menu</span>
-              <button
-                type="button"
-                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors text-on-dark hover:text-white"
-                onClick={() => setMenuOpen(false)}
-                aria-label="Close menu"
-                data-ocid="nav.close_button"
+      {/* ── MOBILE DRAWER: shown below lg (portrait + landscape phones/small tablets) ── */}
+      {/* Backdrop — aria-hidden, keyboard users handled by Escape key effect */}
+      <div
+        className={[
+          "lg:hidden fixed inset-0 bg-black/50 transition-opacity duration-300",
+          menuOpen
+            ? "opacity-100 pointer-events-auto z-[35]"
+            : "opacity-0 pointer-events-none z-[35]",
+        ].join(" ")}
+        onClick={closeMenu}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          closeMenu();
+        }}
+        onKeyDown={(e) => e.key === "Escape" && closeMenu()}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+      {/* Drawer panel — always in DOM, slides in/out via transform */}
+      <div
+        id="mobile-menu"
+        aria-modal="true"
+        aria-label="Navigation menu"
+        className={[
+          "lg:hidden fixed top-0 right-0 bottom-0 w-72 bg-navy border-l border-border flex flex-col shadow-card overflow-y-auto",
+          "nav-drawer",
+          menuOpen ? "open z-[40]" : "z-[40]",
+        ].join(" ")}
+      >
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+          <span className="font-bold text-sm text-teal-light">Menu</span>
+          <button
+            type="button"
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors text-on-dark hover:text-white"
+            onClick={closeMenu}
+            aria-label="Close menu"
+            data-ocid="nav.close_button"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Sections */}
+        <div className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+          {/* Main */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-on-dark/50 px-2 mb-1">
+              Main
+            </p>
+            <div ref={firstDrawerItemRef}>
+              <Link
+                to="/"
+                className="drawer-link"
+                onClick={closeMenu}
+                data-ocid="nav.link"
               >
-                <X className="w-5 h-5" />
-              </button>
+                Home
+              </Link>
             </div>
+            <Link
+              to="/hub"
+              className="drawer-link text-teal-light"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              <Radio className="w-3.5 h-3.5" /> Citizens Hub
+            </Link>
+            <Link
+              to="/resources"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Resources
+            </Link>
+            <Link
+              to="/videos"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Videos
+            </Link>
+            <Link
+              to="/donate"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Donate
+            </Link>
+            <Link
+              to="/leaderboard"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Leaderboard
+            </Link>
+            <Link
+              to="/impact"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Impact
+            </Link>
+          </div>
+          {/* Community */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-on-dark/50 px-2 mb-1">
+              Community
+            </p>
+            <Link
+              to="/mission"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Mission
+            </Link>
+            <Link
+              to="/blog"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Blog
+            </Link>
+            <Link
+              to="/about"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              About
+            </Link>
+            <Link
+              to="/helper"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Be a Helper
+            </Link>
+            <Link
+              to="/volunteers"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              <Users className="w-3.5 h-3.5" /> Volunteers
+            </Link>
+          </div>
+          {/* Tools */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-on-dark/50 px-2 mb-1">
+              Tools
+            </p>
+            <Link
+              to="/dashboard"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/national-impact"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              National Impact
+            </Link>
+            <Link
+              to="/admin"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Admin
+            </Link>
+          </div>
+          {/* Legal */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-on-dark/50 px-2 mb-1">
+              Legal
+            </p>
+            <Link
+              to="/privacy"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Privacy
+            </Link>
+            <Link
+              to="/terms"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Terms
+            </Link>
+            <Link
+              to="/cookies"
+              className="drawer-link"
+              onClick={closeMenu}
+              data-ocid="nav.link"
+            >
+              Cookies
+            </Link>
+          </div>
+        </div>
 
-            {/* Sections */}
-            <div className="flex-1 px-3 py-3 space-y-4">
-              {/* Main */}
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-on-dark/50 px-2 mb-1">
-                  Main
-                </p>
-                <Link
-                  to="/"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Home
-                </Link>
-                <Link
-                  to="/citizens"
-                  className="drawer-link text-teal-light"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  <Radio className="w-3.5 h-3.5" /> Citizens Hub
-                </Link>
-                <Link
-                  to="/resources"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Resources
-                </Link>
-                <Link
-                  to="/videos"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Videos
-                </Link>
-                <Link
-                  to="/donate"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Donate
-                </Link>
-                <Link
-                  to="/leaderboard"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Leaderboard
-                </Link>
-                <Link
-                  to="/impact"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Impact
-                </Link>
-              </div>
-              {/* Community */}
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-on-dark/50 px-2 mb-1">
-                  Community
-                </p>
-                <Link
-                  to="/mission"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Mission
-                </Link>
-                <Link
-                  to="/blog"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Blog
-                </Link>
-                <Link
-                  to="/about"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  About
-                </Link>
-                <Link
-                  to="/helper"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Be a Helper
-                </Link>
-                <Link
-                  to="/volunteers"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  <Users className="w-3.5 h-3.5" /> Volunteers
-                </Link>
-              </div>
-              {/* Tools */}
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-on-dark/50 px-2 mb-1">
-                  Tools
-                </p>
-                <Link
-                  to="/dashboard"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/national-impact"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  National Impact
-                </Link>
-                <Link
-                  to="/admin"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Admin
-                </Link>
-              </div>
-              {/* Legal */}
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-on-dark/50 px-2 mb-1">
-                  Legal
-                </p>
-                <Link
-                  to="/privacy"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Privacy
-                </Link>
-                <Link
-                  to="/terms"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Terms
-                </Link>
-                <Link
-                  to="/cookies"
-                  className="drawer-link"
-                  onClick={() => setMenuOpen(false)}
-                  data-ocid="nav.link"
-                >
-                  Cookies
-                </Link>
-              </div>
-            </div>
-
-            {/* Drawer CTAs */}
-            <div className="px-3 pb-4 pt-2 border-t border-border space-y-2 shrink-0">
-              <a
-                href="tel:833-234-6343"
-                className="flex items-center justify-center gap-2 bg-destructive text-destructive-foreground px-4 py-3 rounded-lg text-sm font-bold min-h-[44px] w-full transition-opacity hover:opacity-90"
-                onClick={() => setMenuOpen(false)}
+        {/* Drawer CTAs */}
+        <div className="px-3 pb-4 pt-2 border-t border-border space-y-2 shrink-0">
+          <a
+            href="tel:833-234-6343"
+            className="flex items-center justify-center gap-2 bg-destructive text-destructive-foreground px-4 py-3 rounded-lg text-sm font-bold min-h-[44px] w-full transition-opacity hover:opacity-90"
+            onClick={closeMenu}
+            data-ocid="nav.button"
+          >
+            <Phone className="w-4 h-4 shrink-0" />
+            Call 833-234-6343
+          </a>
+          {!isLoggedIn && (
+            <div className="flex flex-col gap-1">
+              <Button
+                size="sm"
+                className="min-h-[44px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 w-full"
+                disabled={isLoggingIn}
+                onClick={async () => {
+                  setLoginError(null);
+                  setShowPopupHint(true);
+                  await new Promise((r) => setTimeout(r, 120));
+                  try {
+                    await login();
+                    closeMenu();
+                  } catch (err) {
+                    const msg =
+                      err instanceof Error ? err.message : "Sign in failed.";
+                    const isBlocked =
+                      msg.toLowerCase().includes("popup") ||
+                      msg.toLowerCase().includes("blocked") ||
+                      msg.toLowerCase().includes("window");
+                    setLoginError(
+                      isBlocked
+                        ? "Popup blocked — allow popups and try again."
+                        : msg,
+                    );
+                  } finally {
+                    setShowPopupHint(false);
+                  }
+                }}
                 data-ocid="nav.button"
               >
-                <Phone className="w-4 h-4 shrink-0" />
-                Call 833-234-6343
-              </a>
-              {!isLoggedIn && (
-                <div className="flex flex-col gap-1">
-                  <Button
-                    size="sm"
-                    className="min-h-[44px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 w-full"
-                    disabled={isLoggingIn}
-                    onClick={async () => {
-                      setLoginError(null);
-                      try {
-                        await login();
-                        setMenuOpen(false);
-                      } catch (err) {
-                        setLoginError(
-                          err instanceof Error
-                            ? err.message
-                            : "Sign in failed.",
-                        );
-                      }
-                    }}
-                    data-ocid="nav.button"
-                  >
-                    {isLoggingIn ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                        Signing in…
-                      </>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </Button>
-                  {(loginStatus === "loginError" || loginError) && (
-                    <p className="text-[10px] text-destructive font-medium text-center">
-                      {loginError ?? "Sign in failed. Try again."}
-                    </p>
-                  )}
-                </div>
+                {isLoggingIn ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Signing in…
+                  </>
+                ) : (
+                  "Sign In"
+                )}
+              </Button>
+              {showPopupHint && !loginError && (
+                <p className="text-[10px] text-muted-foreground text-center leading-tight">
+                  Allow the popup to sign in securely.
+                </p>
+              )}
+              {(loginStatus === "loginError" || loginError) && (
+                <p className="text-[10px] text-destructive font-medium text-center">
+                  {loginError ?? "Sign in failed. Try again."}
+                </p>
               )}
             </div>
-          </div>
-        </>
-      )}
+          )}
+        </div>
+      </div>
     </header>
   );
 }

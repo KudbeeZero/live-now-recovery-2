@@ -211,6 +211,7 @@ export const mockBackend: backendInterface = {
   addProviderPost: async () => "post-mock-001",
   addRiskEvent: async () => "event-mock-001",
   adminMintCredential: async () => BigInt(99),
+  adminSeedCredentials: async () => "seeded",
   approveTestimonial: async () => true,
   assignCallerUserRole: async () => undefined,
   checkAndAutoMint: async () => undefined,

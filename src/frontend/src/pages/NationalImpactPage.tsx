@@ -335,10 +335,20 @@ export function NationalImpactPage() {
       data-ocid="national-impact.page"
     >
       <SEO
-        title="National Opioid Crisis Impact | Live Now Recovery"
-        description="Explore overdose burden by state and projected impact of recovery platform deployment across US hot zones. West Virginia, Ohio, Kentucky, Tennessee and more."
-        keywords="national opioid crisis, overdose deaths by state, opioid hot zones US, harm reduction national scale"
+        title="National Impact | Overdose Crisis by State — Live Now Recovery"
+        description="Interactive visualization of opioid overdose burden across all 50 states. See where the crisis hits hardest and how real-time recovery coordination can save lives."
+        keywords="national opioid crisis, overdose deaths by state, opioid hot zones US, harm reduction national scale, overdose prevention map"
         canonical="/national-impact"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Dataset",
+          name: "US Opioid Overdose Burden by State",
+          description:
+            "Overdose mortality rates per 100,000 population by US state, with projected impact of real-time MAT coordination platforms.",
+          creator: { "@type": "Organization", name: "Live Now Recovery" },
+          url: "https://live-now-recovery-3f2.caffeine.xyz/national-impact",
+          spatialCoverage: { "@type": "Country", name: "United States" },
+        }}
       />
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-[oklch(0.11_0.03_240)] border-b border-[oklch(0.22_0.05_240)]">

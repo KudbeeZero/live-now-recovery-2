@@ -212,6 +212,10 @@ service : {
   addRiskEvent: (event: RiskEvent) -> (text);
   adminMintCredential: (owner: principal, credType: CredentialType, metadata:
    opt text) -> (nat);
+  /// Populates 18 demo credential records across all 12 types and 4 tiers.
+  /// Guard: no-op if credentials already exist.
+  /// Call once after fresh deploy to populate the leaderboard and gallery.
+  adminSeedCredentials: () -> (text);
   approveTestimonial: (id: text) -> (bool);
   assignCallerUserRole: (user: principal, role: UserRole) -> ();
   checkAndAutoMint: (owner: principal, actionType: text, count: nat) -> ();

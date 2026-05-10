@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import {
   Building2,
   ChevronRight,
-  ExternalLink,
   Heart,
   MapPin,
   MessageCircle,
@@ -28,7 +27,6 @@ type Intent =
   | "find-by-city"
   | "register-provider"
   | "become-volunteer"
-  | "cost-plus-drugs"
   | "how-it-works"
   | "need-help-now"
   | "view-map"
@@ -49,7 +47,6 @@ const QUICK_REPLIES: { label: string; intent: Intent }[] = [
   { label: "Find by City", intent: "find-by-city" },
   { label: "Register as Provider", intent: "register-provider" },
   { label: "Become a Volunteer", intent: "become-volunteer" },
-  { label: "Cost Plus Drugs", intent: "cost-plus-drugs" },
   { label: "How It Works", intent: "how-it-works" },
   { label: "I Need Help Now", intent: "need-help-now" },
   { label: "View Map", intent: "view-map" },
@@ -89,8 +86,7 @@ function classifyIntent(text: string): Intent {
     return "register-provider";
   if (/volunteer|helper|help others|narcan carrier|peer support/.test(t))
     return "become-volunteer";
-  if (/cost|price|suboxone|buprenorphine|drugs|cuban/.test(t))
-    return "cost-plus-drugs";
+
   if (/how|proof|presence|qr|handoff|beacon/.test(t)) return "how-it-works";
   if (/help|emergency|now|crisis|overdose|\bod\b/.test(t))
     return "need-help-now";
@@ -317,40 +313,6 @@ function BecomeVolunteerCard() {
   );
 }
 
-function CostPlusDrugsCard() {
-  return (
-    <div className="space-y-3">
-      <p className="text-sm font-semibold text-white">
-        Affordable MAT medications
-      </p>
-      <p className="text-xs text-white/70">
-        Mark Cuban's Cost Plus Drugs offers generic buprenorphine-naloxone at
-        drastically reduced prices — no insurance required.
-      </p>
-      <div className="space-y-2">
-        <a
-          href="https://costplusdrugs.com/medications/categories/opioid-dependence/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-between w-full text-xs font-bold px-3 py-2 rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition-colors"
-          data-ocid="chat.cost_plus_link"
-        >
-          View Pricing <ExternalLink className="w-3 h-3" />
-        </a>
-        <Link
-          to="/resources"
-          className="block text-center text-xs text-emerald-300 hover:text-emerald-200 transition-colors underline"
-        >
-          Full Resource List
-        </Link>
-      </div>
-      <p className="text-[10px] text-white/40">
-        Prices vary — visit their site for current cost.
-      </p>
-    </div>
-  );
-}
-
 function HowItWorksCard() {
   return (
     <div className="space-y-3">
@@ -526,8 +488,7 @@ export function SentinelChat() {
         return <RegisterProviderCard />;
       case "become-volunteer":
         return <BecomeVolunteerCard />;
-      case "cost-plus-drugs":
-        return <CostPlusDrugsCard />;
+
       case "how-it-works":
         return <HowItWorksCard />;
       case "need-help-now":

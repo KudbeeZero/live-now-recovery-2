@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { TrendingUp } from "lucide-react";
 import { motion } from "motion/react";
+import { SEO } from "../components/SEO";
 import {
   PATIENT_STEPS,
   PROBLEM_CALLOUTS,
@@ -20,26 +21,99 @@ const cardVariants = {
 export function HowItWorksPage() {
   return (
     <main className="min-h-screen" data-ocid="how_it_works.page">
+      <SEO
+        title="How It Works | Live Now Recovery — Real-Time Recovery Coordination"
+        description="Live Now Recovery connects people in crisis to MAT providers, Narcan kiosks, and community volunteers in real time. Here's how the system works, step by step."
+        keywords="how recovery coordination works, MAT warm handoff process, real-time provider availability, harm reduction step by step Ohio"
+        canonical="/how-it-works"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "HowTo",
+          name: "How Live Now Recovery Works",
+          description:
+            "Real-time recovery coordination from crisis to care in Ohio — step by step.",
+          step: [
+            {
+              "@type": "HowToStep",
+              name: "Search for a Provider",
+              text: "Use the live map or search bar to find available MAT providers, Narcan kiosks, or harm reduction resources near you — updated in real time.",
+            },
+            {
+              "@type": "HowToStep",
+              name: "Check Live Availability",
+              text: "Every provider confirms their availability hourly. Green means available right now. The 4-hour decay rule ensures no stale data.",
+            },
+            {
+              "@type": "HowToStep",
+              name: "Initiate a Warm Handoff",
+              text: "A peer support specialist or community volunteer connects you directly to the provider — not a cold referral, a person-to-person handoff.",
+            },
+            {
+              "@type": "HowToStep",
+              name: "Get Connected to Care",
+              text: "You arrive, provider is ready. The handoff is logged anonymously on ICP — no PHI, just proof that the connection happened.",
+            },
+          ],
+        }}
+      />
       {/* Hero */}
-      <section className="bg-navy px-4 py-16 md:py-20">
-        <div className="max-w-5xl mx-auto">
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.12 0.04 210) 0%, oklch(0.16 0.06 195) 50%, oklch(0.11 0.03 240) 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 60% at 60% 40%, oklch(0.62 0.12 218 / 0.08) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative z-10 max-w-5xl mx-auto px-4 py-20 md:py-28">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <p className="text-xs font-bold uppercase tracking-widest text-live-green mb-3">
-              The Platform
-            </p>
-            <h1 className="text-4xl md:text-5xl font-bold text-brand-teal mb-4 leading-tight">
-              How Live Now Recovery Works
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 mb-6">
+              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+              <span className="text-xs font-semibold text-teal-300 uppercase tracking-widest">
+                The Platform
+              </span>
+            </div>
+            <h1 className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight">
+              <span className="text-foreground">How Live Now </span>
+              <span className="text-brand-teal">Recovery Works</span>
             </h1>
-            <p className="text-on-dark text-lg max-w-2xl leading-relaxed">
-              From crisis moment to provider contact in minutes. Here's exactly
-              how it works — for people in need and for providers who want to
-              help.
+            <p className="text-muted-foreground text-lg md:text-xl max-w-2xl leading-relaxed mb-10">
+              From crisis moment to provider contact in minutes. A warm handoff
+              completes in under{" "}
+              <strong className="text-brand-teal">2 minutes</strong> — vs a
+              3.5-week average wait in the existing system.
             </p>
+            {/* Key stats */}
+            <div className="flex flex-wrap gap-4">
+              {[
+                { stat: "80%", label: "warm handoff show-up rate" },
+                { stat: "<2 min", label: "average connection time" },
+                { stat: "12%", label: "cold referral show-up" },
+                { stat: "$4–$7", label: "ROI per $1 in MAT" },
+              ].map((item) => (
+                <div
+                  key={item.stat}
+                  className="bg-card/60 backdrop-blur-sm border border-border rounded-xl py-3 px-5 text-center min-w-[110px]"
+                >
+                  <p className="text-xl md:text-2xl font-extrabold text-brand-teal">
+                    {item.stat}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {item.label}
+                  </p>
+                </div>
+              ))}
+            </div>
           </motion.div>
         </div>
       </section>

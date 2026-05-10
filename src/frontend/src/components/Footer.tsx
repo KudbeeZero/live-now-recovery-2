@@ -53,15 +53,15 @@ export function Footer() {
             <ul className="space-y-2">
               {[
                 { to: "/", label: "Live Map" },
-                { to: "/citizens", label: "Citizens Hub" },
+                { to: "/hub", label: "Citizens Hub" },
+                { to: "/gallery", label: "Impact Gallery" },
                 { to: "/leaderboard", label: "Leaderboard" },
                 { to: "/impact", label: "Impact" },
                 { to: "/national-impact", label: "National Impact" },
                 { to: "/donate", label: "Donate →" },
                 { to: "/verify", label: "Verify Handoff" },
-                { to: "/helper", label: "Helper Guide" },
+                { to: "/helper", label: "Become a Helper" },
                 { to: "/volunteers", label: "Volunteer Directory" },
-                { to: "/helper", label: "Become a Volunteer" },
                 { to: "/integration", label: "AI Integration" },
                 { to: "/admin", label: "Admin" },
               ].map((l) => (
@@ -162,28 +162,6 @@ export function Footer() {
                   Cookie Policy
                 </Link>
               </li>
-              <li>
-                <a
-                  href="https://costplusdrugs.com/hipaa/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm transition-colors hover:text-foreground text-muted-foreground"
-                  data-ocid="footer.link"
-                >
-                  HIPAA Notice ↗
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://costplusdrugs.com/privacy/california/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm transition-colors hover:text-foreground text-muted-foreground"
-                  data-ocid="footer.link"
-                >
-                  CA Privacy ↗
-                </a>
-              </li>
             </ul>
           </div>
         </div>
@@ -207,21 +185,39 @@ export function Footer() {
           </p>
           <div className="flex items-center gap-4">
             {[
-              { icon: SiX, label: "X (Twitter)" },
-              { icon: SiFacebook, label: "Facebook" },
-              { icon: SiInstagram, label: "Instagram" },
-              { icon: FaLinkedin, label: "LinkedIn" },
-              { icon: SiYoutube, label: "YouTube" },
-            ].map(({ icon: Icon, label }) => (
-              <button
+              { icon: SiX, label: "X (Twitter)", href: "https://x.com" },
+              {
+                icon: SiFacebook,
+                label: "Facebook",
+                href: "https://facebook.com",
+              },
+              {
+                icon: SiInstagram,
+                label: "Instagram",
+                href: "https://instagram.com",
+              },
+              {
+                icon: FaLinkedin,
+                label: "LinkedIn",
+                href: "https://linkedin.com",
+              },
+              {
+                icon: SiYoutube,
+                label: "YouTube",
+                href: "https://youtube.com",
+              },
+            ].map(({ icon: Icon, label, href }) => (
+              <a
                 key={label}
-                type="button"
+                href={href}
+                target="_blank"
+                rel="noreferrer"
                 aria-label={label}
-                className="transition-colors text-muted-foreground hover:text-[oklch(0.62_0.17_155)] cursor-pointer bg-transparent border-0 p-0"
+                className="transition-colors text-muted-foreground hover:text-[oklch(0.62_0.17_155)]"
                 data-ocid="footer.social"
               >
                 <Icon className="w-4 h-4" />
-              </button>
+              </a>
             ))}
           </div>
         </div>

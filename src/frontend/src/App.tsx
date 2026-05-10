@@ -30,6 +30,7 @@ import GalleryPage from "./pages/GalleryPage";
 import { HelperPage } from "./pages/HelperPage";
 import { HomePage } from "./pages/HomePage";
 import { HowItWorksPage } from "./pages/HowItWorksPage";
+import { HubPage } from "./pages/HubPage";
 import { ImpactPage } from "./pages/ImpactPage";
 import { IntegrationPage } from "./pages/IntegrationPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
@@ -37,6 +38,7 @@ import { LocationPage } from "./pages/LocationPage";
 import { MissionPage } from "./pages/MissionPage";
 import { NationalImpactPage } from "./pages/NationalImpactPage";
 import { OhioStatsPage } from "./pages/OhioStatsPage";
+import { PitchPage } from "./pages/PitchPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { ProviderPage } from "./pages/ProviderPage";
 import { RecoveryAccountPage } from "./pages/RecoveryAccountPage";
@@ -66,7 +68,7 @@ function RootLayout() {
       <ScrollToTop />
       <EmergencyBanner />
       <Header />
-      <div className="flex-1 landscape:pb-[52px] md:landscape:pb-0">
+      <div className="flex-1 landscape:pb-[52px] lg:landscape:pb-0">
         <Outlet />
       </div>
       <Footer />
@@ -79,7 +81,19 @@ function RootLayout() {
   );
 }
 
+// Private pages layout — renders ONLY the <Outlet> with no shared chrome
+function PrivateLayout() {
+  return <Outlet />;
+}
+
 const rootRoute = createRootRoute({ component: RootLayout });
+
+// Sub-root for unlinked private pages (no Header/Footer/SentinelChat)
+const privateRootRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "private",
+  component: PrivateLayout,
+});
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -293,6 +307,11 @@ const citizensRoute = createRoute({
   path: "/citizens",
   component: CitizensPage,
 });
+const hubRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hub",
+  component: HubPage,
+});
 const nationalImpactRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/national-impact",
@@ -332,8 +351,16 @@ const volunteerProfileRoute = createRoute({
   path: "/volunteer/$id",
   component: VolunteerProfilePage,
 });
+// Private pitch route — not linked from any nav, sitemap, or footer.
+// Uses privateRootRoute so RootLayout chrome (Header, Footer, SentinelChat) is excluded.
+const pitchRoute = createRoute({
+  getParentRoute: () => privateRootRoute,
+  path: "/pitch",
+  component: PitchPage,
+});
 
 const routeTree = rootRoute.addChildren([
+  privateRootRoute.addChildren([pitchRoute]),
   indexRoute,
   providerRoute,
   dashboardRoute,
@@ -376,6 +403,7 @@ const routeTree = rootRoute.addChildren([
   sitemapRoute,
   myRecoveryRoute,
   citizensRoute,
+  hubRoute,
   nationalImpactRoute,
   donateRoute,
   leaderboardRoute,

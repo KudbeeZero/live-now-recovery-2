@@ -1,6 +1,8 @@
 import { type Variants, motion, useInView } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
+import { SEO } from "../components/SEO";
+
 /* ─── animation variants ─────────────────────────────────────────────────── */
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 22 },
@@ -118,322 +120,391 @@ function CountUpStat({
 /* ─── page ────────────────────────────────────────────────────────────────── */
 export function AboutPage() {
   return (
-    <main className="min-h-screen" data-ocid="about.page">
-      {/* ── HERO ───────────────────────────────────────────────────────────── */}
-      <section className="bg-card border-b border-border px-4 py-16 sm:py-24">
-        <div className="max-w-3xl mx-auto">
-          <motion.div
+    <>
+      <SEO
+        title="About Live Now Recovery | Blockchain Recovery Platform — Ohio"
+        description="Live Now Recovery is a privacy-first, real-time recovery platform on the Internet Computer. No PHI stored. Piloted in Ohio. Built for national scale."
+        keywords="Live Now Recovery about, MAT coordination Ohio, harm reduction platform, Internet Computer blockchain, opioid crisis Ohio, recovery technology"
+        canonical="/about"
+      />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: structured data
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Live Now Recovery",
+              url: "https://livenowrecovery.org",
+              description:
+                "Ohio's real-time MAT coordination platform connecting people in crisis to providers, Narcan, and community support.",
+              areaServed: { "@type": "State", name: "Ohio" },
+              serviceType: "Medication-Assisted Treatment Coordination",
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "AboutPage",
+              name: "About Live Now Recovery",
+              url: "https://livenowrecovery.org/about",
+              description:
+                "About Live Now Recovery — Ohio's real-time MAT and harm reduction coordination platform built to close the access gap for people seeking treatment.",
+            },
+          ]),
+        }}
+      />
+      <main className="min-h-screen" data-ocid="about.page">
+        {/* ── HERO ───────────────────────────────────────────────────────────────── */}
+        <section
+          className="relative overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(135deg, oklch(0.12 0.04 210) 0%, oklch(0.16 0.06 195) 50%, oklch(0.11 0.03 240) 100%)",
+          }}
+        >
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 60% at 30% 50%, oklch(0.62 0.12 218 / 0.08) 0%, transparent 70%)",
+            }}
+          />
+          <div className="relative z-10 max-w-4xl mx-auto px-4 py-20 md:py-28">
+            <motion.div variants={stagger} initial="hidden" animate="show">
+              <motion.div
+                variants={fadeUp}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 mb-6"
+              >
+                <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+                <span className="text-xs font-semibold text-teal-300 uppercase tracking-widest">
+                  About the Platform
+                </span>
+              </motion.div>
+              <motion.h1
+                variants={fadeUp}
+                className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-5 leading-tight"
+              >
+                <span className="text-foreground">Built Where the </span>
+                <span className="text-brand-teal">Crisis Is Worst</span>
+              </motion.h1>
+              <motion.p
+                variants={fadeUp}
+                className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-2xl mb-10"
+              >
+                Northeast Ohio sits at the epicenter of America’s opioid
+                epidemic.{" "}
+                <strong className="text-foreground">
+                  600+ Cuyahoga County deaths in 2023.
+                </strong>{" "}
+                <strong className="text-foreground">
+                  78% fentanyl-involved.
+                </strong>{" "}
+                Providers open, capacity available — but invisible to the people
+                who need them.
+              </motion.p>
+              <motion.div
+                variants={fadeUp}
+                className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl"
+              >
+                {[
+                  { target: 47, suffix: "+", label: "MAT Providers" },
+                  { target: 20, suffix: "+", label: "Ohio Cities" },
+                  { target: 80, suffix: "%", label: "Handoff Show-Up Rate" },
+                  { target: 5232, suffix: "", label: "Ohio Deaths in 2023" },
+                ].map((s) => (
+                  <div
+                    key={s.label}
+                    className="bg-card/60 backdrop-blur-sm border border-border rounded-xl py-4 px-3 text-center"
+                  >
+                    <p className="text-2xl md:text-3xl font-extrabold text-brand-teal">
+                      <CountUpStat target={s.target} suffix={s.suffix} />
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {s.label}
+                    </p>
+                  </div>
+                ))}
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+
+        <div className="max-w-3xl mx-auto px-4 py-12 space-y-8">
+          <motion.section
             variants={stagger}
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "-60px" }}
+            aria-labelledby="gap-heading"
           >
-            <motion.p
-              variants={fadeUp}
-              className="text-xs font-bold uppercase tracking-widest text-brand-teal mb-3"
-            >
-              About the Platform
-            </motion.p>
-            <motion.h1
-              variants={fadeUp}
-              className="text-4xl sm:text-5xl font-extrabold text-brand-teal mb-5 leading-tight"
-            >
-              Built Where the Crisis Is Worst
-            </motion.h1>
-            <motion.p
-              variants={fadeUp}
-              className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-2xl"
-            >
-              Northeast Ohio sits at the epicenter of America's opioid epidemic.{" "}
-              <strong className="text-foreground">
-                600+ Cuyahoga County deaths in 2023.
-              </strong>{" "}
-              <strong className="text-foreground">
-                78% fentanyl-involved.
-              </strong>{" "}
-              Providers open, capacity available — but invisible to the people
-              who need them. Live Now Recovery is the real-time coordination
-              layer that connects the two.
-            </motion.p>
-          </motion.div>
-        </div>
-      </section>
-
-      <div className="max-w-3xl mx-auto px-4 py-12 space-y-8">
-        {/* ── THE GAP ────────────────────────────────────────────────────── */}
-        <motion.section
-          variants={stagger}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          aria-labelledby="gap-heading"
-        >
-          <motion.div variants={fadeUp} className="mb-6">
-            <h2
-              id="gap-heading"
-              className="text-2xl sm:text-3xl font-bold text-brand-teal mb-3"
-            >
-              The Problem Isn't Treatment. It's Access.
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Medication-Assisted Treatment works. The evidence is overwhelming.
-              The bottleneck is logistics — fragmented directories, stale hours,
-              no real-time availability, and zero warm handoff infrastructure.
-            </p>
-          </motion.div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            {gapStats.map((s, i) => (
-              <motion.div
-                key={s.pct}
-                variants={fadeUp}
-                transition={{ delay: i * 0.08 }}
-                className="bg-card border border-border rounded-2xl p-5 card-teal-accent flex flex-col gap-2"
-                data-ocid={`gap-stat-${i}`}
+            <motion.div variants={fadeUp} className="mb-6">
+              <h2
+                id="gap-heading"
+                className="text-2xl sm:text-3xl font-bold text-brand-teal mb-3"
               >
-                <p className="text-3xl font-extrabold text-brand-teal">
-                  {s.pct}
-                </p>
-                <p className="text-sm text-foreground font-medium leading-snug">
-                  {s.label}
-                </p>
-                <p className="text-xs text-muted-foreground mt-auto">
-                  {s.note}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.p
-            variants={fadeUp}
-            className="mt-5 text-muted-foreground leading-relaxed"
-          >
-            These aren't policy failures. They're{" "}
-            <strong className="text-foreground">logistics failures.</strong> The
-            tools exist. The providers exist. The gap is real-time coordination.
-            That's what we built.
-          </motion.p>
-        </motion.section>
-
-        {/* ── MAT GAP NARRATIVE ─────────────────────────────────────────── */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          className="bg-card rounded-2xl shadow-card border border-border p-6"
-        >
-          <h2 className="text-xl font-bold text-brand-teal mb-4">
-            The NE Ohio MAT Access Gap
-          </h2>
-          <p className="text-muted-foreground leading-relaxed mb-3">
-            Ohio recorded{" "}
-            <strong className="text-foreground">
-              5,232 overdose deaths in 2023
-            </strong>{" "}
-            — the third-highest rate in the nation. Cuyahoga County alone
-            accounts for 600+ annually, with fentanyl involved in{" "}
-            <strong className="text-foreground">78% of cases</strong>. Despite
-            this, fewer than 1 in 3 Ohioans who need MAT can access it within 30
-            days of seeking help.
-          </p>
-          <p className="text-muted-foreground leading-relaxed mb-3">
-            The gap isn't clinical — MAT works. Buprenorphine reduces overdose
-            mortality by <strong className="text-foreground">73–80%</strong>.
-            Methadone maintenance reduces illicit opioid use by over{" "}
-            <strong className="text-foreground">60%</strong>. The gap is
-            logistical: fragmented directories, outdated hours, no real-time
-            availability, and no routing system for warm handoffs.
-          </p>
-          <p className="text-brand-teal font-semibold">
-            Live Now Recovery is the routing layer Ohio doesn't have — and every
-            hot-zone state desperately needs.
-          </p>
-        </motion.div>
-
-        {/* ── REGION 13 + NATIONAL SCOPE ────────────────────────────────── */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          className="bg-card rounded-2xl shadow-card border border-border p-6"
-        >
-          <h2 className="text-xl font-bold text-brand-teal mb-4">
-            Region 13 Coverage — and Beyond
-          </h2>
-          <p className="text-muted-foreground leading-relaxed mb-3">
-            ADAMHS Region 13 encompasses Cuyahoga, Geauga, Lake, and Medina
-            counties — a combined population of{" "}
-            <strong className="text-foreground">1.6 million</strong>, with one
-            of the highest overdose density rates per square mile in the
-            Midwest. The region has 23 active MAT clinic locations, but only 11
-            routinely accept walk-in patients, and fewer than 6 offer same-day
-            buprenorphine induction.
-          </p>
-          <p className="text-muted-foreground leading-relaxed mb-4">
-            Our platform maps every provider in the region with live status —
-            open/closed, accepting new patients, walk-in availability,
-            medication formulary. We connect people at the moment they're ready
-            to seek help — a{" "}
-            <strong className="text-foreground">72-hour window</strong> that, if
-            missed, rarely reopens.
-          </p>
-          <div className="border-t border-border pt-4">
-            <p className="text-muted-foreground leading-relaxed mb-2">
-              The same model —{" "}
-              <strong className="text-foreground">
-                zero PHI, real-time provider status, warm handoffs
-              </strong>{" "}
-              — works anywhere. West Virginia. Kentucky. Tennessee. New Mexico.
-              Any county with untreated OUD and willing providers.
-            </p>
-            <p className="text-brand-teal font-semibold">
-              We piloted in Ohio because Ohio is the proving ground. We built
-              for national scale.
-            </p>
-          </div>
-        </motion.div>
-
-        {/* ── BEFORE / AFTER ────────────────────────────────────────────── */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          className="bg-card rounded-2xl shadow-card border border-border p-6"
-        >
-          <h2 className="text-xl font-bold text-brand-teal mb-2">
-            What This Platform Changes
-          </h2>
-          <p className="text-muted-foreground leading-relaxed mb-3">
-            <strong className="text-foreground">
-              Before Live Now Recovery:
-            </strong>{" "}
-            a person in crisis calls 3 numbers before reaching an available
-            provider, waits 3.5 weeks for an appointment, and has a{" "}
-            <strong className="text-foreground">12% show-up rate</strong> for
-            cold referrals.
-          </p>
-          <p className="text-muted-foreground leading-relaxed mb-3">
-            <strong className="text-foreground">
-              After Live Now Recovery:
-            </strong>{" "}
-            that same person opens the app, finds three available providers
-            within 5 miles, and is connected to a warm handoff with an{" "}
-            <strong className="text-foreground">80%+ show-up rate</strong> — in
-            under 4 minutes.
-          </p>
-          <p className="text-muted-foreground leading-relaxed mb-6">
-            That's not speculative. That's what Vermont, Rhode Island, and
-            Portugal demonstrated at scale. Ohio has the infrastructure to
-            replicate it. We've built the platform.
-          </p>
-
-          {/* Animated stat comparison */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="border border-brand-teal/30 rounded-xl overflow-hidden"
-          >
-            <div className="bg-brand-teal/10 px-4 py-2.5 border-b border-brand-teal/20">
-              <p className="text-xs font-bold uppercase tracking-widest text-brand-teal">
-                By the Numbers
+                The Problem Isn't Treatment. It's Access.
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                Medication-Assisted Treatment works. The evidence is
+                overwhelming. The bottleneck is logistics — fragmented
+                directories, stale hours, no real-time availability, and zero
+                warm handoff infrastructure.
               </p>
-            </div>
-            <div className="divide-y divide-border">
-              {statRows.map((row) => (
-                <div
-                  key={row.label}
-                  className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4"
-                  data-ocid={`stat-row-${row.label.toLowerCase().replace(/\s+/g, "-")}`}
+            </motion.div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {gapStats.map((s, i) => (
+                <motion.div
+                  key={s.pct}
+                  variants={fadeUp}
+                  transition={{ delay: i * 0.08 }}
+                  className="bg-card border border-border rounded-2xl p-5 card-teal-accent flex flex-col gap-2"
+                  data-ocid={`gap-stat-${i}`}
                 >
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground mb-1">
-                      {row.label}
-                    </p>
-                    <p className="text-base font-bold text-foreground/50">
-                      {row.isPercent && row.beforeVal !== null ? (
-                        <>
-                          <CountUpStat target={row.beforeVal} suffix="%" />
-                        </>
-                      ) : (
-                        row.before
-                      )}
-                    </p>
-                  </div>
-                  <div className="text-brand-teal font-bold text-xl">→</div>
-                  <div>
-                    <p className="text-base font-bold text-brand-teal">
-                      {row.after}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {row.afterLabel}
-                    </p>
-                  </div>
-                </div>
+                  <p className="text-3xl font-extrabold text-brand-teal">
+                    {s.pct}
+                  </p>
+                  <p className="text-sm text-foreground font-medium leading-snug">
+                    {s.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-auto">
+                    {s.note}
+                  </p>
+                </motion.div>
               ))}
             </div>
-          </motion.div>
-        </motion.div>
 
-        {/* ── NATIONAL PICTURE ──────────────────────────────────────────── */}
-        <motion.section
-          variants={stagger}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          aria-labelledby="national-heading"
-        >
-          <motion.div variants={fadeUp} className="mb-5">
-            <h2
-              id="national-heading"
-              className="text-2xl sm:text-3xl font-bold text-brand-teal mb-3"
+            <motion.p
+              variants={fadeUp}
+              className="mt-5 text-muted-foreground leading-relaxed"
             >
-              What Happens When This Scales
+              These aren't policy failures. They're{" "}
+              <strong className="text-foreground">logistics failures.</strong>{" "}
+              The tools exist. The providers exist. The gap is real-time
+              coordination. That's what we built.
+            </motion.p>
+          </motion.section>
+
+          {/* ── MAT GAP NARRATIVE ─────────────────────────────────────────── */}
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-60px" }}
+            className="bg-card rounded-2xl shadow-card border border-border p-6"
+          >
+            <h2 className="text-xl font-bold text-brand-teal mb-4">
+              The NE Ohio MAT Access Gap
+            </h2>
+            <p className="text-muted-foreground leading-relaxed mb-3">
+              Ohio recorded{" "}
+              <strong className="text-foreground">
+                5,232 overdose deaths in 2023
+              </strong>{" "}
+              — the third-highest rate in the nation. Cuyahoga County alone
+              accounts for 600+ annually, with fentanyl involved in{" "}
+              <strong className="text-foreground">78% of cases</strong>. Despite
+              this, fewer than 1 in 3 Ohioans who need MAT can access it within
+              30 days of seeking help.
+            </p>
+            <p className="text-muted-foreground leading-relaxed mb-3">
+              The gap isn't clinical — MAT works. Buprenorphine reduces overdose
+              mortality by <strong className="text-foreground">73–80%</strong>.
+              Methadone maintenance reduces illicit opioid use by over{" "}
+              <strong className="text-foreground">60%</strong>. The gap is
+              logistical: fragmented directories, outdated hours, no real-time
+              availability, and no routing system for warm handoffs.
+            </p>
+            <p className="text-brand-teal font-semibold">
+              Live Now Recovery is the routing layer Ohio doesn't have — and
+              every hot-zone state desperately needs.
+            </p>
+          </motion.div>
+
+          {/* ── REGION 13 + NATIONAL SCOPE ────────────────────────────────── */}
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-60px" }}
+            className="bg-card rounded-2xl shadow-card border border-border p-6"
+          >
+            <h2 className="text-xl font-bold text-brand-teal mb-4">
+              Region 13 Coverage — and Beyond
+            </h2>
+            <p className="text-muted-foreground leading-relaxed mb-3">
+              ADAMHS Region 13 encompasses Cuyahoga, Geauga, Lake, and Medina
+              counties — a combined population of{" "}
+              <strong className="text-foreground">1.6 million</strong>, with one
+              of the highest overdose density rates per square mile in the
+              Midwest. The region has 23 active MAT clinic locations, but only
+              11 routinely accept walk-in patients, and fewer than 6 offer
+              same-day buprenorphine induction.
+            </p>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Our platform maps every provider in the region with live status —
+              open/closed, accepting new patients, walk-in availability,
+              medication formulary. We connect people at the moment they're
+              ready to seek help — a{" "}
+              <strong className="text-foreground">72-hour window</strong> that,
+              if missed, rarely reopens.
+            </p>
+            <div className="border-t border-border pt-4">
+              <p className="text-muted-foreground leading-relaxed mb-2">
+                The same model —{" "}
+                <strong className="text-foreground">
+                  zero PHI, real-time provider status, warm handoffs
+                </strong>{" "}
+                — works anywhere. West Virginia. Kentucky. Tennessee. New
+                Mexico. Any county with untreated OUD and willing providers.
+              </p>
+              <p className="text-brand-teal font-semibold">
+                We piloted in Ohio because Ohio is the proving ground. We built
+                for national scale.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* ── BEFORE / AFTER ────────────────────────────────────────────── */}
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-60px" }}
+            className="bg-card rounded-2xl shadow-card border border-border p-6"
+          >
+            <h2 className="text-xl font-bold text-brand-teal mb-2">
+              What This Platform Changes
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-3">
               <strong className="text-foreground">
-                110,000 Americans die of overdose every year.
+                Before Live Now Recovery:
               </strong>{" "}
-              The top 10 states by death rate account for 60% of those deaths —
-              and every one of them shares the same infrastructure gap Ohio has.
+              a person in crisis calls 3 numbers before reaching an available
+              provider, waits 3.5 weeks for an appointment, and has a{" "}
+              <strong className="text-foreground">12% show-up rate</strong> for
+              cold referrals.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-3">
-              Live Now Recovery doesn't need new science. It needs
-              infrastructure. The same canister that serves Cuyahoga County can
-              serve Kanawha County, WV or Clark County, NV —{" "}
-              <strong className="text-foreground">in days, not years.</strong>
+              <strong className="text-foreground">
+                After Live Now Recovery:
+              </strong>{" "}
+              that same person opens the app, finds three available providers
+              within 5 miles, and is connected to a warm handoff with an{" "}
+              <strong className="text-foreground">80%+ show-up rate</strong> —
+              in under 4 minutes.
             </p>
-            <p className="text-brand-teal font-semibold text-lg">
-              That's not a roadmap. That's a deployment.
+            <p className="text-muted-foreground leading-relaxed mb-6">
+              That's not speculative. That's what Vermont, Rhode Island, and
+              Portugal demonstrated at scale. Ohio has the infrastructure to
+              replicate it. We've built the platform.
             </p>
+
+            {/* Animated stat comparison */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="border border-brand-teal/30 rounded-xl overflow-hidden"
+            >
+              <div className="bg-brand-teal/10 px-4 py-2.5 border-b border-brand-teal/20">
+                <p className="text-xs font-bold uppercase tracking-widest text-brand-teal">
+                  By the Numbers
+                </p>
+              </div>
+              <div className="divide-y divide-border">
+                {statRows.map((row) => (
+                  <div
+                    key={row.label}
+                    className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4"
+                    data-ocid={`stat-row-${row.label.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {row.label}
+                      </p>
+                      <p className="text-base font-bold text-foreground/50">
+                        {row.isPercent && row.beforeVal !== null ? (
+                          <>
+                            <CountUpStat target={row.beforeVal} suffix="%" />
+                          </>
+                        ) : (
+                          row.before
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-brand-teal font-bold text-xl">→</div>
+                    <div>
+                      <p className="text-base font-bold text-brand-teal">
+                        {row.after}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {row.afterLabel}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           </motion.div>
 
-          {/* Hot-zone table */}
-          <motion.div
-            variants={fadeUp}
-            className="bg-card border border-border rounded-2xl overflow-hidden"
+          {/* ── NATIONAL PICTURE ──────────────────────────────────────────── */}
+          <motion.section
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-60px" }}
+            aria-labelledby="national-heading"
           >
-            <div className="bg-brand-teal/10 px-5 py-3 border-b border-brand-teal/20">
-              <p className="text-xs font-bold uppercase tracking-widest text-brand-teal">
-                Top Overdose Hot Zones — Deaths per 100k (CDC 2023)
+            <motion.div variants={fadeUp} className="mb-5">
+              <h2
+                id="national-heading"
+                className="text-2xl sm:text-3xl font-bold text-brand-teal mb-3"
+              >
+                What Happens When This Scales
+              </h2>
+              <p className="text-muted-foreground leading-relaxed mb-3">
+                <strong className="text-foreground">
+                  110,000 Americans die of overdose every year.
+                </strong>{" "}
+                The top 10 states by death rate account for 60% of those deaths
+                — and every one of them shares the same infrastructure gap Ohio
+                has.
               </p>
-            </div>
-            <div className="divide-y divide-border">
-              {hotZones.map((z, i) => (
-                <motion.div
-                  key={z.state}
-                  variants={fadeUp}
-                  transition={{ delay: i * 0.06 }}
-                  className={`flex items-center justify-between px-5 py-3 ${z.state === "Ohio" ? "bg-brand-teal/5" : ""}`}
-                  data-ocid={`hotzone-${z.state.toLowerCase().replace(/\s/g, "-")}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0
+              <p className="text-muted-foreground leading-relaxed mb-3">
+                Live Now Recovery doesn't need new science. It needs
+                infrastructure. The same canister that serves Cuyahoga County
+                can serve Kanawha County, WV or Clark County, NV —{" "}
+                <strong className="text-foreground">in days, not years.</strong>
+              </p>
+              <p className="text-brand-teal font-semibold text-lg">
+                That's not a roadmap. That's a deployment.
+              </p>
+            </motion.div>
+
+            {/* Hot-zone table */}
+            <motion.div
+              variants={fadeUp}
+              className="bg-card border border-border rounded-2xl overflow-hidden"
+            >
+              <div className="bg-brand-teal/10 px-5 py-3 border-b border-brand-teal/20">
+                <p className="text-xs font-bold uppercase tracking-widest text-brand-teal">
+                  Top Overdose Hot Zones — Deaths per 100k (CDC 2023)
+                </p>
+              </div>
+              <div className="divide-y divide-border">
+                {hotZones.map((z, i) => (
+                  <motion.div
+                    key={z.state}
+                    variants={fadeUp}
+                    transition={{ delay: i * 0.06 }}
+                    className={`flex items-center justify-between px-5 py-3 ${z.state === "Ohio" ? "bg-brand-teal/5" : ""}`}
+                    data-ocid={`hotzone-${z.state.toLowerCase().replace(/\s/g, "-")}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0
                         ${
                           z.rank === 1
                             ? "bg-destructive/20 text-destructive"
@@ -441,105 +512,106 @@ export function AboutPage() {
                               ? "bg-amber/20 text-amber-400"
                               : "bg-brand-teal/10 text-brand-teal"
                         }`}
-                    >
-                      {z.rank}
-                    </span>
-                    <span
-                      className={`font-semibold text-sm ${z.state === "Ohio" ? "text-brand-teal" : "text-foreground"}`}
-                    >
-                      {z.state}
-                      {z.state === "Ohio" && (
-                        <span className="ml-2 text-xs font-normal text-brand-teal/70 bg-brand-teal/10 px-2 py-0.5 rounded-full">
-                          Active pilot
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span
-                      className={`text-lg font-bold tabular-nums ${z.rank === 1 ? "text-destructive" : z.rank <= 3 ? "text-amber-400" : "text-foreground/70"}`}
-                    >
-                      {z.rate}
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-1">
-                      / 100k
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-            <div className="px-5 py-4 bg-brand-teal/5 border-t border-brand-teal/20">
-              <p className="text-sm text-muted-foreground">
-                A 10% reduction in overdose mortality across these 8 states
-                would prevent{" "}
-                <strong className="text-foreground">
-                  approximately 6,600 deaths annually
-                </strong>{" "}
-                and save an estimated{" "}
-                <strong className="text-brand-teal">
-                  $1.65 billion in healthcare costs.
-                </strong>
-              </p>
-            </div>
+                      >
+                        {z.rank}
+                      </span>
+                      <span
+                        className={`font-semibold text-sm ${z.state === "Ohio" ? "text-brand-teal" : "text-foreground"}`}
+                      >
+                        {z.state}
+                        {z.state === "Ohio" && (
+                          <span className="ml-2 text-xs font-normal text-brand-teal/70 bg-brand-teal/10 px-2 py-0.5 rounded-full">
+                            Active pilot
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span
+                        className={`text-lg font-bold tabular-nums ${z.rank === 1 ? "text-destructive" : z.rank <= 3 ? "text-amber-400" : "text-foreground/70"}`}
+                      >
+                        {z.rate}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-1">
+                        / 100k
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              <div className="px-5 py-4 bg-brand-teal/5 border-t border-brand-teal/20">
+                <p className="text-sm text-muted-foreground">
+                  A 10% reduction in overdose mortality across these 8 states
+                  would prevent{" "}
+                  <strong className="text-foreground">
+                    approximately 6,600 deaths annually
+                  </strong>{" "}
+                  and save an estimated{" "}
+                  <strong className="text-brand-teal">
+                    $1.65 billion in healthcare costs.
+                  </strong>
+                </p>
+              </div>
+            </motion.div>
+          </motion.section>
+
+          {/* ── TECHNOLOGY ────────────────────────────────────────────────── */}
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-60px" }}
+            className="bg-card rounded-2xl shadow-card border border-border p-6"
+          >
+            <h2 className="text-xl font-bold text-brand-teal mb-4">
+              Technology Choices
+            </h2>
+            <p className="text-muted-foreground leading-relaxed mb-3">
+              We chose the Internet Computer Protocol for one reason: it removes
+              every middleman between the platform and the people who need it.
+              No AWS. No Google Cloud. No centralized failure point. The
+              canister-based architecture means the platform stays online even
+              during infrastructure outages — exactly when demand is highest.
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+              The frontend is React/TypeScript with MapLibre GL for real-time
+              geospatial routing. The backend is Motoko — a memory-safe language
+              purpose-built for ICP's deterministic execution environment. All
+              provider data is stored in stable canister state, survives
+              upgrades, and is never exposed to third parties.
+            </p>
           </motion.div>
-        </motion.section>
 
-        {/* ── TECHNOLOGY ────────────────────────────────────────────────── */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          className="bg-card rounded-2xl shadow-card border border-border p-6"
-        >
-          <h2 className="text-xl font-bold text-brand-teal mb-4">
-            Technology Choices
-          </h2>
-          <p className="text-muted-foreground leading-relaxed mb-3">
-            We chose the Internet Computer Protocol for one reason: it removes
-            every middleman between the platform and the people who need it. No
-            AWS. No Google Cloud. No centralized failure point. The
-            canister-based architecture means the platform stays online even
-            during infrastructure outages — exactly when demand is highest.
-          </p>
-          <p className="text-muted-foreground leading-relaxed">
-            The frontend is React/TypeScript with MapLibre GL for real-time
-            geospatial routing. The backend is Motoko — a memory-safe language
-            purpose-built for ICP's deterministic execution environment. All
-            provider data is stored in stable canister state, survives upgrades,
-            and is never exposed to third parties.
-          </p>
-        </motion.div>
-
-        {/* ── PRIVACY ───────────────────────────────────────────────────── */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          className="bg-card rounded-2xl shadow-card border border-border p-6"
-        >
-          <h2 className="text-xl font-bold text-brand-teal mb-4">
-            Privacy Architecture: NO-PHI by Design
-          </h2>
-          <p className="text-muted-foreground leading-relaxed mb-3">
-            The NO-PHI policy is non-negotiable. We store provider logistics —
-            hours, location, medication availability — not patient data. No
-            names, no diagnoses, no contact information, no treatment history.
-            This isn't just HIPAA compliance; it's a deliberate design decision
-            rooted in understanding stigma.
-          </p>
-          <p className="text-muted-foreground leading-relaxed">
-            Research shows that fear of data exposure is one of the{" "}
-            <strong className="text-foreground">
-              top three barriers to MAT-seeking behavior
-            </strong>
-            . By building a platform that is architecturally incapable of
-            storing PHI — not just policy-restricted — we remove that barrier
-            entirely. Anonymous by default. Opt-in only. No exceptions.
-          </p>
-        </motion.div>
-      </div>
-    </main>
+          {/* ── PRIVACY ───────────────────────────────────────────────────── */}
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-60px" }}
+            className="bg-card rounded-2xl shadow-card border border-border p-6"
+          >
+            <h2 className="text-xl font-bold text-brand-teal mb-4">
+              Privacy Architecture: NO-PHI by Design
+            </h2>
+            <p className="text-muted-foreground leading-relaxed mb-3">
+              The NO-PHI policy is non-negotiable. We store provider logistics —
+              hours, location, medication availability — not patient data. No
+              names, no diagnoses, no contact information, no treatment history.
+              This isn't just HIPAA compliance; it's a deliberate design
+              decision rooted in understanding stigma.
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+              Research shows that fear of data exposure is one of the{" "}
+              <strong className="text-foreground">
+                top three barriers to MAT-seeking behavior
+              </strong>
+              . By building a platform that is architecturally incapable of
+              storing PHI — not just policy-restricted — we remove that barrier
+              entirely. Anonymous by default. Opt-in only. No exceptions.
+            </p>
+          </motion.div>
+        </div>
+      </main>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useActor } from "@caffeineai/core-infrastructure";
+import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CanisterStateSummary,
@@ -24,24 +24,22 @@ import type {
 // see providers on the map immediately without signing in.
 
 export function useAllProviders() {
-  const { actor } = useActor(createActor);
+  const { actor, isFetching } = useActor(createActor);
   return useQuery<ProviderWithStatus[]>({
     queryKey: ["allProviders"],
     queryFn: async () => {
-      if (!actor) return [];
-      try {
-        const result = await actor.getAllProviders();
-        console.log(`[useAllProviders] Loaded ${result.length} providers`);
-        return result;
-      } catch (err) {
-        console.error("[useAllProviders] Failed to fetch providers:", err);
-        return [];
-      }
+      if (!actor)
+        throw new Error("Backend not available — actor not initialized");
+      const result = await actor.getAllProviders();
+      console.log(`[useAllProviders] Loaded ${result.length} providers`);
+      return result;
     },
-    // enabled when actor exists — does NOT require user authentication
-    enabled: !!actor,
+    // Wait for actor to finish initializing before firing
+    enabled: !!actor && !isFetching,
     refetchInterval: 30_000,
-    retry: 2,
+    retry: 3,
+    retryDelay: 1000,
+    staleTime: 15_000,
   });
 }
 
@@ -143,17 +141,36 @@ export function useCanisterState() {
 
 export function useIsAdmin() {
   const { actor, isFetching } = useActor(createActor);
+  const { identity, loginStatus } = useInternetIdentity();
+  // Include the principal in the queryKey so a new query fires every time
+  // the authenticated identity changes (anonymous → signed-in admin).
+  const principalKey = identity?.getPrincipal().toText() ?? "anonymous";
   return useQuery<boolean>({
-    queryKey: ["isAdmin"],
+    queryKey: ["isAdmin", principalKey],
     queryFn: async () => {
-      if (!actor) return false;
-      try {
-        return await actor.isCallerAdmin();
-      } catch {
+      console.log(
+        `[useIsAdmin] Checking admin status for principal: ${principalKey} (loginStatus: ${loginStatus})`,
+      );
+      if (!actor) {
+        console.warn("[useIsAdmin] Actor not ready — returning false");
         return false;
+      }
+      try {
+        const result = await actor.isCallerAdmin();
+        console.log(`[useIsAdmin] isCallerAdmin() returned: ${result}`);
+        return result;
+      } catch (err) {
+        console.error("[useIsAdmin] isCallerAdmin() threw an error:", err);
+        // Re-throw so React Query surfaces this as an error state
+        // rather than silently caching false.
+        throw err;
       }
     },
     enabled: !!actor && !isFetching,
+    // Never use a stale cached result — always re-run when identity changes.
+    staleTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 

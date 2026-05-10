@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SEO } from "../components/SEO";
 import { useRegisterHelper } from "../hooks/useQueries";
 
 type ActiveForm = "helper" | "provider" | null;
@@ -467,6 +468,12 @@ export function SignupPage() {
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto bg-navy font-sans">
+      <SEO
+        title="Create Account | Live Now Recovery"
+        description="Create a recovery account to save resources, track handoffs, and earn community credentials on Live Now Recovery."
+        keywords="Live Now Recovery signup, create account, community helper, MAT provider signup"
+        canonical="/signup"
+      />
       {/* Hero */}
       <div className="max-w-2xl mx-auto px-6 pt-16 pb-10 text-center">
         {/* Logo / wordmark */}
@@ -530,7 +537,7 @@ export function SignupPage() {
             icon={<MedicalCrossIcon />}
             title="List as a Provider"
             description="Are you a Suboxone prescriber or MAT provider? Get found by people who need you right now."
-            blurb="Register your clinic, ER, or distribution point. Patients find you in real time. Cost Plus Drugs pricing integration available for transparent medication costs."
+            blurb="Register your clinic, ER, or distribution point. Patients find you in real time. Get verified and start receiving warm handoffs from peer specialists in your area."
             buttonLabel="Join as Provider"
             ocid="signup.provider.primary_button"
             onClick={() => setActiveForm("provider")}

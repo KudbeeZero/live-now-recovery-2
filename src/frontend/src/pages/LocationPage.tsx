@@ -13,7 +13,6 @@ import {
   BRIGHTSIDE_LOCATIONS,
   BrightsideAnchor,
 } from "../components/BrightsideAnchor";
-import { PriceComparisonCard } from "../components/PriceComparisonCard";
 import { SEO } from "../components/SEO";
 import { useAllProviders } from "../hooks/useQueries";
 
@@ -689,10 +688,6 @@ export function LocationPage({ townOverride }: { townOverride?: string }) {
             </div>
           )}
         </section>
-
-        <div className="mb-10">
-          <PriceComparisonCard />
-        </div>
 
         {hasBrightside && (
           <div className="mb-10">

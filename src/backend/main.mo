@@ -20,6 +20,7 @@ import VolunteerProfilesApi "mixins/volunteer-profiles-api";
 
 
 
+
 actor {
   // Management canister actor type alias for ICP HTTP outcalls
   type ICManagement = actor {
@@ -165,7 +166,7 @@ actor {
   var emergencyBridgeStatus : { isActive : Bool; activatedAt : Int; activatedBy : Principal } = {
     isActive = false;
     activatedAt = 0;
-    activatedBy = Principal.fromText("aaaaa-aa");
+    activatedBy = Principal.anonymous();
   };
 
   // Runtime state
@@ -901,7 +902,10 @@ actor {
       VolLib.seedMockVolunteers(volunteersById, nextVolunteerId);
     };
 
-    // Seed demo citizen reports if none exist
+    // NOTE: credential seed removed from init path to eliminate Principal.fromText()
+    // install-time trap risk. Call adminSeedCredentials() once after deploy to populate.
+
+        // Seed demo citizen reports if none exist
     if (citizenReports.isEmpty()) {
       let seedReports : [(Text, Text, Text, Text, Float, Float)] = [
         ("report-seed-01", "44101", "narcan-used", "Narcan administered near West Side Market. Person responsive.", 41.4842, -81.7022),
@@ -1660,5 +1664,20 @@ actor {
       };
     };
     results;
+  };
+
+  // ── Admin: seed demo credentials (one-time, after deploy) ────────────────────
+  /// Populates 18 demo credential records across all 12 types and 4 tiers.
+  /// Guard: no-op if credentials already exist.
+  /// Call once after fresh deploy to populate the leaderboard and gallery.
+  public shared ({ caller }) func adminSeedCredentials() : async Text {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can seed credentials");
+    };
+    if (not credentialsById.isEmpty()) {
+      return "Credentials already seeded — no action taken.";
+    };
+    CredLib.seedMockCredentials(credentialsById, credOwnerIndex, credImpactIndex, nextCredentialId);
+    "Seeded " # credentialsById.size().toText() # " credential records.";
   };
 }

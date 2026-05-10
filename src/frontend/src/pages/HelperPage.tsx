@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createActor } from "../backend";
+import { SEO } from "../components/SEO";
 import {
   useRegisterVolunteerProfile,
   useVolunteerCount,
@@ -398,6 +399,21 @@ export function HelperPage() {
 
   return (
     <main className="min-h-screen bg-background" data-ocid="helper.page">
+      <SEO
+        title="Become a Recovery Volunteer | Earn Soul-Bound Credentials — Live Now Recovery"
+        description="Join Ohio's recovery volunteer network. Choose your role, earn soul-bound credentials for every handoff and report, and build a permanent record of your community impact."
+        keywords="become recovery volunteer Ohio, peer support volunteer, harm reduction worker Ohio, ICP credentials volunteer, recovery coach Ohio signup"
+        canonical="/helper"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "VolunteerAction",
+          name: "Become a Recovery Volunteer",
+          agent: { "@type": "Organization", name: "Live Now Recovery" },
+          description:
+            "Join Ohio’s recovery volunteer network — earn permanent on-chain credentials for peer support, outreach, and harm reduction work.",
+          url: "https://live-now-recovery-3f2.caffeine.xyz/helper",
+        }}
+      />
       {/* Hero */}
       <section
         className="relative overflow-hidden"

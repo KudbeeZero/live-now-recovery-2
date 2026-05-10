@@ -73,16 +73,18 @@ export function LeaderboardPage() {
   return (
     <main className="min-h-screen bg-background" data-ocid="leaderboard.page">
       <SEO
-        title="Community Leaderboard | Live Now Recovery"
-        description="Top contributors building the recovery movement on Live Now Recovery — pseudonymous, on-chain credentials earned through real community action."
-        keywords="recovery leaderboard, MAT community leaders, harm reduction contributors, ICP credentials Ohio"
+        title="Recovery Impact Leaderboard | Top Contributors — Live Now Recovery"
+        description="The top 50 contributors to Ohio's recovery network — ranked by impact score, earned through real community action. Credentials are soul-bound on the Internet Computer."
+        keywords="recovery leaderboard, MAT community leaders, harm reduction contributors, ICP soul-bound credentials, Ohio recovery community"
         canonical="/leaderboard"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "ItemList",
           name: "Live Now Recovery Community Leaderboard",
           description:
-            "Top 50 community contributors ranked by impact score on Live Now Recovery",
+            "Top 50 community contributors ranked by on-chain impact score — earned through real recovery coordination actions in Ohio.",
+          numberOfItems: 50,
+          url: "https://live-now-recovery-3f2.caffeine.xyz/leaderboard",
         }}
       />
 
@@ -295,7 +297,7 @@ export function LeaderboardPage() {
                 Donate $5 →
               </Link>
               <Link
-                to="/citizens"
+                to="/hub"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors"
                 data-ocid="leaderboard.citizens_button"
               >

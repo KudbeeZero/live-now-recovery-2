@@ -29,10 +29,7 @@ const FAQS = [
     q: "What is the 4-hour decay rule?",
     a: "The 4-hour decay rule is a hard architectural rule in the backend canister. Any provider whose last verification timestamp is more than 4 hours old automatically has their isLive status set to false. This prevents stale data from appearing as active — which is critical when someone in crisis is relying on this information to make a real-time decision. It was designed this way intentionally: accuracy over appearance.",
   },
-  {
-    q: "What is the Cost Plus Drugs pricing card?",
-    a: "Every provider page displays a transparent pricing comparison for buprenorphine/naloxone (generic Suboxone). At most retail pharmacies, a 30-day supply costs approximately $185. At Mark Cuban Cost Plus Drugs (NCPDP 5755167), the same medication costs $45.37 — a 75% reduction. Any prescriber can call in a prescription there. Cost is one of the most frequently cited barriers to MAT access; this card exists to eliminate the excuse that it's unaffordable.",
-  },
+
   {
     q: "Does this app replace my doctor or treatment provider?",
     a: "No. Live Now Recovery is a discovery and navigation tool — not a clinical service. It helps you find a provider who is available right now. All clinical decisions, prescriptions, and treatment plans are made by licensed providers in person. Think of this platform like a real-time GPS for treatment access — it gets you to the right door faster, but what happens inside is between you and your care team.",
@@ -92,9 +89,9 @@ export function FAQPage() {
     <main className="min-h-screen" data-ocid="faq.page">
       {" "}
       <SEO
-        title="Frequently Asked Questions | Live Now Recovery"
-        description="Answers to common questions about medication-assisted treatment, using Live Now Recovery, and finding recovery resources in Ohio."
-        keywords="MAT FAQ, addiction treatment questions Ohio, recovery app FAQ, what is medication-assisted treatment"
+        title="FAQ | Live Now Recovery — Recovery Platform Questions Answered"
+        description="Answers to common questions about Live Now Recovery, MAT treatment, Narcan access, volunteer credentials, and how the Internet Computer protects your privacy."
+        keywords="MAT FAQ, addiction treatment questions Ohio, Narcan Ohio FAQ, warm handoff explained, ICP privacy, recovery credentials FAQ"
         canonical="/faq"
         jsonLd={{
           "@context": "https://schema.org",
@@ -137,35 +134,106 @@ export function FAQPage() {
               name: "How much does MAT cost in Ohio?",
               acceptedAnswer: {
                 "@type": "Answer",
-                text: "Many Ohio MAT clinics accept Medicaid, offer sliding scale fees, or provide free treatment through state funding. Cost Plus Drugs offers buprenorphine-naloxone at significantly reduced prices.",
+                text: "Many Ohio MAT clinics accept Medicaid, offer sliding scale fees, or provide free treatment through state funding. Contact your provider or local ADAMHS board for cost assistance options.",
               },
             },
           ],
         }}
       />
       {/* Hero */}
-      <section className="bg-navy px-4 py-16 md:py-20">
-        <motion.div
-          className="max-w-3xl mx-auto"
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <HelpCircle className="w-5 h-5 text-live-green" />
-            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
-              Answers
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.12 0.04 210) 0%, oklch(0.16 0.06 195) 50%, oklch(0.11 0.03 240) 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 60% at 50% 40%, oklch(0.62 0.12 218 / 0.08) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative z-10 max-w-3xl mx-auto px-4 py-20 md:py-28">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 mb-6">
+              <HelpCircle className="w-3.5 h-3.5 text-teal-300" />
+              <span className="text-xs font-semibold text-teal-300 uppercase tracking-widest">
+                Frequently Asked Questions
+              </span>
+            </div>
+            <h1 className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight">
+              <span className="text-foreground">Frequently Asked</span>
+              <span className="text-brand-teal"> Questions</span>
+            </h1>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-8">
+              Everything you need to know about accessing recovery resources,
+              using the platform, and how Sentinel works — with evidence, not
+              assumptions.
             </p>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-brand-teal mb-4 leading-tight">
-            Your Questions, Answered
-          </h1>
-          <p className="text-on-dark text-lg leading-relaxed">
-            Everything you need to know about how Live Now Recovery works, what
-            it does and doesn't store, and why MAT is the standard of care —
-            with evidence, not assumptions.
-          </p>
-        </motion.div>
+            {/* Stat counters */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              {[
+                { value: "20+", label: "Questions Answered" },
+                {
+                  value: "5,232",
+                  label: "Ohio Deaths in 2023 — We're Fighting Back",
+                },
+                { value: "Free", label: "Platform for All Users" },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  className="bg-teal-500/10 border border-teal-500/30 rounded-xl px-4 py-3 text-center"
+                >
+                  <p className="text-2xl font-extrabold text-brand-teal">
+                    {s.value}
+                  </p>
+                  <p className="text-xs text-teal-200/80 mt-1 leading-snug">
+                    {s.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                {
+                  label: "MAT Treatment",
+                  color: "bg-teal-500/10 text-teal-300 border-teal-500/30",
+                },
+                {
+                  label: "Privacy",
+                  color: "bg-blue-500/10 text-blue-300 border-blue-500/30",
+                },
+                {
+                  label: "How to Use",
+                  color:
+                    "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+                },
+                {
+                  label: "Harm Reduction",
+                  color: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+                },
+                {
+                  label: "Providers",
+                  color:
+                    "bg-purple-500/10 text-purple-300 border-purple-500/30",
+                },
+              ].map((cat) => (
+                <span
+                  key={cat.label}
+                  className={`px-3 py-1.5 rounded-full border text-xs font-semibold ${cat.color}`}
+                >
+                  {cat.label}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        </div>
       </section>
       <div className="max-w-3xl mx-auto px-4 py-12 space-y-10">
         {/* Why MAT? section */}

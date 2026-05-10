@@ -40,7 +40,6 @@ import {
   useCanisterState,
   useHandoffCountsByZip,
   useIsAdmin,
-  useTotalCostPlusReferrals,
   useTotalHandoffs,
 } from "../hooks/useQueries";
 import { usePredictionEngineStore } from "../store/predictionEngineStore";
@@ -296,8 +295,7 @@ export function DashboardPage() {
     useTotalHandoffs();
   const { data: handoffsByZip = [], isLoading: zipLoading } =
     useHandoffCountsByZip();
-  const { data: totalReferrals, isLoading: referralsLoading } =
-    useTotalCostPlusReferrals();
+
   const { data: canisterState, isLoading: canisterLoading } =
     useCanisterState();
 
@@ -323,7 +321,8 @@ export function DashboardPage() {
     );
   }
 
-  if (!isAdmin) return <AccessGate />;
+  // Admin bypass — admin users have full access to all pages
+  if (!isAdmin && !adminLoading) return <AccessGate />;
 
   // ── Derived data ────────────────────────────────────────────────────────────
   const activeProviders = providers.filter((p) => p.isLive);
@@ -464,7 +463,6 @@ export function DashboardPage() {
         activeProviders: activeProviders.length,
         totalProviders: providers.length,
         verifiedProviders: verifiedProviders.length,
-        totalCostPlusReferrals: totalReferrals?.toString() ?? "0",
       },
       handoffsByZip: handoffsByZip.map(([zip, count]) => ({
         zip,
@@ -612,14 +610,7 @@ export function DashboardPage() {
             loading={providersLoading}
             subtitle="Currently live on the platform"
           />
-          <StatCard
-            label="Cost Plus Referrals"
-            value={referralsLoading ? "…" : (totalReferrals ?? 0n).toString()}
-            icon={Zap}
-            color={AMBER}
-            loading={referralsLoading}
-            subtitle="Patients referred to Cost Plus Rx"
-          />
+
           <StatCard
             label="Verified Providers"
             value={providersLoading ? "…" : verifiedProviders.length}

@@ -18,6 +18,8 @@ import {
 import { Helmet } from "react-helmet-async";
 import { AchievementTimeline } from "../components/AchievementTimeline";
 import { BadgeGrid } from "../components/BadgeGrid";
+import { CredentialAwardModal } from "../components/CredentialAwardModal";
+import { useCredentialAward } from "../hooks/useCredentialAward";
 import type { Credential } from "../types/credentials";
 
 // ─── Mock volunteer data (1–15) ──────────────────────────────────────────────
@@ -1132,6 +1134,9 @@ export function VolunteerProfilePage() {
   const numId = Number(params.id ?? "");
   const volunteer = Number.isFinite(numId) ? MOCK_VOLUNTEERS[numId] : null;
 
+  // Award modal for profile owner view
+  const { awardedCredential, dismissAward } = useCredentialAward();
+
   const pageTitle = volunteer
     ? `${volunteer.displayName} — ${volunteer.role} Volunteer | Live Now Recovery`
     : "Volunteer Profile | Live Now Recovery";
@@ -1170,6 +1175,10 @@ export function VolunteerProfilePage() {
 
   return (
     <main className="min-h-screen py-6 px-4" data-ocid="volunteer_profile.page">
+      <CredentialAwardModal
+        credential={awardedCredential}
+        onDismiss={dismissAward}
+      />
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { SEO } from "../components/SEO";
 import { useRegisterProvider } from "../hooks/useQueries";
 
 async function geocodeAddress(
@@ -184,19 +185,42 @@ export function RegisterPage() {
   // Main registration form
   return (
     <main className="min-h-screen" data-ocid="register.page">
-      {/* Dark hero header */}
-      <section className="bg-navy px-4 py-16">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center gap-2 mb-3">
-            <ClipboardList className="w-5 h-5 text-live-green" />
-            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+      <SEO
+        title="Register as a Provider | Live Now Recovery — MAT & Harm Reduction Network"
+        description="Register your MAT clinic, pharmacy, or harm reduction organization on Live Now Recovery to connect with patients seeking help in Ohio."
+        keywords="register MAT provider Ohio, harm reduction provider signup, Suboxone clinic listing, Live Now Recovery provider"
+        canonical="/register"
+      />
+      {/* Hero */}
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.12 0.04 210) 0%, oklch(0.16 0.06 195) 50%, oklch(0.11 0.03 240) 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 60% at 30% 50%, oklch(0.62 0.12 218 / 0.07) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative z-10 max-w-lg mx-auto px-4 py-14 md:py-18">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 mb-5">
+            <ClipboardList className="w-3.5 h-3.5 text-teal-300" />
+            <span className="text-xs font-semibold text-teal-300 uppercase tracking-widest">
               Provider Intake
-            </p>
+            </span>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3">
-            Provider <span className="text-live-green">Registration</span>
+          <h1 className="text-4xl font-bold mb-3 leading-tight">
+            <span className="text-foreground">Register Your</span>{" "}
+            <span className="text-brand-teal">Organization</span>
           </h1>
-          <p className="text-on-dark">MAT clinic intake — Ohio Region 13</p>
+          <p className="text-muted-foreground text-lg">
+            Join the Live Now Recovery network. Get found by people seeking help
+            in Ohio — MAT clinics, harm reduction sites, ERs, and more.
+          </p>
         </div>
       </section>
 

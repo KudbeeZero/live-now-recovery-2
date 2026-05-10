@@ -1,15 +1,37 @@
+import { SEO } from "../components/SEO";
+
 export function PrivacyPage() {
   return (
     <div className="min-h-screen">
+      <SEO
+        title="Privacy Policy | Live Now Recovery — Zero PHI Guarantee"
+        description="Live Now Recovery's privacy policy — no protected health information ever stored. All data is logistics-only. Full HIPAA-compliance statement."
+        keywords="Live Now Recovery privacy, NO-PHI policy, healthcare privacy, HIPAA MAT platform"
+        canonical="/privacy"
+      />
       {/* Header */}
-      <section className="bg-[oklch(0.14_0.018_225)] border-b border-border py-16 px-4">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold text-[oklch(0.62_0.17_155)] mb-2">
+      <section
+        className="relative overflow-hidden border-b border-border"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.12 0.04 210) 0%, oklch(0.16 0.06 195) 60%, oklch(0.11 0.03 240) 100%)",
+        }}
+      >
+        <div className="max-w-4xl mx-auto px-4 py-14 md:py-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 mb-4">
+            <span className="w-2 h-2 rounded-full bg-teal-400" />
+            <span className="text-xs font-semibold text-teal-300 uppercase tracking-widest">
+              Legal
+            </span>
+          </div>
+          <h1 className="text-4xl font-bold text-brand-teal mb-2">
             Privacy Policy
           </h1>
-          <p className="text-[oklch(0.72_0.03_225)] text-lg">
-            Effective April 2026
+          <p className="text-muted-foreground text-lg">
+            We take privacy seriously — especially in healthcare. No patient
+            health information (PHI) is ever stored or transmitted.
           </p>
+          <p className="text-teal-300/60 text-sm mt-2">Effective April 2026</p>
         </div>
       </section>
 
@@ -125,11 +147,11 @@ const sections = [
     title: "Third-Party Links",
     content: (
       <p>
-        This platform includes links to third-party services, including Cost
-        Plus Drugs (costplusdrugs.com) for medication pricing transparency. When
-        you follow a link to a third-party site, you leave the Live Now Recovery
-        platform and that site's own privacy policy applies. We encourage you to
-        review the privacy policies of any site you visit.
+        This platform includes links to third-party services such as provider
+        websites, public health resources, and crisis helplines. When you follow
+        a link to a third-party site, you leave the Live Now Recovery platform
+        and that site's own privacy policy applies. We encourage you to review
+        the privacy policies of any site you visit.
       </p>
     ),
   },

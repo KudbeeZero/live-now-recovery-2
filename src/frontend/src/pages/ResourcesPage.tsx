@@ -13,9 +13,49 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SEO } from "../components/SEO";
 import type { ResourceOrg } from "../types/community";
+
+// ─── AnimatedCounter for hero ───────────────────────────────────────────────
+function AnimatedCounter({
+  target,
+  suffix = "",
+}: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !started.current) {
+          started.current = true;
+          const steps = 60;
+          const increment = target / steps;
+          let current = 0;
+          const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+              setCount(target);
+              clearInterval(timer);
+            } else setCount(Math.floor(current));
+          }, 1800 / steps);
+        }
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target]);
+  return (
+    <span ref={ref}>
+      {count.toLocaleString()}
+      {suffix}
+    </span>
+  );
+}
 
 // ─── Static data ─────────────────────────────────────────────────────────────
 
@@ -60,7 +100,7 @@ const TREATMENTS = [
     notes: [
       "No daily clinic visit required",
       "Available at primary care offices",
-      "Generic ~$45/mo via Cost Plus Drugs",
+      "Covered by Medicaid in Ohio",
     ],
   },
   {
@@ -485,27 +525,85 @@ export function ResourcesPage() {
     <main className="min-h-screen" data-ocid="resources.page">
       {" "}
       <SEO
-        title="Recovery Resources in Ohio | Live Now Recovery"
-        description="Find food assistance, housing, employment help, bill assistance, and peer support resources for people in recovery across Ohio."
-        keywords="recovery resources Ohio, food assistance recovery, housing sober living Ohio, peer support Ohio"
+        title="Recovery Resources in Ohio | Food, Housing, MAT, Peer Support"
+        description="Free recovery resources across Ohio — food assistance, housing help, employment programs, bill assistance, and peer support organizations. Updated and verified."
+        keywords="recovery resources Ohio, food assistance recovery, housing sober living Ohio, peer support Ohio, employment recovery, harm reduction supplies Ohio"
         canonical="/resources"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Ohio Recovery Resources Directory",
+          description:
+            "Verified recovery support resources across Ohio — food, housing, employment, peer support, and harm reduction organizations.",
+          url: "https://live-now-recovery-3f2.caffeine.xyz/resources",
+          creator: { "@type": "Organization", name: "Live Now Recovery" },
+        }}
       />
       {/* Hero */}
-      <section className="bg-navy px-4 py-16">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 mb-3">
-            <Heart className="w-4 h-4 text-live-green" />
-            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.12 0.04 210) 0%, oklch(0.16 0.06 195) 50%, oklch(0.11 0.03 240) 100%)",
+        }}
+      >
+        {/* Decorative overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 60% at 70% 40%, oklch(0.62 0.12 218 / 0.08) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative z-10 max-w-5xl mx-auto px-4 py-20 md:py-28">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 mb-6">
+            <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+            <span className="text-xs font-semibold text-teal-300 uppercase tracking-widest">
               Help Is Here
-            </p>
+            </span>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3">
-            Ohio Recovery <span className="text-live-green">Resources</span>
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">
+            <span className="text-foreground">Ohio Recovery </span>
+            <span className="text-brand-teal">Resources</span>
           </h1>
-          <p className="text-on-dark text-lg max-w-2xl">
-            Crisis lines, treatment guides, and a full directory of food,
-            housing, employment, and peer support organizations across Ohio.
+          <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed mb-10">
+            Crisis hotlines, naloxone access, treatment guides, and a full
+            directory of food, housing, employment, and peer support
+            organizations across Ohio — all free, all real.
           </p>
+          {/* Animated stat counters */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mb-10">
+            {[
+              { target: 4, suffix: "", label: "Crisis Hotlines" },
+              { target: 25, suffix: "+", label: "Organizations" },
+              { target: 5, suffix: "", label: "Resource Types" },
+              { target: 20, suffix: "+", label: "Ohio Cities" },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="bg-card/60 backdrop-blur-sm border border-border rounded-xl py-4 px-3 text-center"
+              >
+                <p className="text-2xl md:text-3xl font-extrabold text-brand-teal">
+                  <AnimatedCounter target={s.target} suffix={s.suffix} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              document
+                .getElementById("directory")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold px-8 py-3 rounded-xl text-sm shadow-lg shadow-teal-900/30 transition-all"
+            data-ocid="resources.hero.cta"
+          >
+            <Heart className="w-4 h-4" />
+            Browse All Resources
+          </button>
         </div>
       </section>
       <div className="max-w-5xl mx-auto px-4 py-12">
@@ -684,7 +782,7 @@ export function ResourcesPage() {
         </section>
 
         {/* ─── Community Resource Directory ─────────────────────────────────── */}
-        <section data-ocid="resources.directory">
+        <section id="directory" data-ocid="resources.directory">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-primary" />
             <h2 className="text-xl font-bold text-foreground">

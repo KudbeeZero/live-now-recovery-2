@@ -2,8 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import type { CredentialType } from "../backend";
+import { SEO } from "../components/SEO";
 import { ShareableCredentialCard } from "../components/ShareableCredentialCard";
 import { getBadgeSvg } from "../components/badge-svgs";
 import {
@@ -409,30 +409,13 @@ export default function GalleryPage() {
 
   return (
     <>
-      <Helmet>
-        <title>Impact Gallery — Live Now Recovery</title>
-        <meta
-          name="description"
-          content="Browse soul-bound credentials earned on the Live Now Recovery platform. Every badge is a verified act of service in the opioid crisis response — permanently recorded on ICP."
-        />
-        <meta
-          property="og:title"
-          content="Impact Gallery — Live Now Recovery"
-        />
-        <meta
-          property="og:description"
-          content="Soul-bound achievement credentials earned by community members, peer support specialists, and clinical providers fighting the opioid crisis."
-        />
-        <meta property="og:url" content="https://livenowrecovery.org/gallery" />
-        <meta property="og:type" content="website" />
-        <link rel="canonical" href="https://livenowrecovery.org/gallery" />
-      </Helmet>
-
-      {/* JSON-LD OUTSIDE Helmet — sibling, not nested */}
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted static JSON-LD, no user input
-        dangerouslySetInnerHTML={{ __html: jsonLd }}
+      <SEO
+        title="Impact Gallery | Soul-Bound Recovery Credentials — Live Now Recovery"
+        description="Browse earned recovery credentials on the Internet Computer. Each badge is soul-bound, pseudonymous, and permanently verified on-chain. Filter by tier and impact."
+        keywords="soul-bound credentials ICP, recovery badge gallery, harm reduction credentials Ohio, on-chain recovery certificates, MAT community achievements"
+        canonical="/gallery"
+        ogType="website"
+        jsonLd={JSON.parse(jsonLd)}
       />
 
       <main className="min-h-screen bg-background" data-ocid="gallery.page">

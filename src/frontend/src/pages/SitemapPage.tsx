@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
+import { SEO } from "../components/SEO";
 
 const sections = [
   {
@@ -76,74 +77,97 @@ const sections = [
 
 export function SitemapPage() {
   return (
-    <main className="min-h-screen" data-ocid="sitemap.page">
-      {/* Dark hero header */}
-      <section className="bg-navy px-4 py-16">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-2 mb-3">
-            <ExternalLink className="w-4 h-4 text-live-green" />
-            <p className="text-xs font-bold uppercase tracking-widest text-live-green">
-              Navigation
+    <>
+      <SEO
+        title="Sitemap | Live Now Recovery"
+        description="Full site navigation index for Live Now Recovery — Ohio's real-time MAT and harm reduction platform."
+        keywords="Live Now Recovery sitemap, site navigation, Ohio MAT platform pages"
+        canonical="/sitemap"
+      />
+      <main className="min-h-screen" data-ocid="sitemap.page">
+        {/* Hero */}
+        <section
+          className="relative overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(135deg, oklch(0.12 0.04 210) 0%, oklch(0.16 0.06 195) 50%, oklch(0.11 0.03 240) 100%)",
+          }}
+        >
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse 70% 60% at 50% 50%, oklch(0.62 0.12 218 / 0.07) 0%, transparent 70%)",
+            }}
+          />
+          <div className="relative z-10 max-w-4xl mx-auto px-4 py-16 md:py-20">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 mb-5">
+              <ExternalLink className="w-3.5 h-3.5 text-teal-300" />
+              <span className="text-xs font-semibold text-teal-300 uppercase tracking-widest">
+                Site Navigation
+              </span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-3 leading-tight">
+              <span className="text-foreground">Site Map — </span>
+              <span className="text-brand-teal">Explore Live Now Recovery</span>
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Complete navigation index for all platform features, resources,
+              and Ohio city pages.
             </p>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3">
-            Site <span className="text-live-green">Map</span>
-          </h1>
-          <p className="text-on-dark text-lg">
-            Every page in the Live Now Recovery platform.
-          </p>
-        </div>
-      </section>
+        </section>
 
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <div className="grid gap-10">
-          {sections.map((section) => (
-            <section key={section.title} data-ocid="sitemap.section">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-4 pb-2 border-b border-border">
-                {section.title}
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {section.links.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors py-2 px-3 rounded-lg hover:bg-white/5 flex items-center gap-1.5"
-                    data-ocid="sitemap.link"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <div className="grid gap-10">
+            {sections.map((section) => (
+              <section key={section.title} data-ocid="sitemap.section">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-4 pb-2 border-b border-border">
+                  {section.title}
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {section.links.map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors py-2 px-3 rounded-lg hover:bg-white/5 flex items-center gap-1.5"
+                      data-ocid="sitemap.link"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
 
-        <div className="mt-16 pt-8 border-t border-border text-center space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Machine-readable sitemap:{" "}
-            <a
-              href="/sitemap.xml"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline font-mono"
-            >
-              /sitemap.xml
-            </a>
-          </p>
-          <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()}. Built with love using{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              caffeine.ai
-            </a>
-          </p>
+          <div className="mt-16 pt-8 border-t border-border text-center space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Machine-readable sitemap:{" "}
+              <a
+                href="/sitemap.xml"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-mono"
+              >
+                /sitemap.xml
+              </a>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              &copy; {new Date().getFullYear()}. Built with love using{" "}
+              <a
+                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                caffeine.ai
+              </a>
+            </p>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
