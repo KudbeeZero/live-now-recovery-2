@@ -1,6 +1,9 @@
+import { useActor } from "@caffeineai/core-infrastructure";
 import { useState } from "react";
+import { createActor } from "../backend";
 import { SEO } from "../components/SEO";
 import { useRegisterHelper } from "../hooks/useQueries";
+import { notifyAdminIfEnabled } from "../utils/adminNotify";
 
 type ActiveForm = "helper" | "provider" | null;
 
@@ -145,6 +148,7 @@ function HelperForm({ onBack }: { onBack: () => void }) {
   const [submitError, setSubmitError] = useState("");
 
   const registerHelper = useRegisterHelper();
+  const { actor } = useActor(createActor);
 
   function validate() {
     const errs: Record<string, string> = {};
@@ -177,6 +181,15 @@ function HelperForm({ onBack }: { onBack: () => void }) {
         agreed: true,
       });
       setSubmitted(true);
+      // Fire-and-forget admin notification
+      if (actor) {
+        notifyAdminIfEnabled(
+          actor,
+          "newVolunteer",
+          "[Live Now Recovery] New Volunteer Signup",
+          `A new volunteer has registered:\n\nName: ${firstName.trim()}\nZIP: ${zip.trim()}\nRole: ${reason.trim() || "general-volunteer"}\n\nReview in the admin dashboard: /admin`,
+        );
+      }
     } catch {
       setSubmitError("Something went wrong. Please try again.");
     }

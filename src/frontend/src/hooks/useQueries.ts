@@ -214,7 +214,19 @@ export function useRegisterProvider() {
       providerType: string;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.registerProvider(id, name, lat, lng, providerType);
+      await actor.registerProvider(id, name, lat, lng, providerType);
+      // Fire-and-forget admin notification
+      try {
+        const { notifyAdminIfEnabled } = await import("../utils/adminNotify");
+        await notifyAdminIfEnabled(
+          actor,
+          "newProvider",
+          "[Live Now Recovery] New Provider Registration",
+          `A new provider has registered:\n\nName: ${name}\nType: ${providerType}\n\nReview in the admin dashboard: /admin`,
+        );
+      } catch {
+        /* silent */
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allProviders"] });
@@ -658,6 +670,18 @@ export function useSubmitCitizenReport() {
         report.lat ?? null,
         report.lng ?? null,
       );
+      // Fire-and-forget admin notification
+      try {
+        const { notifyAdminIfEnabled } = await import("../utils/adminNotify");
+        await notifyAdminIfEnabled(
+          actor,
+          "newReport",
+          "[Live Now Recovery] New Citizen Report",
+          `A new community report was submitted:\n\nLocation: ${report.zipCode}\nType: ${report.activityType}\nSubmitted: ${new Date().toLocaleString()}\n\nView in the admin dashboard: /admin`,
+        );
+      } catch {
+        /* silent */
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["citizenReports"] });

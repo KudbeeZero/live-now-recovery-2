@@ -1,5 +1,6 @@
 import { useActor } from "@caffeineai/core-infrastructure";
 import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { createActor } from "../backend";
 
@@ -883,7 +884,159 @@ function ContactForm() {
 }
 
 // ─── Main PitchPage ───────────────────────────────────────────────────────────
-export function PitchPage() {
+// ─── Pitch Gate ───────────────────────────────────────────────────────────────────
+const GATE_STYLES = `
+  @keyframes gateShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+  }
+  .gate-shake { animation: gateShake 0.45s ease-in-out; }
+`;
+
+function PitchGate({ onGranted }: { onGranted: () => void }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [shaking, setShaking] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const CORRECT = "RECOVERY";
+
+  function attempt() {
+    if (code.trim().toUpperCase() === CORRECT) {
+      sessionStorage.setItem("pitch_access", "granted");
+      onGranted();
+    } else {
+      setShaking(true);
+      setError("Invalid access code");
+      setTimeout(() => setShaking(false), 500);
+      setTimeout(() => setError(""), 3000);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") attempt();
+  }
+
+  return (
+    <>
+      <style>{GATE_STYLES}</style>
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-4"
+        style={{ background: "#0a0f1e" }}
+        data-ocid="pitch.gate"
+      >
+        <div className="w-full max-w-sm text-center">
+          {/* Wordmark */}
+          <p
+            className="mb-1"
+            style={{
+              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              fontSize: "1.25rem",
+              fontWeight: 700,
+              color: "#f5f5f0",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Live Now Recovery
+          </p>
+          <p
+            className="mb-10"
+            style={{
+              fontFamily: "'Courier New', ui-monospace, monospace",
+              fontSize: "0.7rem",
+              color: "rgba(245,245,240,0.45)",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+            }}
+          >
+            Investor Brief — Private Access
+          </p>
+
+          {/* Input */}
+          <div className={shaking ? "gate-shake" : ""}>
+            <input
+              ref={inputRef}
+              type="text"
+              value={code}
+              onChange={(e) => {
+                setCode(e.target.value);
+                if (error) setError("");
+              }}
+              onKeyDown={handleKeyDown}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Enter access code"
+              style={{
+                width: "100%",
+                background: "rgba(245,245,240,0.04)",
+                border: error
+                  ? "1px solid rgba(248,113,113,0.7)"
+                  : "1px solid rgba(245,245,240,0.12)",
+                borderRadius: "3px",
+                padding: "0.875rem 1rem",
+                fontSize: "0.9rem",
+                color: "#f5f5f0",
+                fontFamily: "'Courier New', ui-monospace, monospace",
+                outline: "none",
+                minHeight: "48px",
+                boxSizing: "border-box" as const,
+                textAlign: "center",
+                letterSpacing: "0.12em",
+                transition: "border-color 0.2s",
+              }}
+              data-ocid="pitch.gate_input"
+            />
+            {error && (
+              <p
+                style={{
+                  color: "#f87171",
+                  fontSize: "0.78rem",
+                  marginTop: "0.5rem",
+                  textAlign: "center",
+                  fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+                }}
+                data-ocid="pitch.gate_error_state"
+              >
+                {error}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={attempt}
+            style={{
+              width: "100%",
+              marginTop: "1rem",
+              padding: "0.9rem 1.5rem",
+              background: "#00c896",
+              color: "#0a0f1e",
+              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+              fontSize: "0.875rem",
+              fontWeight: 700,
+              border: "none",
+              borderRadius: "3px",
+              cursor: "pointer",
+              minHeight: "48px",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase" as const,
+              transition: "background 0.2s",
+            }}
+            data-ocid="pitch.gate_submit"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Pitch Content (original page body) ──────────────────────────────────────────
+function PitchContent() {
   const { providerCount, handoffCount, volunteerCount } = usePitchStats();
 
   return (
@@ -894,13 +1047,13 @@ export function PitchPage() {
         {/* Grain overlay */}
         <div className="pitch-grain" aria-hidden="true" />
 
-        {/* ── Fixed top bar ──────────────────────────────────────────────── */}
+        {/* ── Fixed top bar ────────────────────────────────────────── */}
         <header className="pitch-topbar" data-ocid="pitch.topbar">
           <span className="pitch-wordmark">Live Now Recovery</span>
           <span className="pitch-domain">livenowrecovery.org</span>
         </header>
 
-        {/* ── Section 1 — Hero ─────────────────────────────────────────── */}
+        {/* ── Section 1 — Hero ─────────────────────────────────── */}
         <section
           className="pitch-section pitch-bg-navy"
           style={{ minHeight: "100vh", justifyContent: "center" }}
@@ -971,7 +1124,7 @@ export function PitchPage() {
           </div>
         </section>
 
-        {/* ── Section 2 — The Problem ───────────────────────────────────── */}
+        {/* ── Section 2 — The Problem ────────────────────────────── */}
         <section
           id="problem"
           className="pitch-section pitch-bg-charcoal"
@@ -1022,7 +1175,7 @@ export function PitchPage() {
           </div>
         </section>
 
-        {/* ── Section 3 — The Platform ─────────────────────────────────── */}
+        {/* ── Section 3 — The Platform ──────────────────────────── */}
         <section
           id="platform"
           className="pitch-section pitch-bg-navy"
@@ -1102,7 +1255,7 @@ export function PitchPage() {
           </div>
         </section>
 
-        {/* ── Section 4 — Sentinel ─────────────────────────────────────── */}
+        {/* ── Section 4 — Sentinel ──────────────────────────────── */}
         <section
           id="sentinel"
           className="pitch-section pitch-bg-navy"
@@ -1148,7 +1301,7 @@ export function PitchPage() {
           </div>
         </section>
 
-        {/* ── Section 5 — The Physical Network ─────────────────────────── */}
+        {/* ── Section 5 — The Physical Network ─────────────────────── */}
         <section
           id="network"
           className="pitch-section pitch-bg-charcoal"
@@ -1221,7 +1374,7 @@ export function PitchPage() {
           </div>
         </section>
 
-        {/* ── Section 6 — The Structure ─────────────────────────────────── */}
+        {/* ── Section 6 — The Structure ────────────────────────────── */}
         <section
           id="structure"
           className="pitch-section pitch-bg-navy"
@@ -1288,7 +1441,7 @@ export function PitchPage() {
           </div>
         </section>
 
-        {/* ── Section 7 — The Conversation ─────────────────────────────── */}
+        {/* ── Section 7 — The Conversation ─────────────────────────── */}
         <section
           id="contact"
           className="pitch-section pitch-bg-navy"
@@ -1338,5 +1491,33 @@ export function PitchPage() {
         </section>
       </div>
     </>
+  );
+}
+
+export function PitchPage() {
+  const [accessGranted, setAccessGranted] = useState(
+    () => sessionStorage.getItem("pitch_access") === "granted",
+  );
+
+  return (
+    <AnimatePresence mode="wait">
+      {!accessGranted ? (
+        <motion.div
+          key="gate"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.4 } }}
+        >
+          <PitchGate onGranted={() => setAccessGranted(true)} />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="pitch"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { duration: 0.5 } }}
+        >
+          <PitchContent />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

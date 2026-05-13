@@ -583,6 +583,102 @@ const _DASHBOARD_ACTIVITY = [
 
 // ─── AdminDashboardTab ───────────────────────────────────────────────────────
 
+// ── CSV Export helpers ────────────────────────────────────────────────────
+
+function downloadCsv(filename: string, rows: string[][]): void {
+  const escapeCsvCell = (val: string) =>
+    /[,"\n]/.test(val) ? `"${val.replace(/"/g, '""')}"` : val;
+  const csv = rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function ExportDataButton({
+  providers,
+  helpers,
+}: {
+  providers: ProviderWithStatus[];
+  helpers: Helper[];
+}) {
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = () => {
+    if (providers.length === 0 && helpers.length === 0) {
+      toast.info("Load dashboard data first.");
+      return;
+    }
+    setExporting(true);
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Providers CSV
+    const providerRows: string[][] = [
+      ["Name", "City", "Type", "Status", "Verified", "Reputation Score"],
+      ...providers.map((p) => [
+        p.name,
+        "", // no city on ProviderWithStatus — use name context
+        p.providerType,
+        p.is_active ? "Active" : "Inactive",
+        p.is_verified ? "Yes" : "No",
+        String(p.reputationScore ?? 0),
+      ]),
+    ];
+    downloadCsv(`livenow-providers-${today}.csv`, providerRows);
+
+    // Helpers CSV
+    if (helpers.length > 0) {
+      const helperRows: string[][] = [
+        ["Name", "ZIP", "Role", "Join Date", "Status"],
+        ...helpers.map((v) => {
+          const ms =
+            typeof v.createdAt === "bigint"
+              ? Number(v.createdAt) / 1_000_000
+              : Number(v.createdAt);
+          const joined = ms
+            ? new Date(ms).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
+            : "";
+          return [
+            `${v.firstName} ${v.lastName}`,
+            v.zip || "",
+            v.helpType || "Helper",
+            joined,
+            "Active",
+          ];
+        }),
+      ];
+      downloadCsv(`livenow-volunteers-${today}.csv`, helperRows);
+    }
+
+    setTimeout(() => setExporting(false), 800);
+    toast.success("Export complete.");
+  };
+
+  return (
+    <button
+      type="button"
+      disabled={exporting}
+      onClick={handleExport}
+      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-live-green/40 bg-live-green/5 text-live-green text-sm font-medium hover:bg-live-green/10 transition-colors disabled:opacity-50"
+      data-ocid="admin.export_data_button"
+    >
+      {exporting ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <Download className="w-4 h-4" />
+      )}
+      Export Data
+    </button>
+  );
+}
+
 function AdminDashboardTab({
   providers,
   setTab,
@@ -1291,20 +1387,13 @@ function AdminDashboardTab({
           >
             <CheckCircle2 className="w-4 h-4" /> Review Pending
           </button>
+          <ExportDataButton providers={providers} helpers={helpers} />
+
           <button
             type="button"
             onClick={() => {
-              console.log("[AdminDashboard] Export data triggered");
-              toast.info("Export initiated — data logged to console.");
+              window.location.href = "/admin/settings";
             }}
-            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-live-green/40 bg-live-green/5 text-live-green text-sm font-medium hover:bg-live-green/10 transition-colors"
-            data-ocid="admin.export_data_button"
-          >
-            <Download className="w-4 h-4" /> Export Data
-          </button>
-          <button
-            type="button"
-            onClick={() => toast.info("Settings — coming soon.")}
             className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-live-green/40 bg-live-green/5 text-live-green text-sm font-medium hover:bg-live-green/10 transition-colors"
             data-ocid="admin.settings_button"
           >

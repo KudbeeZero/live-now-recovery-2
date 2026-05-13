@@ -282,6 +282,11 @@ function mapReportToIncident(report: CitizenReport): Incident {
     timeAgo: fromNanoTimestamp(report.createdAt),
     // Mapping: activityType → Active|Resolved
     status: incidentStatus(report.activityType),
+    // Raw bigint timestamp preserved for auto-refreshing relative time in UI
+    rawTimestamp:
+      typeof report.createdAt === "bigint"
+        ? report.createdAt
+        : BigInt(Math.round(Number(report.createdAt))),
   };
 }
 

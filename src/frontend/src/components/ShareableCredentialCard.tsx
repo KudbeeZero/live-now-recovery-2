@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Download, Share2, Sparkles, X } from "lucide-react";
+import { Download, Link, Share2, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   formatEarnedAt,
@@ -88,6 +88,7 @@ export function ShareableCredentialCard({ credential, onClose }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [generating, setGenerating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const displayName = credential
     ? getCredentialDisplayName(credential.credentialType)
@@ -303,6 +304,17 @@ export function ShareableCredentialCard({ credential, onClose }: Props) {
     a.click();
   }
 
+  function handleCopyLink() {
+    const owner = credential?.owner ? credential.owner.toText() : "";
+    const url = owner
+      ? `https://livenowrecovery.org/leaderboard?principal=${encodeURIComponent(owner)}`
+      : `${window.location.origin}/leaderboard`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   function handleShareOnX() {
     const text = encodeURIComponent(
       `I just earned the \"${displayName}\" credential on @LiveNowRecovery \u2014 a verified ${tierLabel} badge permanently recorded on the Internet Computer. Join the movement. #RecoveryIsPossible #LiveNowRecovery https://livenowrecovery.org`,
@@ -372,16 +384,29 @@ export function ShareableCredentialCard({ credential, onClose }: Props) {
             <Download className="h-4 w-4" />
             Download PNG Card
           </Button>
-          <Button
-            type="button"
-            data-ocid="shareable_card.share_x_button"
-            variant="outline"
-            className="w-full gap-2"
-            onClick={handleShareOnX}
-          >
-            <Share2 className="h-4 w-4" />
-            Post to X (Twitter)
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              data-ocid="shareable_card.share_x_button"
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={handleShareOnX}
+            >
+              <Share2 className="h-4 w-4" />
+              Post to X
+            </Button>
+            <Button
+              type="button"
+              data-ocid="shareable_card.copy_link_button"
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={handleCopyLink}
+              aria-label="Copy credential link to clipboard"
+            >
+              <Link className="h-4 w-4" />
+              {copied ? "Copied!" : "Copy Link"}
+            </Button>
+          </div>
           <p className="text-xs text-center text-muted-foreground pt-1">
             Soul-bound on the Internet Computer \u00b7 non-transferable \u00b7
             verifiable by anyone

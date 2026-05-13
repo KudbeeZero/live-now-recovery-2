@@ -10,6 +10,17 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AdminSettings {
+  'maintenanceModeEnabled' : boolean,
+  'sentinelSensitivity' : string,
+  'autoApproveProviders' : boolean,
+  'emergencyBroadcastEnabled' : boolean,
+  'emergencyBroadcastMessage' : string,
+  'notifyOnNewProvider' : boolean,
+  'notifyOnNewReport' : boolean,
+  'notifyOnNewCredential' : boolean,
+  'notifyOnNewVolunteer' : boolean,
+}
 export interface CanisterStateSummary {
   'active_providers' : Array<[string, bigint, boolean]>,
   'total_active_providers' : bigint,
@@ -201,13 +212,18 @@ export interface _SERVICE {
   'checkAndAutoMint' : ActorMethod<[Principal, string, bigint], undefined>,
   'createRecoveryProfile' : ActorMethod<[string, string], string>,
   'flagCitizenReport' : ActorMethod<[string], boolean>,
-  /**
-   * / forceSetAdmin: callable by the canister controller only.
-   * / Directly registers any given principal as admin in AccessControl.
-   */
-  'forceSetAdmin' : ActorMethod<[Principal], undefined>,
   'generateHandoffToken' : ActorMethod<[string], string>,
   'getActiveRiskBoosts' : ActorMethod<[], Array<[string, number]>>,
+  'getAdminNotificationPrefs' : ActorMethod<
+    [],
+    {
+      'notifyOnNewProvider' : boolean,
+      'notifyOnNewReport' : boolean,
+      'notifyOnNewCredential' : boolean,
+      'notifyOnNewVolunteer' : boolean,
+    }
+  >,
+  'getAdminSettings' : ActorMethod<[], AdminSettings>,
   'getAllHelpers' : ActorMethod<[], Array<Helper>>,
   'getAllProviders' : ActorMethod<[], Array<ProviderWithStatus>>,
   'getAllPublicBadges' : ActorMethod<[], Array<[Principal, bigint]>>,
@@ -278,12 +294,6 @@ export interface _SERVICE {
   'hasCredential' : ActorMethod<[Principal, CredentialType], boolean>,
   'hideTestimonial' : ActorMethod<[string], boolean>,
   'incrementSimulationStats' : ActorMethod<[bigint, bigint], undefined>,
-  /**
-   * / initAdminIfEmpty: self-service bootstrap.
-   * / If no admin has been assigned yet, sets the CALLER as admin and returns confirmation.
-   * / Returns "Admin already exists" if adminAssigned is already true.
-   */
-  'initAdminIfEmpty' : ActorMethod<[], string>,
   'initSimulationTime' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'markResourceUsed' : ActorMethod<[string], boolean>,
@@ -325,6 +335,7 @@ export interface _SERVICE {
     string
   >,
   'toggleLive' : ActorMethod<[string, boolean], undefined>,
+  'updateAdminSettings' : ActorMethod<[AdminSettings], undefined>,
   'updateInventory' : ActorMethod<[string, string], undefined>,
   'updateRiskEvent' : ActorMethod<[string, RiskEvent], boolean>,
   'updateVolunteerProfile' : ActorMethod<[bigint, ProfileUpdate], boolean>,

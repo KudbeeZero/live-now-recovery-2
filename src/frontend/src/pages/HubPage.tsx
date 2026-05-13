@@ -2,6 +2,7 @@ import { AlertTriangle, Bell, MapPin, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { SEO } from "../components/SEO";
 import { useHubData } from "../hooks/useHubData";
+import { useRelativeTime } from "../hooks/useRelativeTime";
 import type {
   AlertSeverity,
   Incident,
@@ -171,6 +172,13 @@ function AlertCard({ alert, index }: { alert: SafetyAlert; index: number }) {
   );
 }
 
+// ── Live auto-refreshing timestamp ─────────────────────────────────────────
+
+function LiveTimeAgo({ incident }: { incident: Incident }) {
+  const live = useRelativeTime(incident.rawTimestamp ?? null);
+  return <>{live || incident.timeAgo}</>;
+}
+
 function IncidentCard({
   incident,
   index,
@@ -212,7 +220,8 @@ function IncidentCard({
           )}
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {incident.neighborhood} · {incident.city} · {incident.timeAgo}
+          {incident.neighborhood} · {incident.city} ·{" "}
+          <LiveTimeAgo incident={incident} />
         </p>
       </div>
     </div>

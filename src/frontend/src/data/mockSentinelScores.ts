@@ -1,3 +1,12 @@
+/**
+ * DEMO DATA — These are representative risk scores for Ohio counties.
+ * They are NOT real-time Sentinel outputs. Live Sentinel data requires
+ * the deployed prediction engine with NWS, BLS, and canister integration.
+ */
+export const SENTINEL_DATA_IS_DEMO = true;
+export const SENTINEL_DATA_NOTICE =
+  "Demo data — representative risk scores for Ohio counties. Live Sentinel data requires the deployed prediction engine.";
+
 export type RiskBucket = "green" | "amber" | "orange" | "red";
 
 export interface SentinelCountyData {

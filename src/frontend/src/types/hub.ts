@@ -20,6 +20,8 @@ export interface Incident {
   city: string;
   timeAgo: string;
   status: "Active" | "Resolved";
+  /** Raw nanosecond timestamp from canister — used for live auto-refreshing relative time */
+  rawTimestamp?: bigint;
 }
 
 export interface NaloxoneLocation {

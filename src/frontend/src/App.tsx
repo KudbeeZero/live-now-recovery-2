@@ -15,8 +15,10 @@ import { EmergencyBanner } from "./components/EmergencyBanner";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { SentinelChat } from "./components/SentinelChat";
+import { SiteBanners } from "./components/SiteBanners";
 import { AboutPage } from "./pages/AboutPage";
 import { AdminPage } from "./pages/AdminPage";
+import { AdminSettingsPage } from "./pages/AdminSettingsPage";
 import { BlogPage } from "./pages/BlogPage";
 import { BlogPostPage } from "./pages/BlogPostPage";
 import { CitizensPage } from "./pages/CitizensPage";
@@ -66,6 +68,7 @@ function RootLayout() {
   return (
     <div className="h-screen flex flex-col">
       <ScrollToTop />
+      <SiteBanners />
       <EmergencyBanner />
       <Header />
       <div className="flex-1 landscape:pb-[52px] lg:landscape:pb-0">
@@ -359,12 +362,19 @@ const pitchRoute = createRoute({
   component: PitchPage,
 });
 
+const adminSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/settings",
+  component: AdminSettingsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   privateRootRoute.addChildren([pitchRoute]),
   indexRoute,
   providerRoute,
   dashboardRoute,
   adminRoute,
+  adminSettingsRoute,
   verifyRoute,
   helperRoute,
   missionRoute,

@@ -171,6 +171,7 @@ type VolunteerProfile__427515527 =
     zip : Text
   };
 actor {
+  stable ADMIN_PRINCIPAL : Principal;
   stable DECAY_NS : Nat;
   stable HIGH_RISK_THRESHOLD : Nat;
   stable TOKEN_EXPIRY_NS : Nat;
@@ -180,6 +181,18 @@ actor {
       userRoles : Map__605269027<Principal, UserRole__1054455867>
     };
   stable adminPrincipals : [Principal];
+  stable var adminSettings :
+    {
+      autoApproveProviders : Bool;
+      emergencyBroadcastEnabled : Bool;
+      emergencyBroadcastMessage : Text;
+      maintenanceModeEnabled : Bool;
+      notifyOnNewCredential : Bool;
+      notifyOnNewProvider : Bool;
+      notifyOnNewReport : Bool;
+      notifyOnNewVolunteer : Bool;
+      sentinelSensitivity : Text
+    };
   stable var cachedAlertsText : Text;
   stable var cachedSocialStress : [(Text, Float)];
   stable var cachedWeatherRisk : Float;

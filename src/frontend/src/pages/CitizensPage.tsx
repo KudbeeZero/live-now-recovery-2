@@ -31,6 +31,7 @@ import {
   COUNTY_CENTERS,
   MOCK_SENTINEL_SCORES,
   OHIO_STATEWIDE_AVERAGE,
+  SENTINEL_DATA_IS_DEMO,
   TOP_RISK_COUNTIES,
 } from "../data/mockSentinelScores";
 import {
@@ -2190,6 +2191,31 @@ export function CitizensPage() {
             ))}
           </div>
         </div>
+
+        {/* Demo Data badge — visible in bottom-right of map when Sentinel overlay is on */}
+        {SENTINEL_DATA_IS_DEMO && filters.sentinel && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "56px",
+              right: "12px",
+              zIndex: 25,
+              background: "rgba(245,158,11,0.18)",
+              border: "1px solid rgba(245,158,11,0.45)",
+              borderRadius: "6px",
+              padding: "3px 8px",
+              fontSize: "10px",
+              fontWeight: 700,
+              color: "#f59e0b",
+              letterSpacing: "0.04em",
+              pointerEvents: "none",
+            }}
+            data-ocid="citizens.sentinel_demo_badge"
+            aria-label="Sentinel overlay is using demo data"
+          >
+            DEMO DATA
+          </div>
+        )}
 
         {/* ── Legend ───────────────────────────────────────────────────── */}
         <MapLegend showProviders={providers.length > 0} />

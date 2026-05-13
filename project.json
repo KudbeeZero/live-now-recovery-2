@@ -1,26 +1,25 @@
 {
-  "overview": "Live Now Recovery is a privacy-first, real-time recovery and resource platform for Medication-Assisted Treatment, harm reduction, and long-term support — built on the Internet Computer Protocol. Now featuring a private investor pitch page showcasing the platform's infrastructure, Sentinel prediction engine, and community impact.",
+  "overview": "Live Now Recovery is a privacy-first, real-time recovery and resource platform for Medication-Assisted Treatment (MAT), harm reduction, and long-term support. Piloted in Ohio, built on Internet Computer Protocol with a strict NO-PHI policy, real-time provider status, Sentinel risk prediction, and soul-bound on-chain credentials.",
   "features": [
-    "Private investor pitch page at /pitch with seven immersive sections",
-    "Live stat counters pulling from canister (providers, handoffs, volunteers)",
-    "Sentinel prediction engine showcased with 7-signal risk stack",
-    "Contact form sending directly to admin@livenowrecovery.org",
-    "Premium editorial design with serif headlines and grain texture",
-    "Soul-bound on-chain credentials and volunteer credentialing system",
-    "Real-time Citizens Hub with live canister data",
-    "Admin dashboard with live provider and volunteer management"
+    "Real-time MAT provider search and warm handoffs across Ohio",
+    "Sentinel prediction engine with compound risk scoring and county choropleth overlays",
+    "Soul-bound on-chain credential system with 12 types, leaderboard, and public gallery",
+    "Admin dashboard with live data, emergency broadcast toggle, and configurable email notifications",
+    "Private investor pitch page at /pitch with full-screen access code gate",
+    "Citizens Hub with live safety alerts, incident feed, and naloxone location map",
+    "Provider and volunteer profiles with Twitter/X-style design and verification badges",
+    "Site-wide emergency broadcast and maintenance mode banners controlled from admin settings"
   ],
   "category": "healthcare",
   "tags": [
-    "recovery",
     "healthcare",
-    "harm-reduction",
-    "ohio",
-    "investor-pitch",
-    "icp",
-    "nonprofit",
+    "recovery",
     "mat",
-    "overdose-prevention"
+    "harm-reduction",
+    "icp",
+    "ohio",
+    "nonprofit",
+    "real-time"
   ],
-  "last_updated": "2026-05-10T04:38:12.331Z"
+  "last_updated": "2026-05-13T02:21:36.727Z"
 }

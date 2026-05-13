@@ -37,6 +37,17 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const AdminSettings = IDL.Record({
+  'maintenanceModeEnabled' : IDL.Bool,
+  'sentinelSensitivity' : IDL.Text,
+  'autoApproveProviders' : IDL.Bool,
+  'emergencyBroadcastEnabled' : IDL.Bool,
+  'emergencyBroadcastMessage' : IDL.Text,
+  'notifyOnNewProvider' : IDL.Bool,
+  'notifyOnNewReport' : IDL.Bool,
+  'notifyOnNewCredential' : IDL.Bool,
+  'notifyOnNewVolunteer' : IDL.Bool,
+});
 export const Helper = IDL.Record({
   'id' : IDL.Text,
   'zip' : IDL.Text,
@@ -207,13 +218,25 @@ export const idlService = IDL.Service({
   'checkAndAutoMint' : IDL.Func([IDL.Principal, IDL.Text, IDL.Nat], [], []),
   'createRecoveryProfile' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
   'flagCitizenReport' : IDL.Func([IDL.Text], [IDL.Bool], []),
-  'forceSetAdmin' : IDL.Func([IDL.Principal], [], []),
   'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
   'getActiveRiskBoosts' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Float64))],
       [],
     ),
+  'getAdminNotificationPrefs' : IDL.Func(
+      [],
+      [
+        IDL.Record({
+          'notifyOnNewProvider' : IDL.Bool,
+          'notifyOnNewReport' : IDL.Bool,
+          'notifyOnNewCredential' : IDL.Bool,
+          'notifyOnNewVolunteer' : IDL.Bool,
+        }),
+      ],
+      ['query'],
+    ),
+  'getAdminSettings' : IDL.Func([], [AdminSettings], ['query']),
   'getAllHelpers' : IDL.Func([], [IDL.Vec(Helper)], ['query']),
   'getAllProviders' : IDL.Func([], [IDL.Vec(ProviderWithStatus)], ['query']),
   'getAllPublicBadges' : IDL.Func(
@@ -339,7 +362,6 @@ export const idlService = IDL.Service({
     ),
   'hideTestimonial' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'incrementSimulationStats' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
-  'initAdminIfEmpty' : IDL.Func([], [IDL.Text], []),
   'initSimulationTime' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'markResourceUsed' : IDL.Func([IDL.Text], [IDL.Bool], []),
@@ -415,6 +437,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
+  'updateAdminSettings' : IDL.Func([AdminSettings], [], []),
   'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'updateRiskEvent' : IDL.Func([IDL.Text, RiskEvent], [IDL.Bool], []),
   'updateVolunteerProfile' : IDL.Func([IDL.Nat, ProfileUpdate], [IDL.Bool], []),
@@ -455,6 +478,17 @@ export const idlFactory = ({ IDL }) => {
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const AdminSettings = IDL.Record({
+    'maintenanceModeEnabled' : IDL.Bool,
+    'sentinelSensitivity' : IDL.Text,
+    'autoApproveProviders' : IDL.Bool,
+    'emergencyBroadcastEnabled' : IDL.Bool,
+    'emergencyBroadcastMessage' : IDL.Text,
+    'notifyOnNewProvider' : IDL.Bool,
+    'notifyOnNewReport' : IDL.Bool,
+    'notifyOnNewCredential' : IDL.Bool,
+    'notifyOnNewVolunteer' : IDL.Bool,
   });
   const Helper = IDL.Record({
     'id' : IDL.Text,
@@ -626,13 +660,25 @@ export const idlFactory = ({ IDL }) => {
     'checkAndAutoMint' : IDL.Func([IDL.Principal, IDL.Text, IDL.Nat], [], []),
     'createRecoveryProfile' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
     'flagCitizenReport' : IDL.Func([IDL.Text], [IDL.Bool], []),
-    'forceSetAdmin' : IDL.Func([IDL.Principal], [], []),
     'generateHandoffToken' : IDL.Func([IDL.Text], [IDL.Text], []),
     'getActiveRiskBoosts' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Float64))],
         [],
       ),
+    'getAdminNotificationPrefs' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'notifyOnNewProvider' : IDL.Bool,
+            'notifyOnNewReport' : IDL.Bool,
+            'notifyOnNewCredential' : IDL.Bool,
+            'notifyOnNewVolunteer' : IDL.Bool,
+          }),
+        ],
+        ['query'],
+      ),
+    'getAdminSettings' : IDL.Func([], [AdminSettings], ['query']),
     'getAllHelpers' : IDL.Func([], [IDL.Vec(Helper)], ['query']),
     'getAllProviders' : IDL.Func([], [IDL.Vec(ProviderWithStatus)], ['query']),
     'getAllPublicBadges' : IDL.Func(
@@ -778,7 +824,6 @@ export const idlFactory = ({ IDL }) => {
       ),
     'hideTestimonial' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'incrementSimulationStats' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
-    'initAdminIfEmpty' : IDL.Func([], [IDL.Text], []),
     'initSimulationTime' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'markResourceUsed' : IDL.Func([IDL.Text], [IDL.Bool], []),
@@ -854,6 +899,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'toggleLive' : IDL.Func([IDL.Text, IDL.Bool], [], []),
+    'updateAdminSettings' : IDL.Func([AdminSettings], [], []),
     'updateInventory' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'updateRiskEvent' : IDL.Func([IDL.Text, RiskEvent], [IDL.Bool], []),
     'updateVolunteerProfile' : IDL.Func(

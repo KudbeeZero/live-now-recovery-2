@@ -41,6 +41,35 @@ actor {
   let TOKEN_EXPIRY_NS = 300_000_000_000;
   let HIGH_RISK_THRESHOLD = 80;
 
+  // ── Admin Principal ───────────────────────────────────────────────────────────
+  let ADMIN_PRINCIPAL : Principal = Principal.fromText("zzylh-6bvgq-iaaay-hapoo-l5u7t-axd4o-ti6a4-xvdbf-xgh4u-skv6e-bqe");
+
+  // ── Admin Settings Type ───────────────────────────────────────────────────────
+  public type AdminSettings = {
+    emergencyBroadcastEnabled : Bool;
+    emergencyBroadcastMessage : Text;
+    sentinelSensitivity : Text;        // "low" | "medium" | "high"
+    autoApproveProviders : Bool;
+    maintenanceModeEnabled : Bool;
+    notifyOnNewProvider : Bool;
+    notifyOnNewVolunteer : Bool;
+    notifyOnNewReport : Bool;
+    notifyOnNewCredential : Bool;
+  };
+
+  // ── Admin Settings State ──────────────────────────────────────────────────────
+  var adminSettings : AdminSettings = {
+    emergencyBroadcastEnabled = false;
+    emergencyBroadcastMessage = "";
+    sentinelSensitivity = "medium";
+    autoApproveProviders = false;
+    maintenanceModeEnabled = false;
+    notifyOnNewProvider = true;
+    notifyOnNewVolunteer = true;
+    notifyOnNewReport = false;
+    notifyOnNewCredential = true;
+  };
+
   // Initialize access control
   let accessControlState = AccessControl.initState();
   // ── Credential Layer State ────────────────────────────────────────────────────
@@ -58,6 +87,36 @@ actor {
   include MixinAuthorization(accessControlState);
   include CredentialsApi(credentialsById, credOwnerIndex, credImpactIndex, nextCredentialId, accessControlState);
   include VolunteerProfilesApi(volunteersById, nextVolunteerId);
+
+  // ── Admin Settings Functions ─────────────────────────────────────────────────
+
+  // getAdminSettings — public query; anyone can read (needed for broadcast/maintenance banners site-wide)
+  public query func getAdminSettings() : async AdminSettings {
+    adminSettings;
+  };
+
+  // updateAdminSettings — admin-only update; stores new settings
+  public shared ({ caller }) func updateAdminSettings(settings : AdminSettings) : async () {
+    if (caller != ADMIN_PRINCIPAL and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Not authorized");
+    };
+    adminSettings := settings;
+  };
+
+  // getAdminNotificationPrefs — public query; returns only the notification preference fields
+  public query func getAdminNotificationPrefs() : async {
+    notifyOnNewProvider : Bool;
+    notifyOnNewVolunteer : Bool;
+    notifyOnNewReport : Bool;
+    notifyOnNewCredential : Bool;
+  } {
+    {
+      notifyOnNewProvider = adminSettings.notifyOnNewProvider;
+      notifyOnNewVolunteer = adminSettings.notifyOnNewVolunteer;
+      notifyOnNewReport = adminSettings.notifyOnNewReport;
+      notifyOnNewCredential = adminSettings.notifyOnNewCredential;
+    };
+  };
 
   // ICP management canister for HTTP outcalls
   let ic : ICManagement = actor "aaaaa-aa";
@@ -1665,31 +1724,6 @@ actor {
     };
     results;
   };
-
-  // TEMPORARY — remove after admin is confirmed ─────────────────────────────────
-  /// forceSetAdmin: callable by the canister controller only.
-  /// Directly registers any given principal as admin in AccessControl.
-  public shared ({ caller }) func forceSetAdmin(p : Principal) : async () {
-    assert caller.isController();
-    accessControlState.userRoles.add(p, #admin);
-    accessControlState.adminAssigned := true;
-  };
-
-  /// initAdminIfEmpty: self-service bootstrap.
-  /// If no admin has been assigned yet, sets the CALLER as admin and returns confirmation.
-  /// Returns "Admin already exists" if adminAssigned is already true.
-  public shared ({ caller }) func initAdminIfEmpty() : async Text {
-    if (caller.isAnonymous()) {
-      return "Anonymous callers cannot become admin";
-    };
-    if (accessControlState.adminAssigned) {
-      return "Admin already exists";
-    };
-    accessControlState.userRoles.add(caller, #admin);
-    accessControlState.adminAssigned := true;
-    "Admin set: " # caller.toText();
-  };
-  // END TEMPORARY ───────────────────────────────────────────────────────────────
 
   // ── Admin: seed demo credentials (one-time, after deploy) ────────────────────
   /// Populates 18 demo credential records across all 12 types and 4 tiers.

@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import {
@@ -732,6 +733,8 @@ export function ProviderPage() {
   const id = params.id ?? "";
   const { data: providers = [], isLoading } = useAllProviders();
   const { data: isAdmin = false } = useIsAdmin();
+  const { loginStatus } = useInternetIdentity();
+  const isAuthenticated = loginStatus === "success";
   const provider = providers.find((p) => p.id === id);
   const { awardedCredential, dismissAward } = useCredentialAward();
 
@@ -889,6 +892,26 @@ export function ProviderPage() {
           canEdit={isAdmin}
         />
 
+        {/* Pending Verification Banner — only visible to authenticated users when provider is unverified */}
+        {isAuthenticated && !isVerified && (
+          <div
+            className="flex items-start gap-3 p-4 rounded-xl mb-4 bg-amber-900/30 border border-amber-500/40"
+            data-ocid="provider.pending_verification_banner"
+          >
+            <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-amber-300">
+                Verification Pending — Your listing is live but not yet verified
+                by our team. Verified providers receive a green ✓ badge and
+                appear higher in search results.
+              </p>
+              <p className="text-xs text-amber-300/70 mt-0.5">
+                Typical review time: 24–48 hours
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Status alert */}
         {stale && (
           <div
@@ -923,7 +946,7 @@ export function ProviderPage() {
             <StatCard
               icon={isVerified ? CheckCircle2 : XCircle}
               label="Verification"
-              value={isVerified ? "✓ Verified" : "Pending"}
+              value={isVerified ? "✓ Verified" : "⏳ Pending"}
               sub="Network status"
             />
             <StatCard

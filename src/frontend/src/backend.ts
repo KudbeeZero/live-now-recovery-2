@@ -136,6 +136,17 @@ export interface CitizenReport {
     createdAt: bigint;
     zipCode: string;
 }
+export interface AdminSettings {
+    maintenanceModeEnabled: boolean;
+    sentinelSensitivity: string;
+    autoApproveProviders: boolean;
+    emergencyBroadcastEnabled: boolean;
+    emergencyBroadcastMessage: string;
+    notifyOnNewProvider: boolean;
+    notifyOnNewReport: boolean;
+    notifyOnNewCredential: boolean;
+    notifyOnNewVolunteer: boolean;
+}
 export interface Credential {
     id: bigint;
     verifier?: Principal;
@@ -299,13 +310,15 @@ export interface backendInterface {
     checkAndAutoMint(owner: Principal, actionType: string, count: bigint): Promise<void>;
     createRecoveryProfile(displayName: string, zip: string): Promise<string>;
     flagCitizenReport(id: string): Promise<boolean>;
-    /**
-     * / forceSetAdmin: callable by the canister controller only.
-     * / Directly registers any given principal as admin in AccessControl.
-     */
-    forceSetAdmin(p: Principal): Promise<void>;
     generateHandoffToken(zipCode: string): Promise<string>;
     getActiveRiskBoosts(): Promise<Array<[string, number]>>;
+    getAdminNotificationPrefs(): Promise<{
+        notifyOnNewProvider: boolean;
+        notifyOnNewReport: boolean;
+        notifyOnNewCredential: boolean;
+        notifyOnNewVolunteer: boolean;
+    }>;
+    getAdminSettings(): Promise<AdminSettings>;
     getAllHelpers(): Promise<Array<Helper>>;
     getAllProviders(): Promise<Array<ProviderWithStatus>>;
     getAllPublicBadges(): Promise<Array<[Principal, bigint]>>;
@@ -365,12 +378,6 @@ export interface backendInterface {
     hasCredential(principal: Principal, credType: CredentialType): Promise<boolean>;
     hideTestimonial(id: string): Promise<boolean>;
     incrementSimulationStats(handoffs: bigint, scans: bigint): Promise<void>;
-    /**
-     * / initAdminIfEmpty: self-service bootstrap.
-     * / If no admin has been assigned yet, sets the CALLER as admin and returns confirmation.
-     * / Returns "Admin already exists" if adminAssigned is already true.
-     */
-    initAdminIfEmpty(): Promise<string>;
     initSimulationTime(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
     markResourceUsed(resourceCategory: string): Promise<boolean>;
@@ -394,6 +401,7 @@ export interface backendInterface {
     storeTestimonial(displayName: string, zipCode: string, content: string): Promise<Result>;
     submitCitizenReport(zipCode: string, activityType: string, content: string, lat: number | null, lng: number | null): Promise<string>;
     toggleLive(id: string, status: boolean): Promise<void>;
+    updateAdminSettings(settings: AdminSettings): Promise<void>;
     updateInventory(id: string, newInventory: string): Promise<void>;
     updateRiskEvent(id: string, event: RiskEvent): Promise<boolean>;
     updateVolunteerProfile(id: bigint, upd: ProfileUpdate): Promise<boolean>;
@@ -559,20 +567,6 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async forceSetAdmin(arg0: Principal): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.forceSetAdmin(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.forceSetAdmin(arg0);
-            return result;
-        }
-    }
     async generateHandoffToken(arg0: string): Promise<string> {
         if (this.processError) {
             try {
@@ -598,6 +592,39 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getActiveRiskBoosts();
+            return result;
+        }
+    }
+    async getAdminNotificationPrefs(): Promise<{
+        notifyOnNewProvider: boolean;
+        notifyOnNewReport: boolean;
+        notifyOnNewCredential: boolean;
+        notifyOnNewVolunteer: boolean;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAdminNotificationPrefs();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAdminNotificationPrefs();
+            return result;
+        }
+    }
+    async getAdminSettings(): Promise<AdminSettings> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAdminSettings();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAdminSettings();
             return result;
         }
     }
@@ -1219,20 +1246,6 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async initAdminIfEmpty(): Promise<string> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.initAdminIfEmpty();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.initAdminIfEmpty();
-            return result;
-        }
-    }
     async initSimulationTime(): Promise<void> {
         if (this.processError) {
             try {
@@ -1552,6 +1565,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.toggleLive(arg0, arg1);
+            return result;
+        }
+    }
+    async updateAdminSettings(arg0: AdminSettings): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateAdminSettings(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateAdminSettings(arg0);
             return result;
         }
     }
